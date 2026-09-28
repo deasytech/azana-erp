@@ -32,3 +32,14 @@ it('renders domain exceptions as JSON 422', function () {
         ->assertStatus(422)
         ->assertJson(['message' => 'Nope', 'code' => 'rule_broken']);
 });
+
+it('returns 503 without leaking details when a dependency fails', function () {
+    config(['session.driver' => 'database', 'cache.default' => 'database', 'database.default' => 'broken',
+        'database.connections.broken' => ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 1, 'database' => 'x', 'username' => 'x', 'password' => 'x']]);
+    app('db')->purge();
+
+    $this->getJson('/health')
+        ->assertStatus(503)
+        ->assertJsonPath('status', 'degraded')
+        ->assertJsonPath('checks.database.detail', 'Check failed');
+});

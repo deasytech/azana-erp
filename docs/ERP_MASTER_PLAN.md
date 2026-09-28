@@ -392,6 +392,8 @@ Weights, growers, finishers and feed consumption
 ### Phase 08
 Inventory transaction engine and procurement
 
+> **Dependency note:** Phase 07 feed consumption must not post to stock until this phase exists. In Phase 07, record consumption against animals/pens/batches only; ledger-backed consumption (inventory transactions for feed) is wired up in Phase 08, per the Phase Dependency Rule in section 6.
+
 ### Phase 09
 Feed formulation and feed mill manufacturing
 
