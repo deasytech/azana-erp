@@ -2,6 +2,7 @@
 
 namespace App\Domain\Farm\Models;
 
+use App\Domain\Animal\Models\Animal;
 use App\Domain\Farm\Concerns\HasBusinessCode;
 use App\Domain\System\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,6 @@ class Breed extends Model
 
     public function isInUse(): bool
     {
-        return $this->geneticLines()->exists();
+        return $this->geneticLines()->exists() || Animal::where('breed_id', $this->id)->exists();
     }
 }
