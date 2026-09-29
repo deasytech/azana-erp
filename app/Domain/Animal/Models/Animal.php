@@ -7,6 +7,7 @@ use App\Domain\Farm\Models\GeneticLine;
 use App\Domain\Farm\Models\Location;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
+use App\Domain\Litter\Models\Litter;
 use App\Domain\System\Concerns\Auditable;
 use App\Enums\AnimalSex;
 use App\Enums\AnimalSource;
@@ -113,6 +114,11 @@ class Animal extends Model
         return $this->hasMany(AnimalStatusHistory::class)->orderByDesc('changed_at')->orderByDesc('id');
     }
 
+    public function litters(): HasMany
+    {
+        return $this->hasMany(Litter::class, 'sow_id')->orderByDesc('born_on');
+    }
+
     public function weights(): HasMany
     {
         return $this->hasMany(WeightRecord::class)->orderByDesc('weighed_at')->orderByDesc('id');
@@ -122,6 +128,17 @@ class Animal extends Model
     public function latestWeight(): ?WeightRecord
     {
         return $this->weights()->whereNull('voided_at')->first();
+    }
+
+    /** Sow or gilt: a female that can be served and farrow. */
+    public function isBreedingFemale(): bool
+    {
+        return $this->sex === AnimalSex::Female && in_array($this->category?->code, ['sow', 'gilt'], true);
+    }
+
+    public function isBoar(): bool
+    {
+        return $this->sex === AnimalSex::Male && $this->category?->code === 'boar';
     }
 
     public function isActive(): bool

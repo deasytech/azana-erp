@@ -27,6 +27,7 @@ final class SettingDefinitions
             new SettingDefinition('breeding.wean_to_service_days', self::BREEDING, 'Weaning-to-service interval (days)', 'int', '5', 'Expected return to heat after weaning.'),
             new SettingDefinition('breeding.heat_cycle_days', self::BREEDING, 'Heat cycle (days)', 'int', '21'),
             new SettingDefinition('breeding.min_first_service_age_days', self::BREEDING, 'Minimum age at first service (days)', 'int', '240'),
+            new SettingDefinition('breeding.same_heat_window_days', self::BREEDING, 'Same-heat window (days)', 'int', '3', 'Services this close together count as one mating (double mating) for pregnancy results.'),
             new SettingDefinition('production.target_weaning_percent', self::TARGETS, 'Target weaning percentage', 'decimal', '90'),
             new SettingDefinition('production.target_dressing_percent', self::TARGETS, 'Target dressing percentage', 'decimal', '75', 'Carcass weight / live weight x 100.'),
             new SettingDefinition('production.target_preweaning_mortality_percent', self::TARGETS, 'Maximum pre-weaning mortality (%)', 'decimal', '10'),
