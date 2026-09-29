@@ -40,7 +40,9 @@ class RoleResource extends Resource
             ->bulkToggleable())->all();
 
         return $schema->components([
-            TextInput::make('name')->required()->maxLength(125)->unique(ignoreRecord: true),
+            TextInput::make('name')->required()->maxLength(125)->unique(ignoreRecord: true)
+                ->disabled(fn (?Role $record) => $record?->name === Role::OWNER)
+                ->dehydrated(),
             TextInput::make('description')->maxLength(255),
             Toggle::make('requires_two_factor')
                 ->label('Require two-factor authentication')

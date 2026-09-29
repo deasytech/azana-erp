@@ -259,3 +259,64 @@ it('keeps hard policy rules in force for the Owner', function () {
         ->and($owner->can('delete', $log))->toBeFalse()
         ->and($owner->can('delete', Role::findByName('Owner/Director')))->toBeFalse();
 });
+
+it('stops non-owners assigning the Owner role', function () {
+    $role = Role::create(['name' => 'User Admin']);
+    $role->givePermissionTo('users.view', 'users.create', 'users.edit');
+    $this->actingAs(User::factory()->create()->assignRole($role));
+
+    Livewire::test(CreateUser::class)
+        ->fillForm([
+            'name' => 'Sneaky', 'email' => 'sneaky@azana.test', 'password' => 'Str0ng-Passw0rd!',
+            'roles' => [Role::findByName('Owner/Director')->id],
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['roles']);
+
+    expect(User::where('email', 'sneaky@azana.test')->exists())->toBeFalse();
+});
+
+it('lets owners assign the Owner role', function () {
+    $this->actingAs(userWithRole('Owner/Director'));
+
+    Livewire::test(CreateUser::class)
+        ->fillForm([
+            'name' => 'Second Owner', 'email' => 'owner2@azana.test', 'password' => 'Str0ng-Passw0rd!',
+            'roles' => [Role::findByName('Owner/Director')->id],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(User::firstWhere('email', 'owner2@azana.test')->hasRole('Owner/Director'))->toBeTrue();
+});
+
+it('stops non-owners editing Owner accounts or the Owner role', function () {
+    $role = Role::create(['name' => 'User Admin']);
+    $role->givePermissionTo('users.edit', 'roles.edit');
+    $admin = User::factory()->create()->assignRole($role);
+    $owner = userWithRole('Owner/Director');
+
+    expect($admin->can('update', $owner))->toBeFalse()
+        ->and($admin->can('update', User::factory()->create()))->toBeTrue()
+        ->and($admin->can('update', Role::findByName('Owner/Director')))->toBeFalse()
+        ->and($owner->can('update', Role::findByName('Owner/Director')))->toBeTrue();
+});
+
+it('protects the Owner role from rename and deletion', function () {
+    $owner = Role::findByName('Owner/Director');
+
+    expect(fn () => $owner->update(['name' => 'Renamed']))->toThrow(LogicException::class)
+        ->and(fn () => $owner->delete())->toThrow(LogicException::class)
+        ->and(userWithRole('Owner/Director')->can('delete', $owner))->toBeFalse();
+
+    $fresh = Role::findByName('Owner/Director');
+    $fresh->update(['description' => 'Still editable']);
+    expect($fresh->fresh()->description)->toBe('Still editable');
+});
+
+it('can seed demo users repeatedly', function () {
+    $this->seed();
+    $this->seed();
+
+    expect(User::where('email', 'like', '%@azana.test')->count())->toBe(12);
+});

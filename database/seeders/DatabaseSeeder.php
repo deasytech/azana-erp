@@ -16,10 +16,13 @@ class DatabaseSeeder extends Seeder
             foreach (array_keys(RoleSeeder::ROLES) as $role) {
                 $slug = str($role)->slug();
 
-                User::factory()->create([
-                    'name' => $role,
-                    'email' => "{$slug}@azana.test",
-                ])->assignRole($role);
+                $email = "{$slug}@azana.test";
+
+                // Idempotent: re-running the seeder must not fail on the unique email.
+                $user = User::firstWhere('email', $email)
+                    ?? User::factory()->create(['name' => $role, 'email' => $email]);
+
+                $user->assignRole($role);
             }
         }
     }

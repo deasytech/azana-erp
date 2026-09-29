@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Models\Role;
 use App\Models\User;
+use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -31,10 +33,20 @@ class UserForm
                     ->dehydrated(fn (?string $state) => filled($state))
                     ->helperText(fn (string $operation) => $operation === 'edit' ? 'Leave blank to keep the current password.' : null),
                 Select::make('roles')
-                    ->relationship('roles', 'name')
+                    ->relationship(
+                        'roles',
+                        'name',
+                        // Only an Owner may hand out the Owner role (it carries the permission bypass).
+                        modifyQueryUsing: fn ($query) => auth()->user()?->isOwner() ? $query : $query->where('name', '!=', Role::OWNER),
+                    )
                     ->multiple()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->rule(fn () => function (string $attribute, mixed $value, Closure $fail) {
+                        if (! auth()->user()?->isOwner() && Role::whereIn('id', (array) $value)->where('name', Role::OWNER)->exists()) {
+                            $fail('Only an Owner/Director can assign the Owner/Director role.');
+                        }
+                    }),
                 Toggle::make('is_active')
                     ->label('Active')
                     ->default(true)
