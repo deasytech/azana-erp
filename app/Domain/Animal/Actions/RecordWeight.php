@@ -2,6 +2,7 @@
 
 namespace App\Domain\Animal\Actions;
 
+use App\Domain\Animal\Concerns\ReplaysIdempotentRequests;
 use App\Domain\Animal\Events\WeightRecorded;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Animal\Models\WeightRecord;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 
 class RecordWeight
 {
+    use ReplaysIdempotentRequests;
+
     public function __construct(private readonly ResolveSettings $settings) {}
 
     public function __invoke(
@@ -24,7 +27,7 @@ class RecordWeight
         ?User $actor = null,
         ?string $idempotencyKey = null,
     ): WeightRecord {
-        if ($idempotencyKey && ($existing = WeightRecord::firstWhere('idempotency_key', $idempotencyKey))) {
+        if ($existing = $this->replay(WeightRecord::class, $animal, $idempotencyKey)) {
             return $existing;
         }
 

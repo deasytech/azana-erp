@@ -58,7 +58,7 @@ class RegisterAnimal
         return DB::transaction(function () use ($data, $actor) {
             $sex = AnimalSex::from($data['sex']);
             $category = $this->category($data['category_id'], $sex);
-            $this->validateBreeding($data);
+            $this->validateDetails($data);
 
             $animal = Animal::create([
                 ...Arr::only($data, self::PLAIN_FIELDS),
@@ -104,11 +104,12 @@ class RegisterAnimal
     }
 
     /** @param array<string, mixed> $data */
-    private function validateBreeding(array $data): void
+    private function validateDetails(array $data): void
     {
         $breedId = $data['breed_id'] ?? null;
         $lineId = $data['genetic_line_id'] ?? null;
         $birthDate = $data['birth_date'] ?? null;
+        $acquiredOn = $data['acquired_on'] ?? null;
 
         $breed = $breedId ? Breed::where('is_active', true)->find($breedId) ?? throw new DomainException('Choose a valid breed.', 'invalid_breed') : null;
 
@@ -122,6 +123,10 @@ class RegisterAnimal
 
         if ($birthDate && Carbon::parse($birthDate)->isFuture()) {
             throw new DomainException('The birth date cannot be in the future.', 'birth_future');
+        }
+
+        if ($acquiredOn && Carbon::parse($acquiredOn)->isFuture()) {
+            throw new DomainException('The acquisition date cannot be in the future.', 'acquired_future');
         }
     }
 

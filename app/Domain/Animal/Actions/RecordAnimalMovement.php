@@ -2,6 +2,7 @@
 
 namespace App\Domain\Animal\Actions;
 
+use App\Domain\Animal\Concerns\ReplaysIdempotentRequests;
 use App\Domain\Animal\Events\AnimalMoved;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Animal\Models\AnimalMovement;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
  */
 class RecordAnimalMovement
 {
+    use ReplaysIdempotentRequests;
+
     public function __invoke(
         Animal $animal,
         ?int $penId = null,
@@ -35,11 +38,13 @@ class RecordAnimalMovement
         }
 
         return DB::transaction(function () use ($animal, $penId, $locationId, $movedAt, $reasonId, $notes, $actor, $idempotencyKey) {
-            if ($existing = $this->existing($animal, $idempotencyKey)) {
+            // Lock first: concurrent retries of the same request queue up here, then replay the original.
+            $animal = Animal::lockForUpdate()->findOrFail($animal->id);
+
+            if ($existing = $this->replay(AnimalMovement::class, $animal, $idempotencyKey)) {
                 return $existing;
             }
 
-            $animal = Animal::lockForUpdate()->findOrFail($animal->id);
             $this->assertCanMove($animal, $penId, $locationId);
 
             return $this->write($animal, $penId, $locationId, $movedAt, $reasonId, $notes, $actor, $idempotencyKey);
@@ -54,17 +59,6 @@ class RecordAnimalMovement
         }
 
         return $this->write($animal, null, null, $at, null, $notes, $actor, null);
-    }
-
-    private function existing(Animal $animal, ?string $key): ?AnimalMovement
-    {
-        $movement = $key ? AnimalMovement::firstWhere('idempotency_key', $key) : null;
-
-        if ($movement && $movement->animal_id !== $animal->id) {
-            throw new DomainException('This idempotency key was already used for a different animal.', 'idempotency_conflict');
-        }
-
-        return $movement;
     }
 
     private function assertCanMove(Animal $animal, ?int $penId, ?int $locationId): void

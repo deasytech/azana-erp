@@ -110,7 +110,9 @@ it('validates registration input', function (array $bad, string $message) {
 })->with([
     'female boar' => fn () => [['category_id' => categoryId('boar')], 'cannot be registered'],
     'unknown category' => [['category_id' => 999999], 'valid animal category'],
-    'future birth date' => [['birth_date' => now()->addDay()->toDateString()], 'future'],
+    'future birth date' => [['birth_date' => now()->addDay()->toDateString()], 'birth date cannot be in the future'],
+    'future acquisition date' => [['acquired_on' => now()->addDay()->toDateString()], 'acquisition date cannot be in the future'],
+    'future acquisition date with placement' => fn () => [['acquired_on' => now()->addDay()->toDateString(), 'pen_id' => newPen('FUT')->id], 'acquisition date cannot be in the future'],
 ]);
 
 it('gives an animal several identifiers that all point to it', function () {
@@ -234,6 +236,31 @@ it('is idempotent for retried movements and weights', function () {
         ->and($w2->is($w1))->toBeTrue()
         ->and($animal->weights()->count())->toBe(1)
         ->and(fn () => $move(register(), $other->id, null, null, idempotencyKey: 'dev1-0001'))->toThrow(DomainException::class, 'different animal');
+});
+
+it('replays a weight retry only for the same animal', function () {
+    $animal = register();
+    $other = register();
+    $weigh = app(RecordWeight::class);
+
+    $first = $weigh($animal, '10', idempotencyKey: 'dev9-0001');
+
+    expect($weigh($animal, '10', idempotencyKey: 'dev9-0001')->is($first))->toBeTrue()
+        ->and(fn () => $weigh($other, '10', idempotencyKey: 'dev9-0001'))->toThrow(DomainException::class, 'different animal')
+        ->and($other->weights()->count())->toBe(0);
+});
+
+it('replays a movement retry even after the animal has moved on', function () {
+    $animal = register(['pen_id' => newPen('PA')->id]);
+    $pen = newPen('PB');
+    $move = app(RecordAnimalMovement::class);
+
+    $first = $move($animal, $pen->id, null, now()->addMinute(), idempotencyKey: 'dev9-0002');
+    $move($animal, newPen('PC')->id, null, now()->addMinutes(2));
+    $count = $animal->movements()->count();
+
+    expect($move($animal, $pen->id, null, now()->addMinute(), idempotencyKey: 'dev9-0002')->is($first))->toBeTrue()
+        ->and($animal->movements()->count())->toBe($count);
 });
 
 it('records weights with validation, and voids rather than edits them', function () {
