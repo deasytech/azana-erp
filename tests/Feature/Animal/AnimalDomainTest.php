@@ -6,7 +6,6 @@ use App\Domain\Animal\Actions\GetAnimalHistory;
 use App\Domain\Animal\Actions\LookupAnimal;
 use App\Domain\Animal\Actions\RecordAnimalMovement;
 use App\Domain\Animal\Actions\RecordWeight;
-use App\Domain\Animal\Actions\RegisterAnimal;
 use App\Domain\Animal\Actions\RetireAnimalIdentifier;
 use App\Domain\Animal\Actions\SetAnimalParentage;
 use App\Domain\Animal\Actions\VoidWeight;
@@ -15,10 +14,8 @@ use App\Domain\Animal\Events\AnimalRegistered;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Animal\Models\AnimalMovement;
 use App\Domain\Farm\Actions\ResolveSettings;
-use App\Domain\Farm\Models\Building;
 use App\Domain\Farm\Models\Location;
 use App\Domain\Farm\Models\LookupValue;
-use App\Domain\Farm\Models\Pen;
 use App\Domain\Farm\Models\ProductionUnit;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\AnimalSex;
@@ -33,32 +30,6 @@ use Illuminate\Support\Facades\Event;
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class]);
 });
-
-function categoryId(string $code): int
-{
-    return LookupValue::where('category', LookupCategory::AnimalCategory->value)->where('code', $code)->value('id');
-}
-
-function newPen(string $code = 'P1', ?int $capacity = null): Pen
-{
-    static $building = null;
-    $building = Building::firstOrCreate(['code' => 'ABLD'], [
-        'production_unit_id' => ProductionUnit::firstWhere('code', 'PIG')->id,
-        'type_id' => LookupValue::where('category', LookupCategory::BuildingType->value)->value('id'), 'name' => 'Animal building',
-    ]);
-
-    return Pen::create([
-        'building_id' => $building->id, 'code' => $code, 'capacity' => $capacity,
-        'purpose_id' => LookupValue::where('category', LookupCategory::PenPurpose->value)->value('id'),
-    ]);
-}
-
-function register(array $overrides = []): Animal
-{
-    return app(RegisterAnimal::class)(array_merge([
-        'sex' => 'female', 'category_id' => categoryId('sow'), 'source' => 'born_on_farm',
-    ], $overrides));
-}
 
 it('issues permanent, sequential numbers per category from the configured prefix', function () {
     $first = register();

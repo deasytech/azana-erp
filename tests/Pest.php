@@ -1,5 +1,17 @@
 <?php
 
+use App\Domain\Animal\Actions\RegisterAnimal;
+use App\Domain\Animal\Models\Animal;
+use App\Domain\Breeding\Actions\RecordFarrowing;
+use App\Domain\Breeding\Actions\RecordService;
+use App\Domain\Breeding\Models\BreedingService;
+use App\Domain\Farm\Models\Building;
+use App\Domain\Farm\Models\LookupValue;
+use App\Domain\Farm\Models\Pen;
+use App\Domain\Farm\Models\ProductionUnit;
+use App\Domain\Litter\Models\Litter;
+use App\Enums\LookupCategory;
+use App\Enums\ServiceMethod;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,4 +79,53 @@ function owner(array $attrs = []): User
 function farmWorker(): User
 {
     return userWithRole('Farm Worker');
+}
+
+/** Id of an animal category lookup by code. */
+function categoryId(string $code): int
+{
+    return LookupValue::where('category', LookupCategory::AnimalCategory->value)->where('code', $code)->value('id');
+}
+
+/** A pen in a shared test building. */
+function newPen(string $code = 'P1', ?int $capacity = null): Pen
+{
+    static $building = null;
+    $building = Building::firstOrCreate(['code' => 'ABLD'], [
+        'production_unit_id' => ProductionUnit::firstWhere('code', 'PIG')->id,
+        'type_id' => LookupValue::where('category', LookupCategory::BuildingType->value)->value('id'), 'name' => 'Animal building',
+    ]);
+
+    return Pen::create([
+        'building_id' => $building->id, 'code' => $code, 'capacity' => $capacity,
+        'purpose_id' => LookupValue::where('category', LookupCategory::PenPurpose->value)->value('id'),
+    ]);
+}
+
+/** Registers an animal through the real domain action (default: a born-on-farm sow). */
+function register(array $overrides = []): Animal
+{
+    return app(RegisterAnimal::class)(array_merge([
+        'sex' => 'female', 'category_id' => categoryId('sow'), 'source' => 'born_on_farm',
+    ], $overrides));
+}
+
+/** A registered boar. */
+function boar(): Animal
+{
+    return register(['sex' => 'male', 'category_id' => categoryId('boar')]);
+}
+
+/** Serves a sow naturally $daysAgo days ago (default: exactly one gestation ago). */
+function serve(Animal $sow, int $daysAgo = 114, ?Animal $boar = null): BreedingService
+{
+    return app(RecordService::class)($sow, ServiceMethod::Natural, now()->subDays($daysAgo)->startOfDay(), ($boar ?? boar())->id);
+}
+
+/** Records a default farrowing (12 born: 10 alive, 1 stillborn, 1 mummified) today. */
+function farrow(Animal $sow, array $data = []): Litter
+{
+    return app(RecordFarrowing::class)($sow, array_merge([
+        'farrowed_on' => now()->startOfDay(), 'total_born' => 12, 'born_alive' => 10, 'stillborn' => 1, 'mummified' => 1,
+    ], $data));
 }

@@ -18,8 +18,8 @@ Implement reproductive lifecycle and piglet traceability.
 - Sow performance.
 
 ## Acceptance Criteria
-- [ ] Service creates calculated expected dates.
-- [ ] Farrowing creates a litter.
-- [ ] Piglets link to litter, mother and father where known.
-- [ ] Weaning updates litter/piglet state.
-- [ ] Reproductive KPIs calculate correctly.
+- [x] Service creates calculated expected dates.
+- [x] Farrowing creates a litter.
+- [x] Piglets link to litter, mother and father where known.
+- [x] Weaning updates litter/piglet state.
+- [x] Reproductive KPIs calculate correctly.
