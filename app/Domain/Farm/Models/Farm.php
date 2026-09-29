@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Domain\Farm\Models;
+
+use App\Domain\Farm\Concerns\HasBusinessCode;
+use App\Domain\System\Concerns\Auditable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Farm extends Model
+{
+    use Auditable, HasBusinessCode;
+
+    protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
+
+    public function productionUnits(): HasMany
+    {
+        return $this->hasMany(ProductionUnit::class);
+    }
+
+    public function settings(): HasMany
+    {
+        return $this->hasMany(FarmSetting::class);
+    }
+
+    public function isInUse(): bool
+    {
+        return $this->productionUnits()->exists() || $this->settings()->exists() || PriceList::where('farm_id', $this->id)->exists();
+    }
+}

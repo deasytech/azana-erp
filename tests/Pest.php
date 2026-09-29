@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +49,22 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/** Creates a user holding the given role (roles must already be seeded). */
+function userWithRole(string $role, array $attrs = []): User
+{
+    return User::factory()->create($attrs)->assignRole($role);
+}
+
+/** An active Owner/Director. */
+function owner(array $attrs = []): User
+{
+    return userWithRole(Role::OWNER, $attrs);
+}
+
+/** An active Farm Worker (a low-privilege operational role). */
+function farmWorker(): User
+{
+    return userWithRole('Farm Worker');
 }

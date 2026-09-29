@@ -21,7 +21,7 @@ Company -> Production Units -> Buildings/Houses -> Rooms -> Pens -> Animals/Batc
 - Global search foundation.
 
 ## Acceptance Criteria
-- [ ] Admin can create additional units without code changes.
-- [ ] Pens belong to valid locations.
-- [ ] Master data is configurable.
-- [ ] Business identifiers are unique.
+- [x] Admin can create additional units without code changes.
+- [x] Pens belong to valid locations.
+- [x] Master data is configurable.
+- [x] Business identifiers are unique.

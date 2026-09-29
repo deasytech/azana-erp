@@ -9,7 +9,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(RoleSeeder::class);
+        $this->call([RoleSeeder::class, MasterDataSeeder::class]);
 
         // Demo accounts never exist in production; create the first owner with `php artisan erp:create-owner`.
         if (app()->environment('local', 'testing')) {
