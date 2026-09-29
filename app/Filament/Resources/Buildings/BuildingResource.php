@@ -7,24 +7,16 @@ use App\Enums\LookupCategory;
 use App\Filament\Resources\Buildings\Pages\CreateBuilding;
 use App\Filament\Resources\Buildings\Pages\EditBuilding;
 use App\Filament\Resources\Buildings\Pages\ListBuildings;
+use App\Filament\Support\MasterResource;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Table;
 use UnitEnum;
 
-class BuildingResource extends Resource
+class BuildingResource extends MasterResource
 {
     protected static ?string $model = Building::class;
 
@@ -34,43 +26,33 @@ class BuildingResource extends Resource
 
     protected static ?int $navigationSort = 30;
 
-    protected static ?string $recordTitleAttribute = 'name';
-
-    /** @return list<string> */
-    public static function getGloballySearchableAttributes(): array
+    protected static function fields(): array
     {
-        return ['code', 'name'];
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema->components([
-            TextInput::make('code')->label('Code')->required()->maxLength(30)->unique(ignoreRecord: true)->helperText('Unique business identifier; stored in upper case.'),
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name')->required()->preload()->searchable(),
-            Select::make('type_id')->label('Type')->relationship('type', 'name', modifyQueryUsing: fn ($query) => $query->where('category', LookupCategory::BuildingType->value)->where('is_active', true)->orderBy('sort_order'))->required()->preload()->searchable(),
+        return [
+            static::nameField(),
+            Select::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name')->required()->preload()->searchable()
+                ->disabled(fn (?Building $record) => $record?->locations()->exists() ?? false)
+                ->helperText('Locked once the building has locations.'),
+            static::lookupSelect('type_id', 'type', LookupCategory::BuildingType, 'Type'),
             Textarea::make('description'),
-            Toggle::make('is_active')->label('Active')->default(true),
-        ]);
+        ];
     }
 
-    public static function table(Table $table): Table
+    protected static function columns(): array
     {
-        return $table
-            ->columns([
-                TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('name')->searchable(),
-                TextColumn::make('productionUnit.name')->label('Unit'),
-                TextColumn::make('type.name')->label('Type')->badge(),
-                TextColumn::make('pens_count')->counts('pens')->label('Pens'),
-                IconColumn::make('is_active')->label('Active')->boolean(),
-            ])
-            ->filters([
-                SelectFilter::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name'),
-                TernaryFilter::make('is_active')->label('Active'),
-            ])
-            ->recordActions([EditAction::make(), DeleteAction::make()])
-            ->defaultSort('code');
+        return [
+            TextColumn::make('name')->searchable(),
+            TextColumn::make('productionUnit.name')->label('Unit'),
+            TextColumn::make('type.name')->label('Type')->badge(),
+            TextColumn::make('pens_count')->counts('pens')->label('Pens'),
+        ];
+    }
+
+    protected static function filters(): array
+    {
+        return [
+            SelectFilter::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name'),
+        ];
     }
 
     public static function getPages(): array

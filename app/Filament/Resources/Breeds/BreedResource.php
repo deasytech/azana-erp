@@ -6,22 +6,15 @@ use App\Domain\Farm\Models\Breed;
 use App\Filament\Resources\Breeds\Pages\CreateBreed;
 use App\Filament\Resources\Breeds\Pages\EditBreed;
 use App\Filament\Resources\Breeds\Pages\ListBreeds;
+use App\Filament\Support\MasterResource;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Table;
 use UnitEnum;
 
-class BreedResource extends Resource
+class BreedResource extends MasterResource
 {
     protected static ?string $model = Breed::class;
 
@@ -31,39 +24,21 @@ class BreedResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    protected static ?string $recordTitleAttribute = 'name';
-
-    /** @return list<string> */
-    public static function getGloballySearchableAttributes(): array
+    protected static function fields(): array
     {
-        return ['code', 'name'];
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema->components([
-            TextInput::make('code')->label('Code')->required()->maxLength(30)->unique(ignoreRecord: true)->helperText('Unique business identifier; stored in upper case.'),
-            TextInput::make('name')->required()->maxLength(255),
+        return [
+            static::nameField(),
             TextInput::make('species')->required()->default('pig')->maxLength(30),
             Textarea::make('description'),
-            Toggle::make('is_active')->label('Active')->default(true),
-        ]);
+        ];
     }
 
-    public static function table(Table $table): Table
+    protected static function columns(): array
     {
-        return $table
-            ->columns([
-                TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('name')->searchable(),
-                TextColumn::make('species'),
-                IconColumn::make('is_active')->label('Active')->boolean(),
-            ])
-            ->filters([
-                TernaryFilter::make('is_active')->label('Active'),
-            ])
-            ->recordActions([EditAction::make(), DeleteAction::make()])
-            ->defaultSort('code');
+        return [
+            TextColumn::make('name')->searchable(),
+            TextColumn::make('species'),
+        ];
     }
 
     public static function getPages(): array

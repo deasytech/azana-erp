@@ -33,10 +33,9 @@ class ResolveSettings
 
         $this->assertValid($definition, $value);
 
-        return FarmSetting::updateOrCreate(
-            ['farm_id' => $farm->id, 'key' => $key],
-            ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value],
-        );
+        $stored = is_bool($value) ? (string) (int) $value : (string) $value;
+
+        return FarmSetting::updateOrCreate(['farm_id' => $farm->id, 'key' => $key], ['value' => $stored]);
     }
 
     /** Creates any missing rows with default values (existing values are never touched). */

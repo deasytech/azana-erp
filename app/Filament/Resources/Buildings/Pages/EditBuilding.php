@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Buildings\Pages;
 
+use App\Filament\Concerns\HandlesDomainExceptions;
 use App\Filament\Resources\Buildings\BuildingResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditBuilding extends EditRecord
 {
+    use HandlesDomainExceptions;
+
     protected static string $resource = BuildingResource::class;
 
     protected function getHeaderActions(): array

@@ -45,7 +45,7 @@ class LookupValueResource extends Resource
     {
         return $schema->components([
             Select::make('category')->options(collect(LookupCategory::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all())->required()->disabledOn('edit')->dehydrated(),
-            TextInput::make('code')->required()->maxLength(60)->alphaDash()->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('category', $get('category')))->helperText('Stored in lower case.'),
+            TextInput::make('code')->required()->maxLength(60)->alphaDash()->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtolower(trim($state)))->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('category', $get('category')))->helperText('Stored in lower case.'),
             TextInput::make('name')->required()->maxLength(120),
             TextInput::make('description')->maxLength(255),
             TextInput::make('sort_order')->numeric()->integer()->default(0)->minValue(0),

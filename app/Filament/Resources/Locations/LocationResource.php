@@ -9,24 +9,16 @@ use App\Enums\LookupCategory;
 use App\Filament\Resources\Locations\Pages\CreateLocation;
 use App\Filament\Resources\Locations\Pages\EditLocation;
 use App\Filament\Resources\Locations\Pages\ListLocations;
+use App\Filament\Support\MasterResource;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Table;
 use UnitEnum;
 
-class LocationResource extends Resource
+class LocationResource extends MasterResource
 {
     protected static ?string $model = Location::class;
 
@@ -36,49 +28,49 @@ class LocationResource extends Resource
 
     protected static ?int $navigationSort = 60;
 
-    protected static ?string $recordTitleAttribute = 'name';
-
-    /** @return list<string> */
-    public static function getGloballySearchableAttributes(): array
+    protected static function fields(): array
     {
-        return ['code', 'name'];
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema->components([
-            TextInput::make('code')->label('Code')->required()->maxLength(30)->unique(ignoreRecord: true)->helperText('Unique business identifier; stored in upper case.'),
-            TextInput::make('name')->required()->maxLength(255),
+        return [
+            static::nameField(),
             Select::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name')->required()->preload()->searchable()->live()->afterStateUpdated(function ($set) {
                 $set('building_id', null);
                 $set('room_id', null);
             }),
-            Select::make('building_id')->label('Building')->options(fn ($get) => $get('production_unit_id') ? Building::where('production_unit_id', $get('production_unit_id'))->orderBy('name')->pluck('name', 'id') : [])->searchable()->live()->afterStateUpdated(fn ($set) => $set('room_id', null)),
-            Select::make('room_id')->label('Room')->options(fn ($get) => $get('building_id') ? Room::where('building_id', $get('building_id'))->orderBy('name')->pluck('name', 'id') : [])->searchable(),
-            Select::make('type_id')->label('Type')->relationship('type', 'name', modifyQueryUsing: fn ($query) => $query->where('category', LookupCategory::LocationType->value)->where('is_active', true)->orderBy('sort_order'))->required()->preload()->searchable(),
+            Select::make('building_id')->label('Building')->options(fn ($get) => static::buildingOptions($get('production_unit_id')))->searchable()->live()->afterStateUpdated(fn ($set) => $set('room_id', null)),
+            Select::make('room_id')->label('Room')->options(fn ($get) => static::roomOptions($get('building_id')))->searchable(),
+            static::lookupSelect('type_id', 'type', LookupCategory::LocationType, 'Type'),
             Textarea::make('description'),
-            Toggle::make('is_active')->label('Active')->default(true),
-        ]);
+        ];
     }
 
-    public static function table(Table $table): Table
+    protected static function columns(): array
     {
-        return $table
-            ->columns([
-                TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('name')->searchable(),
-                TextColumn::make('productionUnit.name')->label('Unit'),
-                TextColumn::make('building.name')->label('Building')->placeholder('-'),
-                TextColumn::make('type.name')->label('Type')->badge(),
-                IconColumn::make('is_active')->label('Active')->boolean(),
-            ])
-            ->filters([
-                SelectFilter::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name'),
-                SelectFilter::make('type_id')->label('Type')->relationship('type', 'name'),
-                TernaryFilter::make('is_active')->label('Active'),
-            ])
-            ->recordActions([EditAction::make(), DeleteAction::make()])
-            ->defaultSort('code');
+        return [
+            TextColumn::make('name')->searchable(),
+            TextColumn::make('productionUnit.name')->label('Unit'),
+            TextColumn::make('building.name')->label('Building')->placeholder('-'),
+            TextColumn::make('type.name')->label('Type')->badge(),
+        ];
+    }
+
+    protected static function filters(): array
+    {
+        return [
+            SelectFilter::make('production_unit_id')->label('Production unit')->relationship('productionUnit', 'name'),
+            SelectFilter::make('type_id')->label('Type')->relationship('type', 'name'),
+        ];
+    }
+
+    /** @return array<int, string> */
+    protected static function buildingOptions(mixed $unitId): array
+    {
+        return $unitId ? Building::where('production_unit_id', $unitId)->orderBy('name')->pluck('name', 'id')->all() : [];
+    }
+
+    /** @return array<int, string> */
+    protected static function roomOptions(mixed $buildingId): array
+    {
+        return $buildingId ? Room::where('building_id', $buildingId)->orderBy('name')->pluck('name', 'id')->all() : [];
     }
 
     public static function getPages(): array

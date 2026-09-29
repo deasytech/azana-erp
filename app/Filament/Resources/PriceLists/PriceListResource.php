@@ -45,7 +45,9 @@ class PriceListResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('code')->required()->maxLength(30)->unique(ignoreRecord: true),
+            TextInput::make('code')->required()->maxLength(30)
+                ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
+                ->unique(ignoreRecord: true),
             TextInput::make('name')->required()->maxLength(255),
             Select::make('farm_id')->label('Farm')->relationship('farm', 'name')->required()
                 ->default(fn () => Farm::orderBy('id')->value('id'))

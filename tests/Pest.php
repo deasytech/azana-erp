@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -54,4 +55,16 @@ function something()
 function userWithRole(string $role, array $attrs = []): User
 {
     return User::factory()->create($attrs)->assignRole($role);
+}
+
+/** An active Owner/Director. */
+function owner(array $attrs = []): User
+{
+    return userWithRole(Role::OWNER, $attrs);
+}
+
+/** An active Farm Worker (a low-privilege operational role). */
+function farmWorker(): User
+{
+    return userWithRole('Farm Worker');
 }

@@ -16,6 +16,7 @@ use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\LookupCategory;
 use App\Filament\Resources\Breeds\BreedResource;
+use App\Filament\Resources\Breeds\Pages\CreateBreed;
 use App\Filament\Resources\Buildings\BuildingResource;
 use App\Filament\Resources\Farms\FarmResource;
 use App\Filament\Resources\FarmSettings\FarmSettingResource;
@@ -23,12 +24,16 @@ use App\Filament\Resources\FarmSettings\Pages\EditFarmSetting;
 use App\Filament\Resources\GeneticLines\GeneticLineResource;
 use App\Filament\Resources\Locations\LocationResource;
 use App\Filament\Resources\LookupValues\LookupValueResource;
+use App\Filament\Resources\LookupValues\Pages\CreateLookupValue;
 use App\Filament\Resources\Pens\Pages\CreatePen;
 use App\Filament\Resources\Pens\PenResource;
 use App\Filament\Resources\PriceLists\PriceListResource;
 use App\Filament\Resources\ProductionUnits\Pages\CreateProductionUnit;
 use App\Filament\Resources\ProductionUnits\ProductionUnitResource;
+use App\Filament\Resources\Rooms\Pages\EditRoom;
 use App\Filament\Resources\Rooms\RoomResource;
+use App\Filament\Resources\UnitsOfMeasure\Pages\CreateUnitOfMeasure;
+use App\Filament\Resources\UnitsOfMeasure\Pages\EditUnitOfMeasure;
 use App\Filament\Resources\UnitsOfMeasure\UnitOfMeasureResource;
 use App\Models\AuditLog;
 use App\Models\Role;
@@ -95,7 +100,7 @@ it('models the full hierarchy company -> unit -> building -> room -> pen', funct
 });
 
 it('lets an admin add production units through the UI without code changes', function () {
-    $this->actingAs(userWithRole('Owner/Director'));
+    $this->actingAs(owner());
 
     Livewire::test(CreateProductionUnit::class)
         ->fillForm([
@@ -139,7 +144,7 @@ it('rejects locations whose building is outside the production unit', function (
 });
 
 it('keeps pens valid when created through the form', function () {
-    $this->actingAs(userWithRole('Owner/Director'));
+    $this->actingAs(owner());
     $a = makeBuilding(null, 'A');
     $roomInB = makeRoom(makeBuilding(null, 'B'), 'RB');
 
@@ -168,7 +173,7 @@ it('enforces unique, normalised business identifiers', function () {
 });
 
 it('never deletes master data that is in use', function () {
-    $owner = userWithRole('Owner/Director');
+    $owner = owner();
     $unit = ProductionUnit::firstWhere('code', 'PIG');
     makeBuilding($unit);
 
@@ -210,7 +215,7 @@ it('never overwrites edited settings when defaults are re-applied', function () 
 });
 
 it('edits settings through the UI with validation and an audit trail', function () {
-    $this->actingAs($owner = userWithRole('Owner/Director'));
+    $this->actingAs($owner = owner());
     $row = FarmSetting::firstWhere('key', 'breeding.pregnancy_check_days');
 
     Livewire::test(EditFarmSetting::class, ['record' => $row->getRouteKey()])
@@ -257,7 +262,7 @@ it('stores prices as integer minor units', function () {
 });
 
 it('applies the role defaults for the new modules', function () {
-    $worker = userWithRole('Farm Worker');
+    $worker = farmWorker();
     $manager = userWithRole('Farm Manager');
     $accountant = userWithRole('Accountant');
     $sales = userWithRole('Sales Officer');
@@ -275,7 +280,7 @@ it('applies the role defaults for the new modules', function () {
 });
 
 it('never lets settings be created or deleted by hand', function () {
-    $owner = userWithRole('Owner/Director');
+    $owner = owner();
 
     expect($owner->can('create', FarmSetting::class))->toBeFalse()
         ->and($owner->can('delete', FarmSetting::first()))->toBeFalse();
@@ -296,7 +301,7 @@ it('re-seeding grants only newly created permissions and never reverts admin edi
 });
 
 it('finds farm structure through global search', function () {
-    $this->actingAs(userWithRole('Owner/Director'));
+    $this->actingAs(owner());
     Pen::create(penData(makeBuilding(), ['code' => 'FARROW-77']));
 
     $results = Filament::getGlobalSearchProvider()->getResults('FARROW-77');
@@ -306,14 +311,14 @@ it('finds farm structure through global search', function () {
 });
 
 it('hides farm master data from users without permission', function () {
-    $this->actingAs(userWithRole('Farm Worker'));
+    $this->actingAs(farmWorker());
 
     $this->get(PriceListResource::getUrl('index'))->assertForbidden();
     $this->get(PenResource::getUrl('index'))->assertOk();
 });
 
 it('renders every farm and master data admin page for the owner', function () {
-    $this->actingAs(userWithRole('Owner/Director'));
+    $this->actingAs(owner());
     $building = makeBuilding();
     $pen = Pen::create(penData($building));
     $list = PriceList::create([
@@ -342,4 +347,65 @@ it('renders every farm and master data admin page for the owner', function () {
         $this->get($resource::getUrl('index'))->assertOk();
         $this->get($resource::getUrl('create'))->assertOk();
     }
+});
+
+it('checks code uniqueness against the normalised value', function () {
+    $this->actingAs(owner());
+
+    Livewire::test(CreateBreed::class)
+        ->fillForm(['code' => ' lw ', 'name' => 'Dup', 'species' => 'pig'])
+        ->call('create')
+        ->assertHasFormErrors(['code']);
+
+    Livewire::test(CreateLookupValue::class)
+        ->fillForm(['category' => 'pen_purpose', 'code' => ' BOAR ', 'name' => 'Dup'])
+        ->call('create')
+        ->assertHasFormErrors(['code']);
+});
+
+it('only offers root units as a base and requires a positive factor', function () {
+    $this->actingAs(owner());
+    $kg = UnitOfMeasure::firstWhere('code', 'KG');
+    $ton = UnitOfMeasure::firstWhere('code', 'TON');
+
+    $component = Livewire::test(EditUnitOfMeasure::class, ['record' => $kg->getRouteKey()]);
+    $component->assertFormFieldDisabled('base_unit_id'); // TON, G are based on kg: kg must stay a root
+
+    Livewire::test(CreateUnitOfMeasure::class)
+        ->fillForm(['code' => 'QTL', 'name' => 'Quintal', 'category' => 'mass', 'base_unit_id' => $ton->id, 'conversion_factor' => '100'])
+        ->call('create')
+        ->assertHasFormErrors(['base_unit_id']);
+
+    Livewire::test(CreateUnitOfMeasure::class)
+        ->fillForm(['code' => 'QTL', 'name' => 'Quintal', 'category' => 'mass', 'base_unit_id' => $kg->id, 'conversion_factor' => '0'])
+        ->call('create')
+        ->assertHasFormErrors(['conversion_factor']);
+
+    Livewire::test(CreateUnitOfMeasure::class)
+        ->fillForm(['code' => 'QTL', 'name' => 'Quintal', 'category' => 'mass', 'base_unit_id' => $kg->id, 'conversion_factor' => '100'])
+        ->call('create')
+        ->assertHasNoFormErrors();
+});
+
+it('blocks moving a room or building that still has dependants', function () {
+    $unit = ProductionUnit::firstWhere('code', 'PIG');
+    $building = makeBuilding($unit, 'BA');
+    $other = makeBuilding($unit, 'BB');
+    $room = makeRoom($building);
+    Pen::create(penData($building, ['room_id' => $room->id]));
+
+    expect(fn () => $room->update(['building_id' => $other->id]))->toThrow(DomainException::class, 'cannot be moved');
+
+    Location::create(['production_unit_id' => $unit->id, 'building_id' => $building->id, 'type_id' => lookupId(LookupCategory::LocationType, 'store'), 'code' => 'LX', 'name' => 'X']);
+    expect(fn () => $building->update(['production_unit_id' => ProductionUnit::firstWhere('code', 'FM')->id]))
+        ->toThrow(DomainException::class, 'cannot be moved');
+
+    // Without dependants, moving is fine.
+    $free = makeRoom($other, 'RFREE');
+    $free->update(['building_id' => $building->id]);
+    expect($free->fresh()->building_id)->toBe($building->id);
+
+    $this->actingAs(owner());
+    Livewire::test(EditRoom::class, ['record' => $room->getRouteKey()])
+        ->assertFormFieldDisabled('building_id');
 });

@@ -23,6 +23,7 @@ class ItemsRelationManager extends RelationManager
     {
         return $schema->components([
             TextInput::make('code')->required()->maxLength(60)
+                ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
                 ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('price_list_id', $this->getOwnerRecord()->getKey())),
             TextInput::make('description')->required()->maxLength(255),
             Select::make('unit_id')->label('Unit')->relationship('unit', 'name')->required()->preload()->searchable(),
