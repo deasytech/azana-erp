@@ -30,6 +30,8 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->profile()
+            // Our relation managers carry permission-checked actions (add identifier, record weight...).
+            ->readOnlyRelationManagersOnResourceViewPagesByDefault(false)
             ->multiFactorAuthentication(
                 [AppAuthentication::make()->recoverable()],
                 isRequired: fn (): bool => (bool) auth()->user()?->requiresTwoFactor(),

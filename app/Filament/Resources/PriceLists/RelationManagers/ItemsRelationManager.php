@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\PriceLists\RelationManagers;
 
-use App\Support\Money;
+use App\Filament\Support\MoneyInput;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -27,11 +27,7 @@ class ItemsRelationManager extends RelationManager
                 ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('price_list_id', $this->getOwnerRecord()->getKey())),
             TextInput::make('description')->required()->maxLength(255),
             Select::make('unit_id')->label('Unit')->relationship('unit', 'name')->required()->preload()->searchable(),
-            // Entered as a decimal, stored as integer minor units (no floats).
-            TextInput::make('unit_price_minor')->label('Unit price')->required()
-                ->rule('regex:/^\d+(\.\d{1,2})?$/')
-                ->formatStateUsing(fn ($state) => $state === null ? null : Money::ofMinor((int) $state, 'XXX')->toDecimal())
-                ->dehydrateStateUsing(fn ($state) => Money::parse((string) $state, 'XXX')->minor),
+            MoneyInput::make('unit_price_minor', 'Unit price')->required(),
         ]);
     }
 
