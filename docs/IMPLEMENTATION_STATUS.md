@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 04 - Animal Registry and Lifecycle (not started)
+Phase 05 - Breeding, Farrowing, Litters and Piglets (not started)
 
 ## Completed
 
@@ -66,6 +66,29 @@ Phase 04 - Animal Registry and Lifecycle (not started)
   - Farm-level price lists are a foundation only; item prices are free-text codes until product/inventory master data exists (Phase 08+).
   - The system assumes one active farm (`ResolveSettings` uses the first active farm by default); multi-farm selection is not built.
   - Money assumes 2 minor-unit decimals (NGN kobo).
+
+### Phase 04 - Animal Registry and Lifecycle (2026-09-30)
+- Commit/reference: uncommitted on `dev` (pending review)
+- Tests: `vendor/bin/pest` - 98 passed (added `tests/Feature/Animal/AnimalDomainTest.php` and `AnimalUiTest.php`)
+- Package changes: none. Sonar quality gate on the Phase 03 PR is OK (duplication 0.7%).
+- What was done:
+  - Registry: `animals` (permanent `animal_number` like `IPA-SOW-0001`, public ULID `public_id`, sex, category, breed, genetic line, birth date (+estimated), source/purchase details, current status/pen/location), `animal_identifiers` (ear tag, RFID, QR, barcode, tattoo, manual), `animal_parentage`, `animal_photos`, plus append-only `animal_status_history`, `animal_movements`, `weight_records`. Models in `app/Domain/Animal/Models`.
+  - Actions (`app/Domain/Animal/Actions`, shared by web/API/offline): `RegisterAnimal`, `RecordAnimalMovement`, `ChangeAnimalStatus`, `RecordWeight`, `VoidWeight`, `AddAnimalIdentifier`, `RetireAnimalIdentifier`, `SetAnimalParentage`, `LookupAnimal`, `GetAnimalHistory`. Domain events (dispatched after commit): `AnimalRegistered`, `AnimalMoved`, `AnimalStatusChanged`, `WeightRecorded` (no listeners yet).
+  - Numbering: generic `number_sequences` table + `NextNumber` action (row-locked, race-safe). Prefix is the `animals.number_prefix` setting; the sequence is per prefix+category. The number is permanent: it never changes when the category later does (gilt -> sow).
+  - Rules: numbers/public ids immutable and animals can never be deleted; identifiers unique across all animals and types, share a namespace with animal numbers, and are never reused (retiring keeps the value reserved); movements go to an active pen (or a location), respect pen capacity, cannot be dated in the future or before the animal's latest movement, and are preserved forever; only active animals can be moved, weighed or get new identifiers; terminal statuses (sold, dead, culled, slaughtered, transferred out) are final, require a reason, and automatically record an exit movement; weights are validated (positive, 2 decimals, <= `animals.max_weight_kg`, not future, not before birth) and corrected by voiding, not editing; parentage enforces sire male / dam female, no self-parent, no ancestor cycles, parents born before offspring, and allows external (unregistered) parent notes.
+  - Offline foundation: `idempotency_key` on movements and weights (a retried request returns the original record; reusing a key for another animal is rejected).
+  - QR/barcode lookup: `LookupAnimal` resolves a permanent number, public id, QR payload URL or any active identifier; `GET /animals/lookup/{code}` (auth, throttled) returns JSON for scanners/apps and redirects browsers to the animal's profile. `Animal::qrPayload()` is the value to encode in a QR label (rendering the QR image is not built).
+  - Admin UI (Animals group): list (status/category/sex/breed/pen filters, position and latest weight columns), register form (identifiers, parentage, first placement) via `RegisterAnimal`, edit form (never number or sex; parentage editable), profile page with passport, current state and a chronological lifecycle history, header actions Move / Record weight / Change status (business-rule errors show as notifications), and relation managers for identifiers, movements (read-only), weights (record / void), status history (read-only) and photos (private disk, image-only, 5 MB, served through the ERP). Global search finds animals by number or any identifier.
+  - Permissions: new `animals` module. create = register and record events (move/weigh), edit = change details/identifiers/parentage/void weights, approve = change status (disposal), delete = never. Defaults: General/Farm Manager everything except delete; Breeding Manager view/create/edit/export/print; Veterinarian and Farm Worker view/create; Semen Lab, Slaughter, Sales and Accountant view.
+  - Phase 03 follow-ups closed: `Pen`, `Location`, `GeneticLine`, `Breed` and `LookupValue::isInUse()` now count animals and movements, so referenced master data can no longer be deleted.
+  - `ImmutableRecord` trait (append-only models) now also backs `AuditLog` and `LoginActivity`.
+- Migration notes: 3 new reversible migrations (number sequences, animal registry, animal events).
+- Known issues / notes:
+  - Setting a terminal status directly needs `animals.approve`; the dedicated flows with approval thresholds, mortality analysis, sale and slaughter arrive in Phases 06, 11, 12 and 15 and will call `ChangeAnimalStatus`. There is no way to reinstate an animal; correcting a wrong status needs the approval workflow (Phase 15).
+  - Withdrawal-period blocks on sale/slaughter come with Phase 06 (health). Supplier is free text until Phase 08; semen batch and litter links on parentage are added in Phases 10 and 05.
+  - Category/sex pairing (sow/gilt female, boar male) is checked by category code in `RegisterAnimal`; if the farm renames those lookup codes, update the constants there.
+  - Editing the birth date after weights or movements exist is not re-validated against them (changes are audited).
+  - Bulk/batch (non-individual) records for growers/finishers are not in this phase; individual animals only.
 
 ## In Progress
 None
