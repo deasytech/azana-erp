@@ -34,12 +34,21 @@ it('renders domain exceptions as JSON 422', function () {
 });
 
 it('returns 503 without leaking details when a dependency fails', function () {
-    config(['session.driver' => 'database', 'cache.default' => 'database', 'database.default' => 'broken',
-        'database.connections.broken' => ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 1, 'database' => 'x', 'username' => 'x', 'password' => 'x']]);
+    config([
+        'session.driver' => 'database',
+        'database.default' => 'broken',
+        'database.connections.broken' => ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 1, 'database' => 'x', 'username' => 'x', 'password' => 'x'],
+    ]);
     app('db')->purge();
 
-    $this->getJson('/health')
-        ->assertStatus(503)
-        ->assertJsonPath('status', 'degraded')
-        ->assertJsonPath('checks.database.detail', 'Check failed');
+    try {
+        $this->getJson('/health')
+            ->assertStatus(503)
+            ->assertJsonPath('status', 'degraded')
+            ->assertJsonPath('checks.database.detail', 'Check failed');
+    } finally {
+        // Restore so RefreshDatabase tears down against the real test connection.
+        config(['database.default' => 'sqlite']);
+        app('db')->purge('broken');
+    }
 });

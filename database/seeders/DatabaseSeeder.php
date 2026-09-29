@@ -3,23 +3,27 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call(RoleSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Demo accounts never exist in production; create the first owner with `php artisan erp:create-owner`.
+        if (app()->environment('local', 'testing')) {
+            foreach (array_keys(RoleSeeder::ROLES) as $role) {
+                $slug = str($role)->slug();
+
+                $email = "{$slug}@azana.test";
+
+                // Idempotent: re-running the seeder must not fail on the unique email.
+                $user = User::firstWhere('email', $email)
+                    ?? User::factory()->create(['name' => $role, 'email' => $email]);
+
+                $user->assignRole($role);
+            }
+        }
     }
 }

@@ -18,8 +18,8 @@ Owner/Director, General Manager, Farm Manager, Breeding Manager, Veterinarian, S
 - Permission-aware Filament navigation.
 
 ## Acceptance Criteria
-- [ ] Each role sees only permitted modules.
-- [ ] View/create/edit/approve/export/print permissions work.
-- [ ] Audit records are created for critical changes.
-- [ ] Sensitive users can use 2FA.
-- [ ] Important records cannot be freely deleted.
+- [x] Each role sees only permitted modules.
+- [x] View/create/edit/approve/export/print permissions work.
+- [x] Audit records are created for critical changes.
+- [x] Sensitive users can use 2FA.
+- [x] Important records cannot be freely deleted.
