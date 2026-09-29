@@ -17,6 +17,7 @@ enum Module: string
     case Settings = 'settings';
     case PriceLists = 'price-lists';
     case Animals = 'animals';
+    case Breeding = 'breeding';
 
     public function label(): string
     {
@@ -30,6 +31,7 @@ enum Module: string
             self::Settings => 'Farm settings',
             self::PriceLists => 'Price lists',
             self::Animals => 'Animals',
+            self::Breeding => 'Breeding & litters',
         };
     }
 
