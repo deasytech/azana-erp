@@ -9,6 +9,7 @@ use App\Domain\Animal\Actions\RecordWeight;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Farm\Models\Location;
 use App\Domain\Farm\Models\Pen;
+use App\Domain\Litter\Actions\GetSowPerformance;
 use App\Enums\AnimalStatus;
 use App\Enums\LookupCategory;
 use App\Filament\Concerns\NotifiesDomainErrors;
@@ -57,6 +58,15 @@ class ViewAnimal extends ViewRecord
                     'Dam' => $r->parentage?->dam?->animal_number ?? $r->parentage?->dam_note,
                 ])->filter()->map(fn ($v, $k) => "{$k}: {$v}")->implode(' | ') ?: 'Not recorded'),
             ]),
+            Section::make('Reproduction')->columns(4)->visible(fn (Animal $r) => $r->isBreedingFemale())->schema(
+                collect([
+                    'status' => 'Reproductive status', 'parity' => 'Litters (parity)', 'avg_total_born' => 'Avg total born',
+                    'avg_born_alive' => 'Avg born alive', 'avg_weaned' => 'Avg weaned', 'total_weaned' => 'Total weaned',
+                    'pre_weaning_mortality_percent' => 'Pre-weaning mortality %', 'weaning_percent' => 'Weaning %',
+                    'avg_birth_weight_kg' => 'Avg birth weight (kg)', 'avg_farrowing_interval_days' => 'Avg farrowing interval (days)',
+                ])->map(fn ($label, $key) => TextEntry::make("perf_{$key}")->label($label)->formatStateUsing(fn ($state) => $state ?? '-')
+                    ->state(fn (Animal $r) => ($v = app(GetSowPerformance::class)($r)[$key]) === null ? null : ucfirst(str_ends_with($key, 'percent') ? $v.'%' : (string) $v)))->values()->all(),
+            ),
             Section::make('Lifecycle history')->collapsible()->schema([
                 ViewEntry::make('history')->hiddenLabel()->view('filament.animals.history')
                     ->state(fn (Animal $r) => app(GetAnimalHistory::class)($r)),
