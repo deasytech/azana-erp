@@ -10,6 +10,8 @@ enum LookupCategory: string
     case LocationType = 'location_type';
     case PenPurpose = 'pen_purpose';
     case PriceCategory = 'price_category';
+    case AnimalCategory = 'animal_category';
+    case MovementReason = 'movement_reason';
 
     public function label(): string
     {
@@ -19,6 +21,8 @@ enum LookupCategory: string
             self::LocationType => 'Location type',
             self::PenPurpose => 'Pen purpose',
             self::PriceCategory => 'Price category',
+            self::AnimalCategory => 'Animal category',
+            self::MovementReason => 'Movement reason',
         };
     }
 }
