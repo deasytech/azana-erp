@@ -30,9 +30,43 @@ class RoleSeeder extends Seeder
         'Farm Worker' => ['2fa' => false, 'desc' => 'Quick-entry of daily farm activity.'],
     ];
 
+    /**
+     * Default grants per role, as "module" => actions. A module listed as '*' grants all its actions.
+     * New roles receive all of their defaults. Existing roles only receive defaults for permissions
+     * that were created by this run (a new module), so admin edits to older grants are never reverted.
+     * Owner/Director needs no entry: it passes every permission check.
+     *
+     * @var array<string, array<string, list<A>>>
+     */
+    private const GRANTS = [
+        'General Manager' => [
+            'users' => [A::View], 'audit-logs' => [A::View], 'login-activity' => [A::View],
+            'farm-structure' => [A::View, A::Create, A::Edit, A::Export, A::Print],
+            'master-data' => [A::View, A::Create, A::Edit, A::Export],
+            'settings' => [A::View, A::Edit],
+            'price-lists' => [A::View, A::Create, A::Edit, A::Approve, A::Export],
+        ],
+        'Farm Manager' => [
+            'farm-structure' => [A::View, A::Create, A::Edit, A::Export, A::Print],
+            'master-data' => [A::View], 'settings' => [A::View],
+        ],
+        'Breeding Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View], 'settings' => [A::View]],
+        'Veterinarian' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Semen Laboratory Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Feed Mill Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Store Officer' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Sales Officer' => ['farm-structure' => [A::View], 'master-data' => [A::View], 'price-lists' => [A::View]],
+        'Slaughter Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Accountant' => [
+            'farm-structure' => [A::View], 'master-data' => [A::View],
+            'price-lists' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+        ],
+        'Farm Worker' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+    ];
+
     public function run(): void
     {
-        $this->call(PermissionSeeder::class);
+        $created = (new PermissionSeeder)->createPermissions();
 
         foreach (self::ROLES as $name => $meta) {
             $role = Role::firstOrCreate(
@@ -40,31 +74,25 @@ class RoleSeeder extends Seeder
                 ['requires_two_factor' => $meta['2fa'], 'description' => $meta['desc']],
             );
 
-            if ($role->wasRecentlyCreated) {
-                $role->syncPermissions($this->permissionsFor($name));
-            }
+            $defaults = $this->defaultsFor($name);
+
+            $role->givePermissionTo($role->wasRecentlyCreated ? $defaults : array_values(array_intersect($defaults, $created)));
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    /**
-     * Identity-module defaults only; operational modules grant their own
-     * permissions to roles in the phase that introduces them.
-     *
-     * @return list<string>
-     */
-    private function permissionsFor(string $role): array
+    /** @return list<string> */
+    private function defaultsFor(string $role): array
     {
-        return match ($role) {
-            Role::OWNER => $this->all(),
-            'General Manager' => [
-                Module::Users->permission(A::View),
-                Module::AuditLogs->permission(A::View),
-                Module::LoginActivity->permission(A::View),
-            ],
-            default => [],
-        };
+        if ($role === Role::OWNER) {
+            return $this->all();
+        }
+
+        return collect(self::GRANTS[$role] ?? [])
+            ->flatMap(fn (array $actions, string $module) => array_map(fn (A $a) => "{$module}.{$a->value}", $actions))
+            ->values()
+            ->all();
     }
 
     /** @return list<string> */

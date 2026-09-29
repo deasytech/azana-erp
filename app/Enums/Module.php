@@ -12,6 +12,10 @@ enum Module: string
     case Roles = 'roles';
     case AuditLogs = 'audit-logs';
     case LoginActivity = 'login-activity';
+    case FarmStructure = 'farm-structure';
+    case MasterData = 'master-data';
+    case Settings = 'settings';
+    case PriceLists = 'price-lists';
 
     public function label(): string
     {
@@ -20,6 +24,10 @@ enum Module: string
             self::Roles => 'Roles & permissions',
             self::AuditLogs => 'Audit log',
             self::LoginActivity => 'Login activity',
+            self::FarmStructure => 'Farm structure',
+            self::MasterData => 'Master data',
+            self::Settings => 'Farm settings',
+            self::PriceLists => 'Price lists',
         };
     }
 
@@ -29,6 +37,7 @@ enum Module: string
         return match ($this) {
             // Read-only trails: never editable or deletable, by anyone.
             self::AuditLogs, self::LoginActivity => [PermissionAction::View, PermissionAction::Export],
+            self::Settings => [PermissionAction::View, PermissionAction::Edit],
             default => PermissionAction::cases(),
         };
     }
