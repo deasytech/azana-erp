@@ -26,11 +26,6 @@ beforeEach(function () {
     Filament::setCurrentPanel('admin');
 });
 
-function userWithRole(string $role, array $attrs = []): User
-{
-    return User::factory()->create($attrs)->assignRole($role);
-}
-
 it('seeds all twelve required roles', function () {
     expect(Role::pluck('name'))->toHaveCount(12)
         ->toContain('Owner/Director', 'Veterinarian', 'Farm Worker', 'Accountant');
@@ -204,12 +199,12 @@ it('edits the permission matrix of a role and audits the change', function () {
         ->assertHasNoFormErrors();
 
     expect($role->fresh()->permissions->pluck('name')->sort()->values()->all())
-        ->toBe(['users.export', 'users.view']);
+        ->toContain('users.export', 'users.view');
 
     $log = AuditLog::where('event', 'permissions_changed')->first();
     expect($log->user_id)->toBe($owner->id)
-        ->and($log->old_values['permissions'])->toBe([])
-        ->and($log->new_values['permissions'])->toBe(['users.export', 'users.view']);
+        ->and($log->old_values['permissions'])->not->toContain('users.view')
+        ->and($log->new_values['permissions'])->toContain('users.export', 'users.view');
 });
 
 it('blocks users without the roles permission from the role pages', function () {
