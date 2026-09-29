@@ -2,6 +2,8 @@
 
 namespace App\Domain\Farm\Models;
 
+use App\Domain\Animal\Models\Animal;
+use App\Domain\Animal\Models\AnimalMovement;
 use App\Domain\System\Concerns\Auditable;
 use App\Enums\LookupCategory;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +38,8 @@ class LookupValue extends Model
             || Building::where('type_id', $this->id)->exists()
             || Location::where('type_id', $this->id)->exists()
             || Pen::where('purpose_id', $this->id)->exists()
-            || PriceList::where('category_id', $this->id)->exists();
+            || PriceList::where('category_id', $this->id)->exists()
+            || Animal::where('category_id', $this->id)->exists()
+            || AnimalMovement::where('reason_id', $this->id)->exists();
     }
 }

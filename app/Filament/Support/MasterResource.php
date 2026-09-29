@@ -97,15 +97,9 @@ abstract class MasterResource extends Resource
         return Toggle::make('is_active')->label('Active')->default(true);
     }
 
-    /** Select bound to a lookup_values category (only active values are offered). */
+    /** Required select bound to a lookup_values category. */
     protected static function lookupSelect(string $field, string $relation, LookupCategory $category, string $label): Select
     {
-        return Select::make($field)
-            ->label($label)
-            ->relationship($relation, 'name', modifyQueryUsing: fn ($query) => $query
-                ->where('category', $category->value)->where('is_active', true)->orderBy('sort_order'))
-            ->required()
-            ->preload()
-            ->searchable();
+        return LookupSelect::make($field, $relation, $category, $label)->required();
     }
 }

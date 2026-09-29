@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Domain\Animal\Models as A;
 use App\Domain\Farm\Models as M;
 use App\Enums\Module;
 use App\Models\User;
+use App\Policies\AnimalPhotoPolicy;
+use App\Policies\AnimalPolicy;
 use App\Policies\FarmStructurePolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PriceListPolicy;
@@ -36,6 +39,10 @@ class AppServiceProvider extends ServiceProvider
         foreach ([M\Breed::class, M\GeneticLine::class, M\UnitOfMeasure::class, M\LookupValue::class] as $model) {
             Gate::policy($model, MasterDataPolicy::class);
         }
+        foreach ([A\Animal::class, A\AnimalIdentifier::class, A\AnimalMovement::class, A\WeightRecord::class, A\AnimalStatusHistory::class, A\AnimalParentage::class] as $model) {
+            Gate::policy($model, AnimalPolicy::class);
+        }
+        Gate::policy(A\AnimalPhoto::class, AnimalPhotoPolicy::class);
         Gate::policy(M\FarmSetting::class, SettingsPolicy::class);
         Gate::policy(M\PriceList::class, PriceListPolicy::class);
         Gate::policy(M\PriceListItem::class, PriceListPolicy::class);

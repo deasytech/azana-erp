@@ -52,6 +52,8 @@ class MasterDataSeeder extends Seeder
             C::BuildingType->value => ['farrowing_house' => 'Farrowing house', 'gestation_house' => 'Gestation house', 'boar_house' => 'Boar house', 'nursery_house' => 'Nursery house', 'grower_finisher_house' => 'Grower / finisher house', 'quarantine' => 'Quarantine', 'store' => 'Store', 'office' => 'Office', 'other' => 'Other'],
             C::LocationType->value => ['store' => 'Store', 'cold_room' => 'Cold room', 'silo' => 'Silo / bin', 'quarantine' => 'Quarantine area', 'loading_bay' => 'Loading bay', 'laboratory' => 'Laboratory', 'other' => 'Other'],
             C::PenPurpose->value => ['boar' => 'Boar', 'gestation' => 'Gestation', 'farrowing' => 'Farrowing', 'nursery' => 'Nursery', 'grower' => 'Grower', 'finisher' => 'Finisher', 'gilt' => 'Gilt development', 'sick_bay' => 'Sick bay', 'quarantine' => 'Quarantine', 'holding' => 'Holding'],
+            C::AnimalCategory->value => ['sow' => 'Sow', 'boar' => 'Boar', 'gilt' => 'Gilt', 'piglet' => 'Piglet', 'weaner' => 'Weaner', 'grower' => 'Grower', 'finisher' => 'Finisher'],
+            C::MovementReason->value => ['weaning' => 'Weaning', 'stage_change' => 'Production stage change', 'breeding' => 'Breeding', 'farrowing' => 'Farrowing', 'isolation' => 'Isolation / sick bay', 'overcrowding' => 'Overcrowding', 'correction' => 'Correction', 'other' => 'Other'],
             C::PriceCategory->value => ['pig' => 'Pig sales', 'semen' => 'Semen', 'meat' => 'Meat', 'feed' => 'Feed', 'other' => 'Other'],
         ];
 

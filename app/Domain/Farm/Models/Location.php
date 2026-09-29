@@ -2,6 +2,8 @@
 
 namespace App\Domain\Farm\Models;
 
+use App\Domain\Animal\Models\Animal;
+use App\Domain\Animal\Models\AnimalMovement;
 use App\Domain\Farm\Concerns\HasBusinessCode;
 use App\Domain\Farm\Concerns\ValidatesLocationHierarchy;
 use App\Domain\System\Concerns\Auditable;
@@ -39,9 +41,10 @@ class Location extends Model
         return $this->belongsTo(LookupValue::class, 'type_id');
     }
 
-    /** Extended in Phase 08 once inventory references locations. */
+    /** Phase 08 adds inventory references. */
     public function isInUse(): bool
     {
-        return false;
+        return Animal::where('current_location_id', $this->id)->exists()
+            || AnimalMovement::where('from_location_id', $this->id)->orWhere('to_location_id', $this->id)->exists();
     }
 }

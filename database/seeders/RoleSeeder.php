@@ -30,6 +30,12 @@ class RoleSeeder extends Seeder
         'Farm Worker' => ['2fa' => false, 'desc' => 'Quick-entry of daily farm activity.'],
     ];
 
+    private const FARM = 'farm-structure';
+
+    private const MASTER = 'master-data';
+
+    private const PRICES = 'price-lists';
+
     /**
      * Default grants per role, as "module" => actions. A module listed as '*' grants all its actions.
      * New roles receive all of their defaults. Existing roles only receive defaults for permissions
@@ -41,27 +47,32 @@ class RoleSeeder extends Seeder
     private const GRANTS = [
         'General Manager' => [
             'users' => [A::View], 'audit-logs' => [A::View], 'login-activity' => [A::View],
-            'farm-structure' => [A::View, A::Create, A::Edit, A::Export, A::Print],
-            'master-data' => [A::View, A::Create, A::Edit, A::Export],
+            self::FARM => [A::View, A::Create, A::Edit, A::Export, A::Print],
+            self::MASTER => [A::View, A::Create, A::Edit, A::Export],
             'settings' => [A::View, A::Edit],
-            'price-lists' => [A::View, A::Create, A::Edit, A::Approve, A::Export],
+            self::PRICES => [A::View, A::Create, A::Edit, A::Approve, A::Export],
+            'animals' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Farm Manager' => [
-            'farm-structure' => [A::View, A::Create, A::Edit, A::Export, A::Print],
-            'master-data' => [A::View], 'settings' => [A::View],
+            self::FARM => [A::View, A::Create, A::Edit, A::Export, A::Print],
+            self::MASTER => [A::View], 'settings' => [A::View],
+            'animals' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
-        'Breeding Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View], 'settings' => [A::View]],
-        'Veterinarian' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
-        'Semen Laboratory Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
-        'Feed Mill Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
-        'Store Officer' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
-        'Sales Officer' => ['farm-structure' => [A::View], 'master-data' => [A::View], 'price-lists' => [A::View]],
-        'Slaughter Manager' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Breeding Manager' => [
+            self::FARM => [A::View], self::MASTER => [A::View], 'settings' => [A::View],
+            'animals' => [A::View, A::Create, A::Edit, A::Export, A::Print],
+        ],
+        'Veterinarian' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create]],
+        'Semen Laboratory Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View]],
+        'Feed Mill Manager' => [self::FARM => [A::View], self::MASTER => [A::View]],
+        'Store Officer' => [self::FARM => [A::View], self::MASTER => [A::View]],
+        'Sales Officer' => [self::FARM => [A::View], self::MASTER => [A::View], self::PRICES => [A::View], 'animals' => [A::View]],
+        'Slaughter Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View]],
         'Accountant' => [
-            'farm-structure' => [A::View], 'master-data' => [A::View],
-            'price-lists' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View],
+            self::PRICES => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
-        'Farm Worker' => ['farm-structure' => [A::View], 'master-data' => [A::View]],
+        'Farm Worker' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create]],
     ];
 
     public function run(): void

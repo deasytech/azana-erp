@@ -2,6 +2,8 @@
 
 namespace App\Domain\Farm\Models;
 
+use App\Domain\Animal\Models\Animal;
+use App\Domain\Animal\Models\AnimalMovement;
 use App\Domain\Farm\Concerns\HasBusinessCode;
 use App\Domain\Farm\Concerns\ValidatesLocationHierarchy;
 use App\Domain\System\Concerns\Auditable;
@@ -34,9 +36,9 @@ class Pen extends Model
         return $this->belongsTo(LookupValue::class, 'purpose_id');
     }
 
-    /** Extended in Phase 04 once animals/movements reference pens. */
     public function isInUse(): bool
     {
-        return false;
+        return Animal::where('current_pen_id', $this->id)->exists()
+            || AnimalMovement::where('from_pen_id', $this->id)->orWhere('to_pen_id', $this->id)->exists();
     }
 }

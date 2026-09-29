@@ -18,8 +18,8 @@ Implement the digital pig passport and core animal lifecycle.
 - Animal history.
 
 ## Acceptance Criteria
-- [ ] Every breeding animal has a unique permanent identifier.
-- [ ] Multiple identifiers can point to one animal.
-- [ ] Every movement is preserved.
-- [ ] Animal profile shows lifecycle history.
-- [ ] QR/barcode lookup foundation works.
+- [x] Every breeding animal has a unique permanent identifier.
+- [x] Multiple identifiers can point to one animal.
+- [x] Every movement is preserved.
+- [x] Animal profile shows lifecycle history.
+- [x] QR/barcode lookup foundation works.
