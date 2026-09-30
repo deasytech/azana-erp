@@ -7,6 +7,13 @@ use App\Domain\Farm\Models\GeneticLine;
 use App\Domain\Farm\Models\Location;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
+use App\Domain\Health\Models\CullingRecord;
+use App\Domain\Health\Models\HealthEvent;
+use App\Domain\Health\Models\MortalityRecord;
+use App\Domain\Health\Models\QuarantineRecord;
+use App\Domain\Health\Models\Treatment;
+use App\Domain\Health\Models\Vaccination;
+use App\Domain\Health\Models\WithdrawalPeriod;
 use App\Domain\Litter\Models\Litter;
 use App\Domain\System\Concerns\Auditable;
 use App\Enums\AnimalSex;
@@ -112,6 +119,41 @@ class Animal extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(AnimalStatusHistory::class)->orderByDesc('changed_at')->orderByDesc('id');
+    }
+
+    public function healthEvents(): HasMany
+    {
+        return $this->hasMany(HealthEvent::class)->orderByDesc('observed_on');
+    }
+
+    public function treatments(): HasMany
+    {
+        return $this->hasMany(Treatment::class)->orderByDesc('administered_on');
+    }
+
+    public function vaccinations(): HasMany
+    {
+        return $this->hasMany(Vaccination::class)->orderByDesc('administered_on');
+    }
+
+    public function withdrawalPeriods(): HasMany
+    {
+        return $this->hasMany(WithdrawalPeriod::class)->orderByDesc('ends_on');
+    }
+
+    public function quarantineRecords(): HasMany
+    {
+        return $this->hasMany(QuarantineRecord::class)->orderByDesc('started_on');
+    }
+
+    public function mortalityRecord(): HasOne
+    {
+        return $this->hasOne(MortalityRecord::class);
+    }
+
+    public function cullingRecord(): HasOne
+    {
+        return $this->hasOne(CullingRecord::class);
     }
 
     public function litters(): HasMany

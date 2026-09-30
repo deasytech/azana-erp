@@ -54,6 +54,9 @@ class MasterDataSeeder extends Seeder
             C::PenPurpose->value => ['boar' => 'Boar', 'gestation' => 'Gestation', 'farrowing' => 'Farrowing', 'nursery' => 'Nursery', 'grower' => 'Grower', 'finisher' => 'Finisher', 'gilt' => 'Gilt development', 'sick_bay' => 'Sick bay', 'quarantine' => 'Quarantine', 'holding' => 'Holding'],
             C::AnimalCategory->value => ['sow' => 'Sow', 'boar' => 'Boar', 'gilt' => 'Gilt', 'piglet' => 'Piglet', 'weaner' => 'Weaner', 'grower' => 'Grower', 'finisher' => 'Finisher'],
             C::MovementReason->value => ['weaning' => 'Weaning', 'stage_change' => 'Production stage change', 'breeding' => 'Breeding', 'farrowing' => 'Farrowing', 'isolation' => 'Isolation / sick bay', 'overcrowding' => 'Overcrowding', 'correction' => 'Correction', 'other' => 'Other'],
+            C::MedicineType->value => ['vaccine' => 'Vaccine', 'antibiotic' => 'Antibiotic', 'antiparasitic' => 'Antiparasitic', 'anti_inflammatory' => 'Anti-inflammatory', 'vitamin_supplement' => 'Vitamin / supplement', 'hormone' => 'Hormone', 'other' => 'Other'],
+            C::MortalityCause->value => ['crushed' => 'Crushed by sow', 'scours' => 'Scours / diarrhoea', 'respiratory' => 'Respiratory disease', 'disease_other' => 'Other disease', 'starvation' => 'Starvation / weak', 'injury' => 'Injury', 'euthanised' => 'Euthanised', 'unknown' => 'Unknown'],
+            C::CullReason->value => ['poor_performance' => 'Poor performance', 'reproductive_failure' => 'Reproductive failure', 'lameness' => 'Lameness', 'age' => 'Age', 'disease' => 'Disease', 'injury' => 'Injury', 'low_weight' => 'Low weight / poor growth', 'other' => 'Other'],
             C::PriceCategory->value => ['pig' => 'Pig sales', 'semen' => 'Semen', 'meat' => 'Meat', 'feed' => 'Feed', 'other' => 'Other'],
         ];
 

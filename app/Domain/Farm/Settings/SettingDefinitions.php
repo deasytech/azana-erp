@@ -17,6 +17,8 @@ final class SettingDefinitions
 
     private const ANIMALS = 'Animals';
 
+    private const HEALTH = 'Health & biosecurity';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -33,6 +35,12 @@ final class SettingDefinitions
             new SettingDefinition('production.target_preweaning_mortality_percent', self::TARGETS, 'Maximum pre-weaning mortality (%)', 'decimal', '10'),
             new SettingDefinition('animals.number_prefix', self::ANIMALS, 'Animal number prefix', 'string', 'IPA', 'Permanent numbers look like PREFIX-SOW-0001.'),
             new SettingDefinition('animals.max_weight_kg', self::ANIMALS, 'Maximum plausible weight (kg)', 'decimal', '500', 'Weights above this are rejected as data-entry errors.'),
+            new SettingDefinition('health.mortality_age_band_limits', self::HEALTH, 'Mortality age bands (upper limits in days)', 'string', '7,28,70,150', 'Comma-separated; the last band is open-ended.'),
+            new SettingDefinition('health.vaccination_reminder_days', self::HEALTH, 'Vaccination reminder lead time (days)', 'int', '14'),
+            new SettingDefinition('health.batch_expiry_warning_days', self::HEALTH, 'Medicine batch expiry warning (days)', 'int', '60'),
+            new SettingDefinition('health.open_event_alert_days', self::HEALTH, 'Alert when a health case stays open (days)', 'int', '7'),
+            new SettingDefinition('health.quarantine_alert_days', self::HEALTH, 'Alert when quarantine exceeds (days)', 'int', '21'),
+            new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }
 
