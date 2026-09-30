@@ -47,12 +47,11 @@ class BiosecurityVisitResource extends Resource
             TextInput::make('purpose')->required()->maxLength(255),
             DateTimePicker::make('arrived_at')->default(now())->maxDate(now())->required()->seconds(false),
             TextInput::make('last_pig_contact_hours')->label('Hours since last contact with pigs')->numeric()->integer()->minValue(0),
-            Toggle::make('health_declaration')->label('Visitor declares no symptoms of illness'),
+            Toggle::make('health_declaration')->label('Visitor declares no symptoms of illness')
+                ->helperText('A visitor who has not declared, or has been near pigs too recently, can only be signed in by a user with approval rights.'),
             Textarea::make('areas_visited'),
             Select::make('host_id')->label('Host (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
             TextInput::make('host_name')->label('Host (name)')->maxLength(255),
-            Select::make('approved_by')->label('Approved by')->searchable()->helperText('Needed when the entry conditions are not met.')
-                ->options(fn () => User::where('is_active', true)->orderBy('name')->get()->filter(fn ($u) => $u->can('biosecurity.approve'))->pluck('name', 'id')),
             Textarea::make('notes'),
         ]);
     }
