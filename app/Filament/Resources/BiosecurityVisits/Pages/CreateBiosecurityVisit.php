@@ -6,7 +6,6 @@ use App\Domain\Biosecurity\Actions\RecordVisitorArrival;
 use App\Domain\System\Exceptions\DomainException;
 use App\Filament\Concerns\HandlesDomainExceptions;
 use App\Filament\Resources\BiosecurityVisits\BiosecurityVisitResource;
-use App\Models\User;
 use Carbon\Carbon;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -22,13 +21,12 @@ class CreateBiosecurityVisit extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         try {
-            $approver = filled($data['approved_by'] ?? null) ? User::find($data['approved_by']) : null;
-
+            // Approval is the signing-in user's own authority, never someone else picked from a list.
             return app(RecordVisitorArrival::class)([
                 ...$data,
                 'arrived_at' => Carbon::parse($data['arrived_at']),
                 'health_declaration' => (bool) ($data['health_declaration'] ?? false),
-            ], $approver);
+            ], auth()->user());
         } catch (DomainException $e) {
             $this->failWith($e);
         }

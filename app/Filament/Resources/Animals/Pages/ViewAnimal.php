@@ -9,7 +9,6 @@ use App\Domain\Animal\Actions\RecordWeight;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Farm\Models\Location;
 use App\Domain\Farm\Models\Pen;
-use App\Domain\Health\Actions\GetAnimalRestrictions;
 use App\Domain\Litter\Actions\GetSowPerformance;
 use App\Enums\AnimalStatus;
 use App\Enums\LookupCategory;
@@ -62,11 +61,11 @@ class ViewAnimal extends ViewRecord
             ]),
             Section::make('Health')->columns(3)->schema([
                 TextEntry::make('withdrawal')->label('Withdrawal')
-                    ->state(fn (Animal $r) => ($w = app(GetAnimalRestrictions::class)($r)['withdrawals']->first()) ? "Until {$w->ends_on->format('d M Y')} ({$w->medicine->name})" : 'None')
-                    ->color(fn (Animal $r) => app(GetAnimalRestrictions::class)($r)['withdrawals']->isNotEmpty() ? 'danger' : null),
+                    ->state(fn (Animal $r) => ($w = $this->restrictions($r)['withdrawals']->first()) ? "Until {$w->ends_on->format('d M Y')} ({$w->medicine->name})" : 'None')
+                    ->color(fn (Animal $r) => $this->restrictions($r)['withdrawals']->isNotEmpty() ? 'danger' : null),
                 TextEntry::make('quarantine')->label('Quarantine / isolation')
-                    ->state(fn (Animal $r) => ($q = app(GetAnimalRestrictions::class)($r)['quarantine']) ? ucfirst($q->type->value)." since {$q->started_on->format('d M Y')}" : 'None')
-                    ->color(fn (Animal $r) => app(GetAnimalRestrictions::class)($r)['quarantine'] ? 'warning' : null),
+                    ->state(fn (Animal $r) => ($q = $this->restrictions($r)['quarantine']) ? ucfirst($q->type->value)." since {$q->started_on->format('d M Y')}" : 'None')
+                    ->color(fn (Animal $r) => $this->restrictions($r)['quarantine'] ? 'warning' : null),
                 TextEntry::make('open_cases')->label('Open health cases')->state(fn (Animal $r) => (string) $r->healthEvents()->where('status', 'open')->count()),
                 TextEntry::make('last_treatment')->label('Last treatment')->state(fn (Animal $r) => ($t = $r->treatments()->with('medicine')->first()) ? "{$t->medicine->name}, {$t->administered_on->format('d M Y')}" : '-'),
                 TextEntry::make('last_vaccination')->label('Last vaccination')->state(fn (Animal $r) => ($v = $r->vaccinations()->with('medicine')->first()) ? "{$v->medicine->name}, {$v->administered_on->format('d M Y')}" : '-'),
@@ -164,6 +163,7 @@ class ViewAnimal extends ViewRecord
     private function afterAction(string $message): void
     {
         $this->record->refresh();
+        $this->forgetRestrictions();
         Notification::make()->title($message)->success()->send();
     }
 }

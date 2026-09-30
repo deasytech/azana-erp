@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Animals\Pages\Concerns;
 
 use App\Domain\Animal\Models\Animal;
+use App\Domain\Health\Actions\GetAnimalRestrictions;
 use App\Domain\Health\Models\CullingRecord;
 use App\Domain\Health\Models\HealthEvent;
+use App\Domain\Health\Models\QuarantineRecord;
 use App\Filament\Support\HealthForms;
 use App\Filament\Support\HealthSubmissions;
 use Closure;
@@ -12,10 +14,25 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
+use Illuminate\Support\Collection;
 
 /** Health buttons on the animal profile. Needs the NotifiesDomainErrors trait (attempt). */
 trait HasHealthActions
 {
+    /** @var array<int|string, array{withdrawals: Collection, quarantine: ?QuarantineRecord}> */
+    protected array $restrictionsByAnimal = [];
+
+    /** What restricts the animal, computed once per request for this record (several entries read it). */
+    protected function restrictions(Animal $animal): array
+    {
+        return $this->restrictionsByAnimal[$animal->getKey()] ??= app(GetAnimalRestrictions::class)($animal);
+    }
+
+    protected function forgetRestrictions(): void
+    {
+        $this->restrictionsByAnimal = [];
+    }
+
     /** @return list<ActionGroup> */
     protected function healthActions(): array
     {
@@ -45,6 +62,7 @@ trait HasHealthActions
             ->action(function (array $data, Action $action) use ($submit, $message) {
                 $this->attempt(fn () => $submit($this->record, $data), $action);
                 $this->record->refresh();
+                $this->forgetRestrictions();
                 Notification::make()->title($message)->success()->send();
             });
     }

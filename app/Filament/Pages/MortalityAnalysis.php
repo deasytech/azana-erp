@@ -58,7 +58,7 @@ class MortalityAnalysis extends Page
             [
                 'from' => ['required', 'date_format:Y-m-d'],
                 'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
-                'dimension' => [Rule::in(array_keys($this->dimensions()))],
+                'dimension' => ['required', Rule::in(array_keys($this->dimensions()))],
             ],
             ['to.after_or_equal' => 'The end date must be on or after the start date.'],
         )->errors()->all();

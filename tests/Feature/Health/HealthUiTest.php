@@ -114,6 +114,23 @@ it('runs the health buttons on the animal profile', function () {
     expect(QuarantineRecord::first()->isOpen())->toBeTrue();
 });
 
+it('reads an animal\'s withdrawal and quarantine restrictions once per render, and again after an action', function () {
+    $this->actingAs(owner());
+    $animal = register();
+    treat($animal, medicine(10));
+    $queries = fn () => collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'from "withdrawal_periods"') || str_contains($q['query'], 'from `withdrawal_periods`'))->count();
+
+    DB::enableQueryLog();
+    $page = Livewire::test(ViewAnimal::class, ['record' => $animal->getRouteKey()]);
+    $onRender = $queries();
+
+    expect($onRender)->toBe(1);   // was 2: state + colour closures each queried
+
+    DB::flushQueryLog();
+    $page->callAction('quarantine', ['type' => 'isolation', 'started_on' => now()->toDateString(), 'reason' => 'Cough']);
+    $page->assertSee('Isolation since');   // not a stale "None" from the memo
+});
+
 it('shows a withdrawal block when trying to sell from the profile', function () {
     $this->actingAs(owner());
     $animal = register();
@@ -266,19 +283,23 @@ it('creates medicines and schedules through the forms', function () {
     expect(VaccinationSchedule::firstWhere('code', 'PS1'))->not->toBeNull();
 });
 
-it('signs visitors in and out, needing approval when conditions are not met', function () {
-    $this->actingAs($manager = userWithRole('Farm Manager'));
+it('signs visitors in and out; approval is the signing-in user\'s own authority', function () {
     $base = ['visitor_name' => 'Ngozi', 'purpose' => 'Inspection', 'arrived_at' => now()->toDateTimeString(), 'health_declaration' => true, 'last_pig_contact_hours' => 100];
 
+    $this->actingAs($manager = userWithRole('Farm Manager'));
     Livewire::test(CreateBiosecurityVisit::class)->fillForm($base)->call('create')->assertHasNoFormErrors();
     expect(BiosecurityVisit::first()->approved_by)->toBeNull();
 
-    Livewire::test(CreateBiosecurityVisit::class)->fillForm([...$base, 'last_pig_contact_hours' => 6])->call('create')->assertNotified('Not saved');
-    expect(BiosecurityVisit::count())->toBe(1);
+    // A manager signing in a visitor who does not meet the conditions is the approval.
+    Livewire::test(CreateBiosecurityVisit::class)->fillForm([...$base, 'last_pig_contact_hours' => 6])->call('create')->assertHasNoFormErrors();
+    expect(BiosecurityVisit::count())->toBe(2)->and(BiosecurityVisit::latest('id')->first()->approved_by)->toBe($manager->id);
 
-    Livewire::test(CreateBiosecurityVisit::class)->fillForm([...$base, 'last_pig_contact_hours' => 6, 'approved_by' => $manager->id])->call('create')->assertHasNoFormErrors();
+    // A farm worker cannot sign them in, and cannot borrow a manager by picking one.
+    $this->actingAs(farmWorker());
+    Livewire::test(CreateBiosecurityVisit::class)->fillForm([...$base, 'last_pig_contact_hours' => 6, 'approved_by' => $manager->id])->call('create')->assertNotified('Not saved');
     expect(BiosecurityVisit::count())->toBe(2);
 
+    $this->actingAs($manager);
     $visit = BiosecurityVisit::first();
     Livewire::test(ListBiosecurityVisits::class)
         ->callAction(TestAction::make('signout')->table($visit))
@@ -326,6 +347,8 @@ it('validates the mortality analysis period and grouping instead of failing', fu
     $page->set('from', 'not-a-date')->assertSee('must match the format')->assertDontSee('Total deaths in period');
     $page->set('from', now()->toDateString())->set('to', now()->subDay()->toDateString())->assertSee('end date must be on or after')->assertDontSee('Total deaths in period');
     $page->set('to', now()->toDateString())->set('dimension', 'colour')->assertSee('dimension')->assertDontSee('Total deaths in period');
+    $page->set('dimension', '')->assertSee('dimension field is required')->assertDontSee('Total deaths in period');
+    $page->set('dimension', '   ')->assertSee('dimension')->assertDontSee('Total deaths in period');
     $page->set('dimension', 'cause')->assertSee('Total deaths in period')->assertSee('Injury');
 });
 
