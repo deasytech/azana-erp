@@ -20,7 +20,7 @@ class GetBreedingCalendar
         $open = [ServiceOutcome::Pending->value, ServiceOutcome::Pregnant->value];
 
         $services = fn (string $column, array $outcomes) => BreedingService::with('sow')
-            ->whereIn('outcome', $outcomes)->whereBetween($column, [$from->toDateString(), $to->toDateString()])->get();
+            ->whereIn('outcome', $outcomes)->whereDate($column, '>=', $from->toDateString())->whereDate($column, '<=', $to->toDateString())->get();
 
         foreach ($services('expected_pregnancy_check_on', [ServiceOutcome::Pending->value]) as $s) {
             $entries->push($this->entry($s->expected_pregnancy_check_on, 'Pregnancy check due', $s->sow, "Served {$s->serviced_on->format('d M')}"));
@@ -34,7 +34,7 @@ class GetBreedingCalendar
             $entries->push($this->entry($s->expected_farrowing_on, 'Farrowing expected', $s->sow, $s->outcome->label()));
         }
 
-        foreach (Litter::with('sow')->where('status', LitterStatus::Suckling->value)->whereBetween('expected_weaning_on', [$from->toDateString(), $to->toDateString()])->get() as $l) {
+        foreach (Litter::with('sow')->where('status', LitterStatus::Suckling->value)->whereDate('expected_weaning_on', '>=', $from->toDateString())->whereDate('expected_weaning_on', '<=', $to->toDateString())->get() as $l) {
             $entries->push($this->entry($l->expected_weaning_on, 'Weaning due', $l->sow, $l->litter_number));
         }
 
@@ -49,7 +49,7 @@ class GetBreedingCalendar
     private function sowsAwaitingService(CarbonInterface $from, CarbonInterface $to): Collection
     {
         return WeaningRecord::with('litter.sow')
-            ->whereBetween('expected_next_service_on', [$from->toDateString(), $to->toDateString()])
+            ->whereDate('expected_next_service_on', '>=', $from->toDateString())->whereDate('expected_next_service_on', '<=', $to->toDateString())
             ->get()
             ->reject(fn (WeaningRecord $w) => BreedingService::where('sow_id', $w->litter->sow_id)->where('serviced_on', '>=', $w->weaned_on)->exists());
     }

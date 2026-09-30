@@ -5,6 +5,7 @@ namespace App\Domain\Animal\Actions;
 use App\Domain\Animal\Events\AnimalStatusChanged;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Animal\Models\AnimalStatusHistory;
+use App\Domain\Health\Actions\AssertAnimalCanEnterFoodChain;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\AnimalStatus;
 use App\Models\User;
@@ -19,7 +20,10 @@ use Illuminate\Support\Facades\DB;
  */
 class ChangeAnimalStatus
 {
-    public function __construct(private readonly RecordAnimalMovement $movements) {}
+    public function __construct(
+        private readonly RecordAnimalMovement $movements,
+        private readonly AssertAnimalCanEnterFoodChain $foodChainGuard,
+    ) {}
 
     public function __invoke(Animal $animal, AnimalStatus $to, string $reason, ?CarbonInterface $at = null, ?User $actor = null): AnimalStatusHistory
     {
@@ -39,6 +43,11 @@ class ChangeAnimalStatus
             }
 
             $at ??= now();
+
+            if (in_array($to, [AnimalStatus::Sold, AnimalStatus::Slaughtered], true)) {
+                ($this->foodChainGuard)($animal, $at);
+            }
+
             $actor ??= Auth::user();
             $this->movements->exit($animal, $at, "Left the farm: {$to->label()}", $actor);
 
