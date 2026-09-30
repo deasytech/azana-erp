@@ -314,6 +314,41 @@ it('shows alerts, reminders and the mortality analysis', function () {
     Livewire::test(MortalityAnalysis::class)->assertSee('Grower')->set('dimension', 'cause')->assertSee('Respiratory disease');
 });
 
+it('validates the mortality analysis period and grouping instead of failing', function () {
+    $this->actingAs(owner());
+    $dead = register();
+    app(RecordMortality::class)($dead, now(), cause('injury'));
+
+    $page = Livewire::test(MortalityAnalysis::class);
+    $page->assertSee('Total deaths in period');
+
+    $page->set('from', '')->assertSee('from field is required')->assertDontSee('Total deaths in period');
+    $page->set('from', 'not-a-date')->assertSee('must match the format')->assertDontSee('Total deaths in period');
+    $page->set('from', now()->toDateString())->set('to', now()->subDay()->toDateString())->assertSee('end date must be on or after')->assertDontSee('Total deaths in period');
+    $page->set('to', now()->toDateString())->set('dimension', 'colour')->assertSee('dimension')->assertDontSee('Total deaths in period');
+    $page->set('dimension', 'cause')->assertSee('Total deaths in period')->assertSee('Injury');
+});
+
+it('lets a vaccination schedule override an earlier vaccine choice', function () {
+    $this->actingAs(owner());
+    $adhoc = vaccine('ADHOC');
+    $scheduled = vaccine('SCHED');
+    $stale = batchOf($adhoc, 'STALE-1');
+    $right = batchOf($scheduled, 'RIGHT-1');
+    $schedule = VaccinationSchedule::create(['code' => 'OVR', 'name' => 'Override', 'medicine_id' => $scheduled->id, 'first_dose_age_days' => 1]);
+    $animal = register();
+
+    $form = Livewire::test(CreateVaccination::class)
+        ->fillForm(['animal_id' => $animal->id, 'medicine_id' => $adhoc->id, 'batch_id' => $stale->id])
+        ->set('data.schedule_id', $schedule->id);
+
+    expect($form->get('data.medicine_id'))->toBeNull()->and($form->get('data.batch_id'))->toBeNull();
+
+    $form->fillForm(['batch_id' => $right->id, 'administered_on' => now()->toDateString()])->call('create')->assertHasNoFormErrors();
+
+    expect(Vaccination::first()->batch->is($right))->toBeTrue()->and(Vaccination::first()->medicine->is($scheduled))->toBeTrue();
+});
+
 it('applies health permission defaults per role', function () {
     $animal = register();
 

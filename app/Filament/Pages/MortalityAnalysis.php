@@ -9,6 +9,8 @@ use Carbon\Carbon;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use UnitEnum;
 
 /** Deaths by pen, stage, age, litter, sow, breed, cause or month over a period. */
@@ -48,9 +50,27 @@ class MortalityAnalysis extends Page
         ];
     }
 
-    /** @return array{total: int, rows: Collection<int, array{label: string, count: int, percent: ?string}>} */
-    public function getAnalysisProperty(): array
+    /** @return list<string> problems with the chosen period or grouping (empty when the input is usable) */
+    public function inputErrors(): array
     {
+        return Validator::make(
+            ['from' => $this->from, 'to' => $this->to, 'dimension' => $this->dimension],
+            [
+                'from' => ['required', 'date_format:Y-m-d'],
+                'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+                'dimension' => [Rule::in(array_keys($this->dimensions()))],
+            ],
+            ['to.after_or_equal' => 'The end date must be on or after the start date.'],
+        )->errors()->all();
+    }
+
+    /** @return ?array{total: int, rows: Collection<int, array{label: string, count: int, percent: ?string}>} null while the input is invalid */
+    public function getAnalysisProperty(): ?array
+    {
+        if ($this->inputErrors() !== []) {
+            return null;
+        }
+
         return app(GetMortalityAnalysis::class)(Carbon::parse($this->from)->startOfDay(), Carbon::parse($this->to)->endOfDay(), $this->dimension);
     }
 }

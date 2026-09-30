@@ -47,12 +47,17 @@ class HealthForms
     {
         return [
             Select::make('schedule_id')->label('Vaccination schedule')->searchable()->live()
+                ->afterStateUpdated(function ($set) {
+                    // The schedule decides the vaccine; drop any earlier vaccine or batch choice.
+                    $set('medicine_id', null);
+                    $set('batch_id', null);
+                })
                 ->options(fn () => VaccinationSchedule::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
                 ->helperText('Choose a schedule, or pick the vaccine below for an ad-hoc vaccination.'),
             Select::make('medicine_id')->label('Vaccine')->searchable()->live()
                 ->options(fn () => Medicine::where('is_active', true)->whereHas('type', fn ($q) => $q->where('code', 'vaccine'))->orderBy('name')->pluck('name', 'id'))
                 ->hidden(fn ($get) => filled($get('schedule_id'))),
-            self::batch(fn ($get) => $get('medicine_id') ?: VaccinationSchedule::find($get('schedule_id'))?->medicine_id),
+            self::batch(fn ($get) => filled($get('schedule_id')) ? VaccinationSchedule::find($get('schedule_id'))?->medicine_id : $get('medicine_id')),
             DatePicker::make('administered_on')->default(now())->maxDate(now())->required(),
             TextInput::make('dose')->numeric()->minValue(0)->step(0.001),
             Textarea::make('notes'),
