@@ -56,6 +56,13 @@ it('requires a manager\'s approval for visitors who have not met the entry condi
     'no health declaration' => [['health_declaration' => false]],
 ]);
 
+it('does not accept an inactive approver', function () {
+    $manager = userWithRole('Farm Manager', ['is_active' => false]);
+
+    expect(fn () => app(RecordVisitorArrival::class)(visitor(['last_pig_contact_hours' => 1]), $manager))->toThrow(DomainException::class, 'needs approval')
+        ->and(fn () => app(RecordVisitorArrival::class)(visitor(['last_pig_contact_hours' => 1]), owner(['is_active' => false])))->toThrow(DomainException::class, 'needs approval');
+});
+
 it('uses the configured pig-free period', function () {
     app(ResolveSettings::class)->set('biosecurity.min_pig_contact_free_hours', 96);
 

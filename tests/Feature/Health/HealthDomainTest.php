@@ -117,8 +117,14 @@ it('blocks sale and slaughter while an animal is under withdrawal, and allows th
     expect($change($other, AnimalStatus::Sold, 'Sold')->to_status)->toBe(AnimalStatus::Sold);
 
     $much = register();
-    treat($much, medicine(7, 'other', 'MED9'));
-    expect($change($much, AnimalStatus::Sold, 'Sold after the period', now()->addDays(8))->to_status)->toBe(AnimalStatus::Sold);
+    treat($much, medicine(7, 'other', 'MED9'), now()->subDays(8)->toDateString());
+    expect($change($much, AnimalStatus::Sold, 'Sold after the period')->to_status)->toBe(AnimalStatus::Sold);
+
+    // A future date cannot be used to pretend the withdrawal has ended.
+    $later = register();
+    treat($later, medicine(7, 'other', 'MED10'));
+    expect(fn () => $change($later, AnimalStatus::Sold, 'Sold', now()->addDays(8)))->toThrow(DomainException::class, 'future')
+        ->and($later->fresh()->status)->toBe(AnimalStatus::Active);
 });
 
 it('does not stop an animal that dies, is culled or leaves the farm for other reasons', function () {
@@ -218,6 +224,17 @@ it('gives an ad-hoc vaccination and starts a withdrawal if the vaccine has one',
     expect($v->withdrawal_days)->toBe(21)
         ->and(WithdrawalPeriod::firstOrFail()->vaccination_id)->toBe($v->id)
         ->and(fn () => app(ChangeAnimalStatus::class)($animal, AnimalStatus::Sold, 'Sold'))->toThrow(DomainException::class, 'withdrawal');
+});
+
+it('still reminds boosters for animals with a recorded dose but no birth date', function () {
+    $schedule = VaccinationSchedule::create(['code' => 'BOOST', 'name' => 'Booster', 'medicine_id' => vaccine('BV')->id, 'first_dose_age_days' => 10, 'repeat_interval_days' => 30]);
+    $noBirthDate = register();
+    $neverVaccinated = register();
+
+    app(RecordVaccination::class)($noBirthDate, now()->subDays(40), ['schedule_id' => $schedule->id]);
+    $due = app(GetVaccinationsDue::class)()->pluck('animal.id')->all();
+
+    expect($due)->toBe([$noBirthDate->id])->not->toContain($neverVaccinated->id);
 });
 
 it('lists vaccinations due and overdue from the schedules', function () {
