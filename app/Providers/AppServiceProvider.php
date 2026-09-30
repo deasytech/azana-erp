@@ -3,15 +3,21 @@
 namespace App\Providers;
 
 use App\Domain\Animal\Models as A;
+use App\Domain\Biosecurity\Models as S;
 use App\Domain\Breeding\Models as B;
 use App\Domain\Farm\Models as M;
+use App\Domain\Health\Models as H;
 use App\Domain\Litter\Models as L;
 use App\Enums\Module;
 use App\Models\User;
 use App\Policies\AnimalPhotoPolicy;
 use App\Policies\AnimalPolicy;
+use App\Policies\BiosecurityMasterPolicy;
+use App\Policies\BiosecurityPolicy;
 use App\Policies\BreedingPolicy;
 use App\Policies\FarmStructurePolicy;
+use App\Policies\HealthMasterPolicy;
+use App\Policies\HealthPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PriceListPolicy;
 use App\Policies\SettingsPolicy;
@@ -48,6 +54,16 @@ class AppServiceProvider extends ServiceProvider
         foreach ([B\HeatEvent::class, B\BreedingService::class, B\PregnancyCheck::class, B\Farrowing::class, L\Litter::class, L\Piglet::class, L\LitterLoss::class, L\WeaningRecord::class] as $model) {
             Gate::policy($model, BreedingPolicy::class);
         }
+        foreach ([H\HealthEvent::class, H\Treatment::class, H\Vaccination::class, H\WithdrawalPeriod::class, H\VeterinaryVisit::class, H\LaboratoryResult::class, H\QuarantineRecord::class, H\MortalityRecord::class, H\CullingRecord::class] as $model) {
+            Gate::policy($model, HealthPolicy::class);
+        }
+        foreach ([H\Disease::class, H\Medicine::class, H\MedicineBatch::class, H\VaccinationSchedule::class] as $model) {
+            Gate::policy($model, HealthMasterPolicy::class);
+        }
+        foreach ([S\BiosecurityVisit::class, S\BiosecurityCheck::class, S\BiosecurityCheckItem::class] as $model) {
+            Gate::policy($model, BiosecurityPolicy::class);
+        }
+        Gate::policy(S\BiosecurityChecklistItem::class, BiosecurityMasterPolicy::class);
         Gate::policy(A\AnimalPhoto::class, AnimalPhotoPolicy::class);
         Gate::policy(M\FarmSetting::class, SettingsPolicy::class);
         Gate::policy(M\PriceList::class, PriceListPolicy::class);
