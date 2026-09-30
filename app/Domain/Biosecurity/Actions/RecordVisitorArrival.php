@@ -35,7 +35,7 @@ class RecordVisitorArrival
 
         $needsApproval = $this->needsApproval($data);
 
-        if ($needsApproval && ! $approver?->can('biosecurity.approve')) {
+        if ($needsApproval && ! ($approver?->is_active && $approver->can('biosecurity.approve'))) {
             throw new DomainException('This visitor has not met the biosecurity entry conditions and needs approval from a manager.', 'visitor_needs_approval');
         }
 
