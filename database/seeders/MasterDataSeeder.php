@@ -8,6 +8,7 @@ use App\Domain\Farm\Models\Farm;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\ProductionUnit;
 use App\Domain\Farm\Models\UnitOfMeasure;
+use App\Domain\Feed\Models\FeedType;
 use App\Enums\LookupCategory as C;
 use Illuminate\Database\Seeder;
 
@@ -22,6 +23,7 @@ class MasterDataSeeder extends Seeder
         $this->lookups();
         $this->units();
         $this->breeds();
+        $this->feedTypes();
 
         $farm = Farm::firstOrCreate(['code' => 'IPAF'], [
             'name' => 'Integrated Princess Azana Farms',
@@ -100,6 +102,16 @@ class MasterDataSeeder extends Seeder
             ['HAM', 'Hampshire'], ['PIE', 'Pietrain'], ['CROSS', 'Crossbred'],
         ] as [$code, $name]) {
             Breed::firstOrCreate(['code' => $code], ['name' => $name]);
+        }
+    }
+
+    private function feedTypes(): void
+    {
+        foreach ([
+            ['PRESTART', 'Pre-starter'], ['STARTER', 'Starter'], ['GROWER', 'Grower'], ['FINISHER', 'Finisher'],
+            ['GESTATION', 'Sow gestation'], ['LACTATION', 'Sow lactation'], ['BOAR', 'Boar'],
+        ] as [$code, $name]) {
+            FeedType::firstOrCreate(['code' => $code], ['name' => $name]);
         }
     }
 }
