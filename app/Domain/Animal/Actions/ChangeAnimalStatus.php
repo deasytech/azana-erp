@@ -5,6 +5,7 @@ namespace App\Domain\Animal\Actions;
 use App\Domain\Animal\Events\AnimalStatusChanged;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Animal\Models\AnimalStatusHistory;
+use App\Domain\Health\Actions\AssertAnimalCanEnterFoodChain;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\AnimalStatus;
 use App\Models\User;
@@ -19,7 +20,10 @@ use Illuminate\Support\Facades\DB;
  */
 class ChangeAnimalStatus
 {
-    public function __construct(private readonly RecordAnimalMovement $movements) {}
+    public function __construct(
+        private readonly RecordAnimalMovement $movements,
+        private readonly AssertAnimalCanEnterFoodChain $foodChainGuard,
+    ) {}
 
     public function __invoke(Animal $animal, AnimalStatus $to, string $reason, ?CarbonInterface $at = null, ?User $actor = null): AnimalStatusHistory
     {
@@ -31,6 +35,10 @@ class ChangeAnimalStatus
             throw new DomainException('A reason is required for a status change.', 'reason_required');
         }
 
+        if ($at?->gt(now()->addMinutes(5))) {
+            throw new DomainException('A status change cannot be dated in the future.', 'status_future');
+        }
+
         return DB::transaction(function () use ($animal, $to, $reason, $at, $actor) {
             $animal = Animal::lockForUpdate()->findOrFail($animal->id);
 
@@ -39,6 +47,12 @@ class ChangeAnimalStatus
             }
 
             $at ??= now();
+
+            // The animal leaves now, so withdrawals are judged as of now - never as of a user-supplied date.
+            if (in_array($to, [AnimalStatus::Sold, AnimalStatus::Slaughtered], true)) {
+                ($this->foodChainGuard)($animal);
+            }
+
             $actor ??= Auth::user();
             $this->movements->exit($animal, $at, "Left the farm: {$to->label()}", $actor);
 

@@ -2,11 +2,12 @@
 
 namespace App\Domain\Litter\Actions;
 
-use App\Domain\Animal\Actions\ChangeAnimalStatus;
+use App\Domain\Farm\Models\LookupValue;
+use App\Domain\Health\Actions\RecordMortality;
 use App\Domain\Litter\Models\Litter;
 use App\Domain\Litter\Models\LitterLoss;
 use App\Domain\System\Exceptions\DomainException;
-use App\Enums\AnimalStatus;
+use App\Enums\LookupCategory;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Auth;
@@ -18,16 +19,17 @@ use Illuminate\Support\Facades\DB;
  */
 class RecordLitterLoss
 {
-    public function __construct(private readonly ChangeAnimalStatus $changeStatus) {}
+    public function __construct(private readonly RecordMortality $recordMortality) {}
 
-    public function __invoke(Litter $litter, int $count, CarbonInterface $occurredOn, ?string $cause = null, ?int $animalId = null, ?User $actor = null): LitterLoss
+    public function __invoke(Litter $litter, int $count, CarbonInterface $occurredOn, ?string $cause = null, ?int $animalId = null, ?User $actor = null, ?int $causeId = null): LitterLoss
     {
-        return DB::transaction(function () use ($litter, $count, $occurredOn, $cause, $animalId, $actor) {
+        return DB::transaction(function () use ($litter, $count, $occurredOn, $cause, $animalId, $actor, $causeId) {
             $litter = Litter::lockForUpdate()->with('farrowing')->findOrFail($litter->id);
             $this->validate($litter, $count, $occurredOn, $animalId);
 
             if ($animalId) {
-                ($this->changeStatus)($litter->piglets()->where('animal_id', $animalId)->firstOrFail()->animal, AnimalStatus::Dead, 'Pre-weaning loss'.($cause ? ": {$cause}" : ''), $occurredOn, $actor);
+                // The death itself is a mortality record; this action writes the litter loss entry.
+                ($this->recordMortality)($litter->piglets()->where('animal_id', $animalId)->firstOrFail()->animal, $occurredOn, $causeId ?? $this->unknownCause(), null, $cause, $actor, recordLitterLoss: false);
             }
 
             return $litter->losses()->create([
@@ -38,6 +40,12 @@ class RecordLitterLoss
                 'user_id' => ($actor ?? Auth::user())?->getKey(),
             ]);
         });
+    }
+
+    private function unknownCause(): int
+    {
+        return LookupValue::where('category', LookupCategory::MortalityCause->value)->where('code', 'unknown')->value('id')
+            ?? throw new DomainException('The "unknown" cause of death is missing; add it under Cause of death.', 'invalid_cause');
     }
 
     private function validate(Litter $litter, int $count, CarbonInterface $occurredOn, ?int $animalId): void

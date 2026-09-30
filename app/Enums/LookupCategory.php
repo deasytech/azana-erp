@@ -12,6 +12,9 @@ enum LookupCategory: string
     case PriceCategory = 'price_category';
     case AnimalCategory = 'animal_category';
     case MovementReason = 'movement_reason';
+    case MedicineType = 'medicine_type';
+    case MortalityCause = 'mortality_cause';
+    case CullReason = 'cull_reason';
 
     public function label(): string
     {
@@ -23,6 +26,9 @@ enum LookupCategory: string
             self::PriceCategory => 'Price category',
             self::AnimalCategory => 'Animal category',
             self::MovementReason => 'Movement reason',
+            self::MedicineType => 'Medicine type',
+            self::MortalityCause => 'Cause of death',
+            self::CullReason => 'Culling reason',
         };
     }
 }
