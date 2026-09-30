@@ -25,6 +25,12 @@ final class Ratio
         return self::round(bcdiv((string) $total, (string) $count, $scale + 4), $scale);
     }
 
+    /** A decimal string rounded half-up to a whole number (e.g. a fractional minor unit). */
+    public static function toWhole(string $value): int
+    {
+        return (int) self::round($value, 0);
+    }
+
     /** Half-up rounding of a decimal string. */
     private static function round(string $value, int $scale): string
     {

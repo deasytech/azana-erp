@@ -6,6 +6,7 @@ use App\Domain\Animal\Events\AnimalStatusChanged;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Animal\Models\AnimalStatusHistory;
 use App\Domain\Health\Actions\AssertAnimalCanEnterFoodChain;
+use App\Domain\Production\Actions\RemoveAnimalFromBatch;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\AnimalStatus;
 use App\Models\User;
@@ -23,6 +24,7 @@ class ChangeAnimalStatus
     public function __construct(
         private readonly RecordAnimalMovement $movements,
         private readonly AssertAnimalCanEnterFoodChain $foodChainGuard,
+        private readonly RemoveAnimalFromBatch $leaveBatch,
     ) {}
 
     public function __invoke(Animal $animal, AnimalStatus $to, string $reason, ?CarbonInterface $at = null, ?User $actor = null): AnimalStatusHistory
@@ -65,6 +67,7 @@ class ChangeAnimalStatus
             ]);
 
             $animal->forceFill(['status' => $to, 'status_changed_at' => $at])->save();
+            ($this->leaveBatch)($animal, $to, $at); // deaths, sales and culls reduce the batch count
 
             AnimalStatusChanged::dispatch($history);
 
