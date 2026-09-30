@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 06 - Health, Veterinary, Mortality, Culling and Biosecurity (not started)
+Phase 07 - Weights, Growers, Finishers and Feed Consumption (not started)
 
 ## Completed
 
@@ -114,6 +114,31 @@ Phase 06 - Health, Veterinary, Mortality, Culling and Biosecurity (not started)
   - Pre-weaning losses are recorded on the litter here; Phase 06 mortality analysis should reuse these records for litter-related deaths rather than counting them twice.
   - Farm-wide reproductive KPIs (farrowing rate, non-productive days, dashboards) are Phase 16.
   - Placing piglets in a pen still respects pen capacity; farrowing pens holding a sow plus litter need a capacity that reflects that, or leave piglets unplaced (they are assumed to be with the dam).
+
+### Phase 06 - Health, Veterinary, Mortality, Culling and Biosecurity (2026-10-02)
+- Commit/reference: uncommitted on `dev` (pending review)
+- Tests: `vendor/bin/pest` - 204 passed (added `tests/Feature/Health/HealthDomainTest.php`, `BiosecurityDomainTest.php`, `HealthUiTest.php`; shared helpers `treat`, `cause`, `lookup`, `medicine`, `vaccine`, `batchOf` in `tests/Pest.php`). The withdrawal sale block and mortality analysis were also verified on MySQL.
+- Package changes: none.
+- What was done:
+  - Schema (3 migrations): diseases, medicines, medicine batches, vaccination schedules, vaccinations, health events, treatments, withdrawal periods, veterinary visits, laboratory results, quarantine records, mortality records, culling records, biosecurity visits, checklist items, checks and check items. Code in `app/Domain/Health` and `app/Domain/Biosecurity`.
+  - **Withdrawal / sale guard:** a treatment or vaccination with a withdrawal period (`medicines.default_withdrawal_days`, snapshotted on the record; a vet may lengthen but never shorten it) starts a withdrawal period automatically. `AssertAnimalCanEnterFoodChain` blocks selling or slaughtering any animal under an active withdrawal (until the end date) or in quarantine/isolation. It is enforced inside `ChangeAnimalStatus` for Sold and Slaughtered, so the sales and slaughter phases inherit it, and in culling when the disposal is a sale or slaughter. Early clearing needs a reason, `health.approve`, and is audited. Dead, culled (destroyed) and transferred-out animals are not blocked.
+  - Health records: `ReportHealthEvent` / `ResolveHealthEvent`, `RecordTreatment`, `RecordVaccination` (with or without a schedule; schedule category and vaccine type are checked), `RecordVeterinaryVisit`, `RecordLabResult`, `StartQuarantine` (optionally moves the animal) / `ReleaseQuarantine`. Medicine batches are checked for expiry, activity and matching medicine. All are append-only except a case's resolution, a quarantine's release and a withdrawal's clearance. Idempotency keys on treatments and vaccinations.
+  - **Vaccination reminders:** `GetVaccinationsDue` works from active schedules (first dose at an age after birth, boosters at an interval after the last dose, single-dose schedules finish), for active animals with a known birth date, within `health.vaccination_reminder_days`.
+  - **Mortality:** `RecordMortality` snapshots pen, litter, sow, breed, age, production stage, last weight and cause at death, marks the animal dead and records the exit; a tracked piglet of a suckling litter also gets its pre-weaning loss entry. `RecordLitterLoss` now goes through `RecordMortality` for named animals, so every animal death has exactly one mortality record and one loss entry. `GetMortalityAnalysis` groups deaths by pen, stage, age band, litter, sow, breed, cause or month and includes untracked piglet losses (counts on a litter) so nothing is missed or double counted. Age bands are the `health.mortality_age_band_limits` setting.
+  - **Culling:** `RecordCulling` requires reason, weight (also recorded as a weight), health status, disposal type and disposal/sale value, and stores a production-performance snapshot (a sow's parity and litter averages); creating one needs `health.approve` (disposal).
+  - Health alerts (`GetHealthAlerts`): overdue/due vaccinations, expired/expiring batches, cases open too long, long quarantines, vet follow-ups due.
+  - **Biosecurity:** visitor log (`RecordVisitorArrival` / `RecordVisitorDeparture`) - a visitor without a health declaration, or with less pig-free time than `biosecurity.min_pig_contact_free_hours` (48), can only be admitted with the approval of someone holding `biosecurity.approve`; records are retained and cannot be edited or deleted. Inspections (`RecordBiosecurityCheck`) score a configurable checklist and snapshot the wording answered.
+  - Admin UI: Health group (alerts, vaccinations due, withdrawal periods, cases, quarantine, mortality, mortality analysis, culling, treatments, vaccinations, vet visits, lab results, medicines with batches, vaccination schedules, diseases) and Biosecurity group (visitor log, inspections, checklist). The animal profile has a Health section (withdrawal, quarantine, open cases, last treatment/vaccination) and a Health menu (treat, vaccinate, report sick/injured, quarantine, record death, cull); "Change status" no longer offers dead/culled.
+  - Permissions: new `health` and `biosecurity` modules (nothing deletable; master data only while unreferenced). Veterinarian, General and Farm Manager: everything except delete; Breeding Manager, Farm Worker: view/create; Sales Officer, Slaughter Manager: view health (to see withdrawals); Store Officer / Semen Lab: visitor log.
+  - Domain event `MortalityRecorded`. `ImmutableRecord` backs all the append-only records.
+- Migration notes: 3 new reversible migrations. New lookup categories seeded (medicine type, cause of death, culling reason) and 6 new farm settings.
+- Known issues / notes:
+  - Medicine batches record identity and expiry only; stock quantities, and the deduction of medicine used, join the inventory ledger in Phase 08.
+  - Mortality "batch" analysis needs grower/finisher batches (Phase 07); it can be added as another dimension then.
+  - A newly created vaccination schedule makes every matching animal that never had it overdue immediately; enter historic vaccinations (or start schedules on the right category) to avoid a flood of reminders.
+  - Culling a sow that still has an unweaned litter is not blocked; the litter would need weaning or moving separately.
+  - Alerts are shown on a page; sending them as notifications and creating tasks is Phase 15. Mortality corrections and reinstating an animal need the approval workflow (Phase 15).
+  - Lab results are text only (no file attachments yet).
 
 ## In Progress
 None

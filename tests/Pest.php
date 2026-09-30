@@ -9,6 +9,9 @@ use App\Domain\Farm\Models\Building;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
 use App\Domain\Farm\Models\ProductionUnit;
+use App\Domain\Health\Actions\RecordTreatment;
+use App\Domain\Health\Models\Medicine;
+use App\Domain\Health\Models\MedicineBatch;
 use App\Domain\Litter\Models\Litter;
 use App\Enums\LookupCategory;
 use App\Enums\ServiceMethod;
@@ -128,4 +131,42 @@ function farrow(Animal $sow, array $data = []): Litter
     return app(RecordFarrowing::class)($sow, array_merge([
         'farrowed_on' => now()->startOfDay(), 'total_born' => 12, 'born_alive' => 10, 'stillborn' => 1, 'mummified' => 1,
     ], $data));
+}
+
+/** Id of a lookup value by category and code. */
+function lookup(LookupCategory $category, string $code): int
+{
+    return LookupValue::where('category', $category->value)->where('code', $code)->value('id');
+}
+
+/** A medicine of the given type ("other" by default) with the given withdrawal days. */
+function medicine(int $withdrawalDays = 0, string $type = 'other', string $code = 'MED1'): Medicine
+{
+    return Medicine::firstOrCreate(['code' => $code], [
+        'name' => "Medicine {$code}", 'type_id' => lookup(LookupCategory::MedicineType, $type), 'default_withdrawal_days' => $withdrawalDays,
+    ]);
+}
+
+function vaccine(string $code = 'VAC1', int $withdrawalDays = 0): Medicine
+{
+    return medicine($withdrawalDays, 'vaccine', $code);
+}
+
+function batchOf(Medicine $medicine, string $number = 'B-1', ?string $expires = null): MedicineBatch
+{
+    return MedicineBatch::create([
+        'medicine_id' => $medicine->id, 'batch_number' => $number, 'expiry_date' => $expires ?? now()->addYear()->toDateString(),
+    ]);
+}
+
+/** Treats an animal (default: today) with the given medicine. */
+function treat($animal, $medicine, ?string $on = null, array $options = [])
+{
+    return app(RecordTreatment::class)($animal, $medicine, $on ? now()->parse($on)->startOfDay() : now()->startOfDay(), $options);
+}
+
+/** Id of a mortality cause lookup by code. */
+function cause(string $code = 'unknown'): int
+{
+    return lookup(LookupCategory::MortalityCause, $code);
 }
