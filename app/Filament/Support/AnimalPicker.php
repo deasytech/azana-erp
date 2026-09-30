@@ -20,6 +20,14 @@ class AnimalPicker
             ->getOptionLabelUsing(fn ($value) => Animal::find($value)?->animal_number);
     }
 
+    /** Any active animal, whatever its category. */
+    public static function any(string $field = 'animal_id'): Select
+    {
+        return Select::make($field)->label('Animal')->searchable()
+            ->getSearchResultsUsing(fn (string $search) => Animal::where('status', AnimalStatus::Active->value)->where('animal_number', 'like', '%'.strtoupper($search).'%')->orderBy('animal_number')->limit(30)->pluck('animal_number', 'id')->all())
+            ->getOptionLabelUsing(fn ($value) => Animal::find($value)?->animal_number);
+    }
+
     public static function sow(string $field = 'sow_id'): Select
     {
         return self::make($field, 'Sow / gilt', ['sow', 'gilt']);

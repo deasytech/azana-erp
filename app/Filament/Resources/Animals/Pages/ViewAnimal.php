@@ -14,6 +14,7 @@ use App\Enums\AnimalStatus;
 use App\Enums\LookupCategory;
 use App\Filament\Concerns\NotifiesDomainErrors;
 use App\Filament\Resources\Animals\AnimalResource;
+use App\Filament\Resources\Animals\Pages\Concerns\HasHealthActions;
 use App\Filament\Support\LookupSelect;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -31,7 +32,7 @@ use Filament\Schemas\Schema;
 
 class ViewAnimal extends ViewRecord
 {
-    use NotifiesDomainErrors;
+    use HasHealthActions, NotifiesDomainErrors;
 
     protected static string $resource = AnimalResource::class;
 
@@ -58,6 +59,17 @@ class ViewAnimal extends ViewRecord
                     'Dam' => $r->parentage?->dam?->animal_number ?? $r->parentage?->dam_note,
                 ])->filter()->map(fn ($v, $k) => "{$k}: {$v}")->implode(' | ') ?: 'Not recorded'),
             ]),
+            Section::make('Health')->columns(3)->schema([
+                TextEntry::make('withdrawal')->label('Withdrawal')
+                    ->state(fn (Animal $r) => ($w = $this->restrictions($r)['withdrawals']->first()) ? "Until {$w->ends_on->format('d M Y')} ({$w->medicine->name})" : 'None')
+                    ->color(fn (Animal $r) => $this->restrictions($r)['withdrawals']->isNotEmpty() ? 'danger' : null),
+                TextEntry::make('quarantine')->label('Quarantine / isolation')
+                    ->state(fn (Animal $r) => ($q = $this->restrictions($r)['quarantine']) ? ucfirst($q->type->value)." since {$q->started_on->format('d M Y')}" : 'None')
+                    ->color(fn (Animal $r) => $this->restrictions($r)['quarantine'] ? 'warning' : null),
+                TextEntry::make('open_cases')->label('Open health cases')->state(fn (Animal $r) => (string) $r->healthEvents()->where('status', 'open')->count()),
+                TextEntry::make('last_treatment')->label('Last treatment')->state(fn (Animal $r) => ($t = $r->treatments()->with('medicine')->first()) ? "{$t->medicine->name}, {$t->administered_on->format('d M Y')}" : '-'),
+                TextEntry::make('last_vaccination')->label('Last vaccination')->state(fn (Animal $r) => ($v = $r->vaccinations()->with('medicine')->first()) ? "{$v->medicine->name}, {$v->administered_on->format('d M Y')}" : '-'),
+            ]),
             Section::make('Reproduction')->columns(4)->visible(fn (Animal $r) => $r->isBreedingFemale())->schema(
                 collect([
                     'status' => 'Reproductive status', 'parity' => 'Litters (parity)', 'avg_total_born' => 'Avg total born',
@@ -80,6 +92,7 @@ class ViewAnimal extends ViewRecord
             $this->moveAction(),
             $this->weightAction(),
             $this->statusAction(),
+            ...$this->healthActions(),
             EditAction::make(),
         ];
     }
@@ -134,7 +147,7 @@ class ViewAnimal extends ViewRecord
             ->requiresConfirmation()
             ->modalDescription('This takes the animal off the farm. The status is final.')
             ->schema([
-                Select::make('status')->required()->options(collect(AnimalStatus::cases())->filter->isTerminal()->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all()),
+                Select::make('status')->required()->options(collect(AnimalStatus::cases())->filter(fn ($s) => $s->isTerminal() && ! in_array($s, [AnimalStatus::Dead, AnimalStatus::Culled], true))->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all()),
                 Textarea::make('reason')->required(),
                 DateTimePicker::make('changed_at')->default(now())->required()->seconds(false),
             ])
@@ -150,6 +163,7 @@ class ViewAnimal extends ViewRecord
     private function afterAction(string $message): void
     {
         $this->record->refresh();
+        $this->forgetRestrictions();
         Notification::make()->title($message)->success()->send();
     }
 }

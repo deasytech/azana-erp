@@ -302,6 +302,15 @@ it('changes status to a final state, exits the pen, and keeps the trail', functi
         ->and($animal->statusHistory)->toHaveCount(2);
 });
 
+it('rejects a future-dated status change before recording anything', function () {
+    $animal = register(['pen_id' => newPen('FUT')->id]);
+
+    expect(fn () => app(ChangeAnimalStatus::class)($animal, AnimalStatus::Sold, 'Sold', now()->addDay()))->toThrow(DomainException::class, 'future')
+        ->and($animal->fresh()->status)->toBe(AnimalStatus::Active)
+        ->and($animal->statusHistory()->count())->toBe(1)
+        ->and($animal->fresh()->current_pen_id)->not->toBeNull();
+});
+
 it('treats terminal statuses as final', function () {
     $animal = register(['pen_id' => newPen()->id]);
     $change = app(ChangeAnimalStatus::class);

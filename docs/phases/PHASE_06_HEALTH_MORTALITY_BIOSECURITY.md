@@ -19,8 +19,8 @@ Implement animal health and farm biosecurity.
 - Health alerts.
 
 ## Acceptance Criteria
-- [ ] Active withdrawal animals cannot be sold/slaughtered.
-- [ ] Mortality records support required dimensions.
-- [ ] Vaccination reminders work.
-- [ ] Culling records preserve financial/operational information.
-- [ ] Visitor access records are retained.
+- [x] Active withdrawal animals cannot be sold/slaughtered.
+- [x] Mortality records support required dimensions.
+- [x] Vaccination reminders work.
+- [x] Culling records preserve financial/operational information.
+- [x] Visitor access records are retained.
