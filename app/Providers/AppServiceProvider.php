@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Domain\Animal\Models as A;
+use App\Domain\Breeding\Models as B;
 use App\Domain\Farm\Models as M;
+use App\Domain\Litter\Models as L;
 use App\Enums\Module;
 use App\Models\User;
 use App\Policies\AnimalPhotoPolicy;
 use App\Policies\AnimalPolicy;
+use App\Policies\BreedingPolicy;
 use App\Policies\FarmStructurePolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PriceListPolicy;
@@ -41,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
         }
         foreach ([A\Animal::class, A\AnimalIdentifier::class, A\AnimalMovement::class, A\WeightRecord::class, A\AnimalStatusHistory::class, A\AnimalParentage::class] as $model) {
             Gate::policy($model, AnimalPolicy::class);
+        }
+        foreach ([B\HeatEvent::class, B\BreedingService::class, B\PregnancyCheck::class, B\Farrowing::class, L\Litter::class, L\Piglet::class, L\LitterLoss::class, L\WeaningRecord::class] as $model) {
+            Gate::policy($model, BreedingPolicy::class);
         }
         Gate::policy(A\AnimalPhoto::class, AnimalPhotoPolicy::class);
         Gate::policy(M\FarmSetting::class, SettingsPolicy::class);

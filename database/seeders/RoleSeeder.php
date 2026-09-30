@@ -52,18 +52,21 @@ class RoleSeeder extends Seeder
             'settings' => [A::View, A::Edit],
             self::PRICES => [A::View, A::Create, A::Edit, A::Approve, A::Export],
             'animals' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            'breeding' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Farm Manager' => [
             self::FARM => [A::View, A::Create, A::Edit, A::Export, A::Print],
             self::MASTER => [A::View], 'settings' => [A::View],
             'animals' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            'breeding' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Breeding Manager' => [
             self::FARM => [A::View], self::MASTER => [A::View], 'settings' => [A::View],
             'animals' => [A::View, A::Create, A::Edit, A::Export, A::Print],
+            'breeding' => [A::View, A::Create, A::Edit, A::Export, A::Print],
         ],
-        'Veterinarian' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create]],
-        'Semen Laboratory Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View]],
+        'Veterinarian' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create], 'breeding' => [A::View, A::Create]],
+        'Semen Laboratory Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View], 'breeding' => [A::View]],
         'Feed Mill Manager' => [self::FARM => [A::View], self::MASTER => [A::View]],
         'Store Officer' => [self::FARM => [A::View], self::MASTER => [A::View]],
         'Sales Officer' => [self::FARM => [A::View], self::MASTER => [A::View], self::PRICES => [A::View], 'animals' => [A::View]],
@@ -72,7 +75,7 @@ class RoleSeeder extends Seeder
             self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View],
             self::PRICES => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
-        'Farm Worker' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create]],
+        'Farm Worker' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create], 'breeding' => [A::View, A::Create]],
     ];
 
     public function run(): void

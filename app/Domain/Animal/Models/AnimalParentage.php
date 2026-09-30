@@ -2,6 +2,7 @@
 
 namespace App\Domain\Animal\Models;
 
+use App\Domain\Litter\Models\Litter;
 use App\Domain\System\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,11 @@ class AnimalParentage extends Model
     public function animal(): BelongsTo
     {
         return $this->belongsTo(Animal::class);
+    }
+
+    public function litter(): BelongsTo
+    {
+        return $this->belongsTo(Litter::class);
     }
 
     public function sire(): BelongsTo

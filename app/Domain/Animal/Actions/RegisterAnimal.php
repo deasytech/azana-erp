@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  *
  * $data keys: sex, category_id, breed_id, genetic_line_id, birth_date, birth_date_estimated,
  * source, acquired_on, source_name, source_reference, purchase_price_minor, notes,
- * pen_id | location_id, identifiers[] {type, value, issued_on}, sire_id, dam_id, sire_note, dam_note.
+ * pen_id | location_id, identifiers[] {type, value, issued_on}, sire_id, dam_id, sire_note, dam_note, litter_id.
  */
 class RegisterAnimal
 {
@@ -141,10 +141,10 @@ class RegisterAnimal
     /** @param array<string, mixed> $data */
     private function applyParentage(Animal $animal, array $data): void
     {
-        $keys = ['sire_id', 'dam_id', 'sire_note', 'dam_note'];
+        $keys = ['sire_id', 'dam_id', 'sire_note', 'dam_note', 'litter_id'];
 
         if (array_filter(array_intersect_key($data, array_flip($keys)))) {
-            ($this->setParentage)($animal, $data['sire_id'] ?? null, $data['dam_id'] ?? null, $data['sire_note'] ?? null, $data['dam_note'] ?? null);
+            ($this->setParentage)($animal, $data['sire_id'] ?? null, $data['dam_id'] ?? null, $data['sire_note'] ?? null, $data['dam_note'] ?? null, $data['litter_id'] ?? null);
         }
     }
 }

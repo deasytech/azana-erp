@@ -11,7 +11,7 @@ class SetAnimalParentage
 {
     private const MAX_GENERATIONS = 25;
 
-    public function __invoke(Animal $animal, ?int $sireId, ?int $damId, ?string $sireNote = null, ?string $damNote = null): AnimalParentage
+    public function __invoke(Animal $animal, ?int $sireId, ?int $damId, ?string $sireNote = null, ?string $damNote = null, ?int $litterId = null): AnimalParentage
     {
         $this->assertParent($animal, $sireId, AnimalSex::Male, 'sire');
         $this->assertParent($animal, $damId, AnimalSex::Female, 'dam');
@@ -21,6 +21,7 @@ class SetAnimalParentage
             'dam_id' => $damId,
             'sire_note' => $sireNote ?: null,
             'dam_note' => $damNote ?: null,
+            ...($litterId ? ['litter_id' => $litterId] : []), // an existing litter link is never cleared
         ]);
     }
 

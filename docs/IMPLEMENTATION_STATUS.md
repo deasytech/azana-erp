@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 05 - Breeding, Farrowing, Litters and Piglets (not started)
+Phase 06 - Health, Veterinary, Mortality, Culling and Biosecurity (not started)
 
 ## Completed
 
@@ -89,6 +89,31 @@ Phase 05 - Breeding, Farrowing, Litters and Piglets (not started)
   - Category/sex pairing (sow/gilt female, boar male) is checked by category code in `RegisterAnimal`; if the farm renames those lookup codes, update the constants there.
   - Editing the birth date after weights or movements exist is not re-validated against them (changes are audited).
   - Bulk/batch (non-individual) records for growers/finishers are not in this phase; individual animals only.
+
+### Phase 05 - Breeding, Farrowing, Litters and Piglets (2026-09-30)
+- Commit/reference: uncommitted on `dev` (pending review)
+- Tests: `vendor/bin/pest` - 152 passed (added `tests/Feature/Breeding/BreedingDomainTest.php`, `BreedingUiTest.php`, `tests/Unit/RatioTest.php`; shared test helpers `register`, `newPen`, `categoryId`, `boar`, `serve`, `farrow` now live in `tests/Pest.php`). A full service-to-weaning cycle was also verified on MySQL.
+- Package changes: none.
+- What was done:
+  - Schema: `heat_events`, `breeding_services`, `pregnancy_checks`, `farrowings`, `litters`, `piglets`, `litter_losses`, `weaning_records`, and a `litter_id` link on `animal_parentage` (the Phase 04 follow-up). Domain code in `app/Domain/Breeding` and `app/Domain/Litter`.
+  - Service: natural or AI; natural needs the boar, AI needs the boar or a free-text semen source (semen batches arrive in Phase 10). Expected pregnancy check, farrowing, weaning, next heat and next service are calculated from the farm settings and **snapshotted on the service**, so later setting changes never rewrite old dates. Rules: active sow/gilt only, not future-dated, not before her latest service, not while confirmed pregnant or with an unweaned litter, minimum age at first service (`breeding.min_first_service_age_days`, only enforced when a birth date is known).
+  - Pregnancy: check results (positive/negative) apply to the checked service and to the sow's other open services within the new `breeding.same_heat_window_days` setting (default 3) - double matings cannot be told apart. Abortions close the cycle and are audited with their reason. Sow status (open / served / pregnant / lactating) is derived, never stored (`GetSowStatus`).
+  - Farrowing creates its litter automatically (`RecordFarrowing`): counts must add up, the service is auto-matched (confirmed-pregnant nearest to the due date) or given explicitly, the litter gets a permanent number like `IPA-2026-SOW0001-L01` (per-sow sequence), sire comes from the service's boar, and a gilt is promoted to sow at her first farrowing. Farrowings without a recorded service (bought-in pregnant sows) are allowed. Idempotency keys on services and farrowings for offline sync.
+  - Piglets: `RegisterLitterPiglets` registers individually tracked piglets as real animals (category piglet) linked to litter, dam and sire, with breed/line from the dam and the birth weight recorded as their first weight; untracked piglets stay as litter counts. Cannot exceed the number born alive.
+  - Losses and weaning: `RecordLitterLoss` (append-only, cannot exceed born alive; naming a tracked piglet also marks that animal dead), `WeanLitter` (closes the litter, records count and total weight, moves tracked piglets to the weaner category and optionally into a pen, dates the sow's next service).
+  - KPIs (exact decimal strings via `App\Support\Ratio`, half-up rounding): litter - stillborn %, pre-weaning mortality %, weaning %, average birth and weaning weight, gestation and lactation days; sow - parity, average total born / born alive / weaned, mortality %, weaning %, average birth weight, average farrowing interval (`GetLitterKpis`, `GetSowPerformance`).
+  - Breeding calendar (`GetBreedingCalendar`): pregnancy checks due, watch-for-return-to-heat, farrowings, weanings and next-service reminders (suppressed once the sow is served).
+  - Admin UI (Breeding group): Calendar page, Services (record, view with Pregnancy check / Record farrowing / Record abortion actions), Heat detection, Litters (record farrowing, litter profile with KPIs and Register piglets / Record loss / Wean actions, tracked piglets and losses tabs). A sow's profile shows a Reproduction summary and her litters.
+  - Permissions: new `breeding` module. create = record events; edit/approve reserved for corrections in later phases; delete never. Defaults: General/Farm Manager everything except delete; Breeding Manager view/create/edit/export/print; Veterinarian and Farm Worker view/create; Semen Laboratory Manager view.
+  - Events (after commit, no listeners yet): `BreedingServiceRecorded`, `PregnancyConfirmed`, `FarrowingRecorded`, `WeaningRecorded`.
+  - Records are permanent: services, farrowings, litters, checks, losses and weaning records cannot be edited or deleted (only a service's outcome and a litter's weaning state advance); corrections will go through the Phase 15 approval workflow.
+- Migration notes: 2 new reversible migrations (breeding tables; farrowing/litter tables + parentage link).
+- Known issues / notes:
+  - Double-mated litters take the sire of the service that best matches the farrowing; paternity is uncertain in that case.
+  - Cross-fostering, litter transfers and adopted piglets are not modelled; a wrong farrowing count cannot yet be corrected (needs the approval workflow).
+  - Pre-weaning losses are recorded on the litter here; Phase 06 mortality analysis should reuse these records for litter-related deaths rather than counting them twice.
+  - Farm-wide reproductive KPIs (farrowing rate, non-productive days, dashboards) are Phase 16.
+  - Placing piglets in a pen still respects pen capacity; farrowing pens holding a sow plus litter need a capacity that reflects that, or leave piglets unplaced (they are assumed to be with the dam).
 
 ## In Progress
 None

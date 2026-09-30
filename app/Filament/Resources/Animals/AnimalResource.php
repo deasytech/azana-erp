@@ -18,6 +18,7 @@ use App\Filament\Resources\Animals\Pages\EditAnimal;
 use App\Filament\Resources\Animals\Pages\ListAnimals;
 use App\Filament\Resources\Animals\Pages\ViewAnimal;
 use App\Filament\Resources\Animals\RelationManagers\IdentifiersRelationManager;
+use App\Filament\Resources\Animals\RelationManagers\LittersRelationManager;
 use App\Filament\Resources\Animals\RelationManagers\MovementsRelationManager;
 use App\Filament\Resources\Animals\RelationManagers\PhotosRelationManager;
 use App\Filament\Resources\Animals\RelationManagers\StatusHistoryRelationManager;
@@ -155,6 +156,7 @@ class AnimalResource extends Resource
     {
         return [
             IdentifiersRelationManager::class,
+            LittersRelationManager::class,
             MovementsRelationManager::class,
             WeightsRelationManager::class,
             StatusHistoryRelationManager::class,
