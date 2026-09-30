@@ -5,6 +5,8 @@ namespace App\Domain\Health\Actions;
 use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Health\Models\MortalityRecord;
 use App\Domain\Litter\Models\LitterLoss;
+use App\Domain\Production\Models\ProductionBatchEvent;
+use App\Enums\BatchEventType;
 use App\Support\Ratio;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -12,7 +14,7 @@ use InvalidArgumentException;
 
 /**
  * Deaths grouped by pen, production stage, age band, litter, sow, breed, cause or month.
- * Combines individual mortality records with pre-weaning losses of untracked piglets (counts on a litter),
+ * Combines individual mortality records with pre-weaning losses of untracked piglets (counts on a litter) and untracked deaths in growing batches,
  * so no death is missed and none is counted twice.
  */
 class GetMortalityAnalysis
@@ -63,7 +65,15 @@ class GetMortalityAnalysis
                 'breed' => $l->litter->sow->breed?->name, 'cause' => $l->cause,
             ]));
 
-        return $tracked->concat($untracked)->values();
+        // Untracked deaths in growing batches (counts on the batch ledger; tracked animals already have records).
+        $batches = ProductionBatchEvent::with(['batch.stage', 'batch.breed', 'batch.pen', 'cause'])
+            ->where('type', BatchEventType::Mortality->value)->whereNull('animal_id')
+            ->whereDate('occurred_on', '>=', $range[0])->whereDate('occurred_on', '<=', $range[1])->get()
+            ->map(fn (ProductionBatchEvent $e) => $this->row(abs($e->delta), $e->occurred_on, $e->batch->placed_age_days === null ? null : (int) ($e->batch->placed_age_days + $e->batch->started_on->diffInDays($e->occurred_on)), $limits, [
+                'pen' => $e->batch->pen?->code, 'stage' => $e->batch->stage->name, 'breed' => $e->batch->breed?->name, 'cause' => $e->cause?->name,
+            ]));
+
+        return $tracked->concat($untracked)->concat($batches)->values();
     }
 
     /**
@@ -77,7 +87,7 @@ class GetMortalityAnalysis
             'count' => $count,
             'month' => $on->format('Y-m'),
             'age_band' => $this->band($ageDays, $limits),
-        ] + ['pen' => self::UNKNOWN];
+        ] + array_fill_keys(['pen', 'stage', 'litter', 'sow', 'breed', 'cause'], self::UNKNOWN);
     }
 
     /** @param list<int> $limits */
