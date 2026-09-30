@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  auto_review:
+    enabled: true
+    # Phases are delivered as stacked PRs (e.g. phase-07-domain -> main, then dev -> phase-07-domain);
+    # review those too, not just PRs whose base is the default branch.
+    base_branches:
+      - "^phase-.*"
+      - "^dev$"
+  # Keep generated, vendored and planning files out of the review (they also count towards the file limit).
+  path_filters:
+    - "!composer.lock"
+    - "!package-lock.json"
+    - "!docs/**"
+    - "!.agents/**"
+    - "!.claude/**"
+    - "!**/AGENTS.md"
+    - "!**/AGENT.md"
+    - "!**/CLAUDE.md"
