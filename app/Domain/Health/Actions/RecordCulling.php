@@ -88,7 +88,7 @@ class RecordCulling
             throw new DomainException('The disposal value cannot be negative (use 0 when there is none).', 'disposal_value');
         }
 
-        $disposal->entersFoodChain() && ($this->foodChainGuard)($animal, $culledOn);
+        $disposal->entersFoodChain() && ($this->foodChainGuard)($animal); // judged as of now, not the entered date
     }
 
     /** @return array<string, int|string|null> */

@@ -16,6 +16,9 @@ trait AdministersMedicine
 {
     protected function assertAdministrable(Animal $animal, Medicine $medicine, ?int $batchId, CarbonInterface $on): ?MedicineBatch
     {
+        // Lock first (callers run in a transaction) so this serialises with ChangeAnimalStatus,
+        // which locks the same row before deciding whether the animal has left the farm.
+        Animal::whereKey($animal->id)->lockForUpdate()->firstOrFail();
         $animal->refresh();
 
         if (! $animal->isActive()) {

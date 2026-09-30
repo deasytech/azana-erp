@@ -35,6 +35,10 @@ class ChangeAnimalStatus
             throw new DomainException('A reason is required for a status change.', 'reason_required');
         }
 
+        if ($at?->gt(now()->addMinutes(5))) {
+            throw new DomainException('A status change cannot be dated in the future.', 'status_future');
+        }
+
         return DB::transaction(function () use ($animal, $to, $reason, $at, $actor) {
             $animal = Animal::lockForUpdate()->findOrFail($animal->id);
 
@@ -44,8 +48,9 @@ class ChangeAnimalStatus
 
             $at ??= now();
 
+            // The animal leaves now, so withdrawals are judged as of now - never as of a user-supplied date.
             if (in_array($to, [AnimalStatus::Sold, AnimalStatus::Slaughtered], true)) {
-                ($this->foodChainGuard)($animal, $at);
+                ($this->foodChainGuard)($animal);
             }
 
             $actor ??= Auth::user();

@@ -13,7 +13,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Vaccinations that are due or overdue for active animals, from the active schedules: the first dose falls due
- * at the schedule's age (needs a known birth date), boosters at the repeat interval after the last dose.
+ * at the schedule's age (needs a known birth date), boosters at the repeat interval after the last dose
+ * (which does not).
  */
 class GetVaccinationsDue
 {
@@ -30,7 +31,7 @@ class GetVaccinationsDue
             $last = Vaccination::where('vaccination_schedule_id', $schedule->id)->groupBy('animal_id')
                 ->selectRaw('animal_id, max(administered_on) as last_on')->pluck('last_on', 'animal_id');
 
-            Animal::where('status', AnimalStatus::Active->value)->whereNotNull('birth_date')
+            Animal::where('status', AnimalStatus::Active->value)
                 ->when($schedule->category_id, fn ($q, $category) => $q->where('category_id', $category))
                 ->get()
                 ->each(function (Animal $animal) use ($schedule, $last, $horizon, $today, $due) {
@@ -48,7 +49,8 @@ class GetVaccinationsDue
     private function dueDate(Animal $animal, VaccinationSchedule $schedule, ?string $lastOn): ?CarbonInterface
     {
         if ($lastOn === null) {
-            return $animal->birth_date->copy()->addDays($schedule->first_dose_age_days);
+            // The first dose is scheduled by age, so it needs a known birth date.
+            return $animal->birth_date?->copy()->addDays($schedule->first_dose_age_days);
         }
 
         return $schedule->repeat_interval_days
