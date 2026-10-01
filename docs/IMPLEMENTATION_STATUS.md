@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 07 - Weights, Growers, Finishers and Feed Consumption (not started)
+Phase 08 - Inventory Transaction Engine and Procurement (not started)
 
 ## Completed
 
@@ -139,6 +139,28 @@ Phase 07 - Weights, Growers, Finishers and Feed Consumption (not started)
   - Culling a sow that still has an unweaned litter is not blocked; the litter would need weaning or moving separately.
   - Alerts are shown on a page; sending them as notifications and creating tasks is Phase 15. Mortality corrections and reinstating an animal need the approval workflow (Phase 15).
   - Lab results are text only (no file attachments yet).
+
+### Phase 07 - Grower/Finisher Management and Feed Consumption (2026-10-03)
+- Delivery: two stacked PRs - domain (`phase-07-domain`, #10) and UI, tests and docs (`phase-07-ui`).
+- Tests: `vendor/bin/pest` - 256 passed (added `tests/Feature/Production/ProductionDomainTest.php` and `ProductionUiTest.php`; batch helpers `openBatch`, `feed`, `weighIn`, `scenario` in `tests/Pest.php`). The worked scenario was also verified on MySQL.
+- Package changes: none.
+- What was done:
+  - Schema: `feed_types`, `production_batches`, `production_batch_events` (append-only head-count ledger), `production_batch_animals`, `batch_weigh_ins`, `feed_consumption_records`, `production_costs`. Code in `app/Domain/Production` and `app/Domain/Feed`.
+  - **Batches:** a grower/finisher group with a code like `BATCH-2026-001`, a stage, optional breed/pen/target weight and a first placement (and first weigh-in if the placement weight is given). Head count is the sum of the ledger and can never go negative - not today, and not on a back-dated event's own date. A batch closes itself when its last pig leaves; closed batches accept no events.
+  - **Mortality integration:** `ChangeAnimalStatus` now takes a tracked animal out of its batch (death -> mortality, sold, slaughtered, culled, transferred out), reducing the count. Untracked deaths go through `RecordBatchMortality` (with a cause) and appear in the mortality analysis (by stage, pen, breed, cause, age from the batch's placement age); tracked deaths are counted once, from their mortality record.
+  - **Weigh-ins:** average weight of a sample, validated (positive, plausible, between batch start and today, sample no larger than the pigs present that day, one valid weigh-in per day); wrong ones are voided, never edited.
+  - **Feed:** `RecordFeedConsumption` for a batch or a single animal; cost (quantity x cost per kg) snapshotted in whole minor units, rounded half up; voidable; idempotency keys. **It does not post stock** - the inventory ledger is Phase 08, and real feed cost arrives with Phase 09's feed batches.
+  - **Costs:** other costs (medicine, labour, utilities, transport, other) attributed to a batch and voidable.
+  - **Calculations (`GetBatchPerformance`), from valid (non-voided) records only:** ADG = (end average weight - start average weight) / days between weigh-ins; gain = that difference x pigs alive on the end weigh-in date; FCR = feed eaten after the start weigh-in up to the end weigh-in / gain (feed eaten by pigs that later died stays in); cost per pig = (entry + feed + other costs) / pigs that did not die; cost per kg gained = (feed + other costs) / gain; expected market date = latest weigh-in date + days to reach the target weight at the measured ADG, rounded up with exact arithmetic (target: the batch's own or `production.target_market_weight_kg`, default 100 kg). The period can be any two valid weigh-in dates. `GetAnimalGrowth` does the same for a tracked animal from its weight records, and `GetProductionSummary` lists every active batch.
+  - Admin UI (Production group): Overview (active batches side by side), Batches (start batch form; batch page with performance and cost sections, a "Record" menu - add pigs, remove pigs, deaths, weigh-in, feed, cost, add a tracked animal, adjust count - and a "Choose period" action; tabs for the head-count ledger, weigh-ins, feed, other costs and tracked animals, with voiding), Feed records (for a batch or an animal, voidable) and Feed types. A tracked animal's profile shows its batch, ADG, gain and FCR.
+  - Permissions: new `production` module (nothing deletable; feed types only while unused). Farm/General Manager everything except delete, Farm Worker view/create (daily entry), Accountant view/export (costs), Feed Mill, Store, Sales, Slaughter, Breeding and Veterinarian view. Count adjustments need `approve`; voiding needs `edit`.
+- Migration notes: 2 new reversible migrations. One new farm setting (target market weight) and starter feed types (pre-starter, starter, grower, finisher, sow gestation/lactation, boar).
+- Known issues / notes:
+  - Treatments and withdrawal periods (Phase 06) are per animal; group treatments for untracked batch pigs are not modelled, so selling untracked pigs from a batch is not checked against withdrawals. Track treated animals individually, or add batch-level treatments later.
+  - Feed cost per kg is typed in for now; Phase 09 derives it from feed batches and Phase 08 posts the stock movement.
+  - Money is shown in the first farm's currency (`Farm::defaultCurrency()`); older screens still assume NGN.
+  - "Cost per pig" and "cost per kg gained" use the definitions above (written into the `GetBatchPerformance` comments); a finance view (Phase 14) may add others.
+  - Sales and slaughter of untracked pigs (Phases 11-12) should call `RemovePigsFromBatch`; tracked animals already flow through `ChangeAnimalStatus`.
 
 ## In Progress
 None
