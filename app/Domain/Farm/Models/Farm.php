@@ -21,7 +21,7 @@ class Farm extends Model
     /** The currency money is shown in: the first active farm's, or NGN before any farm exists. */
     public static function defaultCurrency(): string
     {
-        return static::where('is_active', true)->orderBy('id')->value('currency_code') ?? 'NGN';
+        return once(fn () => static::where('is_active', true)->orderBy('id')->value('currency_code') ?? 'NGN');
     }
 
     public function productionUnits(): HasMany

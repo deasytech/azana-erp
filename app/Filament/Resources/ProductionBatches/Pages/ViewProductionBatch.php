@@ -10,12 +10,14 @@ use App\Filament\Resources\ProductionBatches\Pages\Concerns\HasBatchActions;
 use App\Filament\Resources\ProductionBatches\ProductionBatchResource;
 use App\Support\Money;
 use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Livewire\Attributes\On;
 
 class ViewProductionBatch extends ViewRecord
 {
@@ -43,14 +45,18 @@ class ViewProductionBatch extends ViewRecord
             $to = $this->periodTo ? Carbon::parse($this->periodTo) : null;
 
             return $this->performanceMemo = app(GetBatchPerformance::class)($this->record, $from, $to);
-        } catch (DomainException $e) {
+        } catch (DomainException|InvalidFormatException $e) {
+            // The period properties are client-writable, so unparseable dates are handled like an invalid period.
             $this->periodFrom = $this->periodTo = null;
+            $message = $e instanceof DomainException ? $e->getMessage() : 'The chosen period is not valid.';
 
-            return $this->performanceMemo = ['period_error' => $e->getMessage()] + app(GetBatchPerformance::class)($this->record);
+            return $this->performanceMemo = ['period_error' => $message] + app(GetBatchPerformance::class)($this->record);
         }
     }
 
-    protected function refreshBatch(): void
+    /** Also called when a history tab changes the batch (e.g. a void), so the figures never go stale. */
+    #[On('production-batch-changed')]
+    public function refreshBatch(): void
     {
         $this->record->refresh();
         $this->performanceMemo = null;

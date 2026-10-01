@@ -146,6 +146,31 @@ it('measures a chosen period and recovers from a bad one', function () {
         ->assertSee('2.50');                   // fell back to the whole-life figures
 });
 
+it('survives tampered period properties by falling back to whole-life figures', function () {
+    $this->actingAs(owner());
+    $batch = scenario();
+
+    batchPage($batch)
+        ->set('periodFrom', 'not-a-date')
+        ->assertSee('The chosen period is not valid.')
+        ->assertSet('periodFrom', null)->assertSet('periodTo', null)
+        ->assertSee('2.50');
+});
+
+it('refreshes the batch page when a history tab voids a record', function () {
+    $this->actingAs(owner());
+    $batch = scenario();
+    $page = batchPage($batch)->assertSee('2.50')->assertSee('7350.00 kg');
+    $latest = BatchWeighIn::where('production_batch_id', $batch->id)->orderByDesc('weighed_on')->first();
+
+    Livewire::test(WeighInsRelationManager::class, ['ownerRecord' => $batch, 'pageClass' => ViewProductionBatch::class])
+        ->callAction(TestAction::make('void')->table($latest), ['reason' => 'Wrong batch weighed'])
+        ->assertDispatched('production-batch-changed');
+
+    // The tab is a separate component; the page refreshes when it hears the event and now measures to day 15.
+    $page->dispatch('production-batch-changed')->assertSee('3000.00 kg')->assertDontSee('7350.00 kg');
+});
+
 it('voids weigh-ins, feed and costs from the history tabs', function () {
     $this->actingAs(owner());
     $batch = scenario();

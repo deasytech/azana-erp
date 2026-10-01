@@ -37,6 +37,7 @@ abstract class VoidableRecordsRelationManager extends RelationManager
                     ->schema([Textarea::make('reason')->required()])
                     ->action(function (Model $record, array $data, Action $action) {
                         $this->attempt(fn () => $this->voidRecord($record, $data['reason']), $action);
+                        $this->dispatch('production-batch-changed'); // only reached when the void succeeded
                         Notification::make()->title('Record voided')->success()->send();
                     }),
             ])
