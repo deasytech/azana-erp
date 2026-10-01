@@ -10,6 +10,8 @@ use App\Domain\Animal\Models\Animal;
 use App\Domain\Farm\Models\Location;
 use App\Domain\Farm\Models\Pen;
 use App\Domain\Litter\Actions\GetSowPerformance;
+use App\Domain\Production\Actions\GetAnimalGrowth;
+use App\Domain\Production\Models\ProductionBatchAnimal;
 use App\Enums\AnimalStatus;
 use App\Enums\LookupCategory;
 use App\Filament\Concerns\NotifiesDomainErrors;
@@ -69,6 +71,12 @@ class ViewAnimal extends ViewRecord
                 TextEntry::make('open_cases')->label('Open health cases')->state(fn (Animal $r) => (string) $r->healthEvents()->where('status', 'open')->count()),
                 TextEntry::make('last_treatment')->label('Last treatment')->state(fn (Animal $r) => ($t = $r->treatments()->with('medicine')->first()) ? "{$t->medicine->name}, {$t->administered_on->format('d M Y')}" : '-'),
                 TextEntry::make('last_vaccination')->label('Last vaccination')->state(fn (Animal $r) => ($v = $r->vaccinations()->with('medicine')->first()) ? "{$v->medicine->name}, {$v->administered_on->format('d M Y')}" : '-'),
+            ]),
+            Section::make('Growth')->columns(4)->schema([
+                TextEntry::make('batch')->label('Batch')->state(fn (Animal $r) => ProductionBatchAnimal::with('batch')->where('animal_id', $r->id)->whereNull('left_on')->first()?->batch->code ?? '-'),
+                TextEntry::make('growth_adg')->label('Average daily gain')->state(fn (Animal $r) => ($v = $this->growth($r)['adg_kg']) === null ? '-' : "{$v} kg/day"),
+                TextEntry::make('growth_gain')->label('Gained')->state(fn (Animal $r) => ($v = $this->growth($r)['gain_kg']) === null ? '-' : "{$v} kg over {$this->growth($r)['days']} days"),
+                TextEntry::make('growth_fcr')->label('FCR (feed recorded)')->state(fn (Animal $r) => $this->growth($r)['fcr'] ?? '-'),
             ]),
             Section::make('Reproduction')->columns(4)->visible(fn (Animal $r) => $r->isBreedingFemale())->schema(
                 collect([
@@ -160,10 +168,20 @@ class ViewAnimal extends ViewRecord
             });
     }
 
+    /** @var array<int|string, array<string, int|string|null>> */
+    protected array $growthByAnimal = [];
+
+    /** Growth figures for the record, computed once per request. */
+    protected function growth(Animal $animal): array
+    {
+        return $this->growthByAnimal[$animal->getKey()] ??= app(GetAnimalGrowth::class)($animal);
+    }
+
     private function afterAction(string $message): void
     {
         $this->record->refresh();
         $this->forgetRestrictions();
+        $this->growthByAnimal = [];
         Notification::make()->title($message)->success()->send();
     }
 }

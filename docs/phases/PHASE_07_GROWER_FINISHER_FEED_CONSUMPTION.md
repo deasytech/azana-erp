@@ -16,7 +16,7 @@ Track production performance of growing animals.
 - Production KPI calculations.
 
 ## Acceptance Criteria
-- [ ] ADG is calculated from valid weight records.
-- [ ] FCR uses defined feed and weight gain periods.
-- [ ] Mortality affects active batch counts.
-- [ ] Production costs can be attributed to animals/batches.
+- [x] ADG is calculated from valid weight records.
+- [x] FCR uses defined feed and weight gain periods.
+- [x] Mortality affects active batch counts.
+- [x] Production costs can be attributed to animals/batches.

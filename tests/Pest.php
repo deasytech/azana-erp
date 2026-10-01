@@ -9,11 +9,21 @@ use App\Domain\Farm\Models\Building;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
 use App\Domain\Farm\Models\ProductionUnit;
+use App\Domain\Feed\Actions\RecordFeedConsumption;
+use App\Domain\Feed\Models\FeedConsumptionRecord;
+use App\Domain\Feed\Models\FeedType;
 use App\Domain\Health\Actions\RecordTreatment;
 use App\Domain\Health\Models\Medicine;
 use App\Domain\Health\Models\MedicineBatch;
 use App\Domain\Litter\Models\Litter;
+use App\Domain\Production\Actions\OpenProductionBatch;
+use App\Domain\Production\Actions\RecordBatchMortality;
+use App\Domain\Production\Actions\RecordBatchWeighIn;
+use App\Domain\Production\Actions\RecordProductionCost;
+use App\Domain\Production\Models\BatchWeighIn;
+use App\Domain\Production\Models\ProductionBatch;
 use App\Enums\LookupCategory;
+use App\Enums\ProductionCostCategory;
 use App\Enums\ServiceMethod;
 use App\Models\Role;
 use App\Models\User;
@@ -169,4 +179,41 @@ function treat($animal, $medicine, ?string $on = null, array $options = [])
 function cause(string $code = 'unknown'): int
 {
     return lookup(LookupCategory::MortalityCause, $code);
+}
+
+function openBatch(array $overrides = []): ProductionBatch
+{
+    return app(OpenProductionBatch::class)(array_merge([
+        'name' => 'Grower batch', 'stage_id' => categoryId('grower'), 'started_on' => now()->startOfDay(), 'count' => 100,
+    ], $overrides));
+}
+
+function growerFeed(): FeedType
+{
+    return FeedType::firstWhere('code', 'GROWER');
+}
+
+function feed(ProductionBatch $batch, string $kg, int $daysAgo = 0, ?int $perKg = null, array $extra = []): FeedConsumptionRecord
+{
+    return app(RecordFeedConsumption::class)($batch, growerFeed(), now()->subDays($daysAgo)->startOfDay(), $kg, ['cost_per_kg_minor' => $perKg] + $extra);
+}
+
+function weighIn(ProductionBatch $batch, string $avg, int $daysAgo = 0, int $sample = 20): BatchWeighIn
+{
+    return app(RecordBatchWeighIn::class)($batch, now()->subDays($daysAgo)->startOfDay(), $sample, $avg);
+}
+
+/** 100 pigs placed 30 days ago at 20 kg, 2 died, weighed at day 15 (35 kg) and today (50 kg). */
+function scenario(): ProductionBatch
+{
+    $batch = openBatch(['started_on' => now()->subDays(30)->startOfDay(), 'count' => 100, 'average_weight_kg' => '20.00', 'unit_cost_minor' => 500000]);
+    app(RecordBatchMortality::class)($batch, 2, now()->subDays(10)->startOfDay(), lookup(LookupCategory::MortalityCause, 'scours'));
+    weighIn($batch, '35.00', 15, 50);
+    weighIn($batch, '50.00', 0, 50);
+    feed($batch, '3000', 20, 25000);        // day 10: before the day-15 weigh-in
+    feed($batch, '2000', 10, 25000);        // day 20
+    feed($batch, '2350', 2, 25000);         // day 28
+    app(RecordProductionCost::class)($batch, now()->subDays(3), ProductionCostCategory::Labour, 2000000, 'Labour');
+
+    return $batch;
 }
