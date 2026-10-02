@@ -1,0 +1,83 @@
+<?php
+
+namespace App\Filament\Resources\StockCounts\Pages;
+
+use App\Domain\Inventory\Actions\ApproveStockCount;
+use App\Domain\Inventory\Actions\CancelStockCount;
+use App\Domain\Inventory\Actions\RejectStockCount;
+use App\Domain\Inventory\Actions\SubmitStockCount;
+use App\Domain\Inventory\Models\StockCount;
+use App\Enums\StockCountStatus;
+use App\Filament\Concerns\NotifiesDomainErrors;
+use App\Filament\Resources\StockCounts\StockCountResource;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Livewire\Attributes\On;
+
+class ViewStockCount extends ViewRecord
+{
+    use NotifiesDomainErrors;
+
+    protected static string $resource = StockCountResource::class;
+
+    public function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('Count')->columns(4)->schema([
+                TextEntry::make('number')->weight('bold')->copyable(),
+                TextEntry::make('location.name')->label('Store'),
+                TextEntry::make('counted_on')->date(),
+                TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label()),
+                TextEntry::make('startedBy.name')->label('Started by')->placeholder('-'),
+                TextEntry::make('submittedBy.name')->label('Submitted by')->placeholder('-'),
+                TextEntry::make('decidedBy.name')->label('Decided by')->placeholder('-'),
+                TextEntry::make('decision_notes')->label('Decision notes')->placeholder('-'),
+                TextEntry::make('notes')->placeholder('-')->columnSpanFull(),
+            ]),
+        ]);
+    }
+
+    /** Lines changed on the tab below. */
+    #[On('stock-count-changed')]
+    public function refreshCount(): void
+    {
+        $this->record->refresh();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        $is = fn (StockCountStatus $status) => fn () => $this->record->status === $status;
+
+        return [
+            $this->step('submit', 'Submit for approval', 'heroicon-o-paper-airplane', 'Count submitted',
+                fn () => app(SubmitStockCount::class)($this->record), fn () => $is(StockCountStatus::Draft)() && auth()->user()->can('create', StockCount::class)),
+            $this->step('approve', 'Approve', 'heroicon-o-check-circle', 'Count approved and stock adjusted',
+                fn (array $d) => app(ApproveStockCount::class)($this->record, auth()->user(), $d['notes'] ?? null),
+                fn () => $is(StockCountStatus::Submitted)() && auth()->user()->can('approve', $this->record), [Textarea::make('notes')], 'success'),
+            $this->step('reject', 'Reject', 'heroicon-o-x-circle', 'Count rejected',
+                fn (array $d) => app(RejectStockCount::class)($this->record, auth()->user(), $d['reason']),
+                fn () => $is(StockCountStatus::Submitted)() && auth()->user()->can('approve', $this->record), [Textarea::make('reason')->required()], 'danger'),
+            $this->step('cancel', 'Cancel count', 'heroicon-o-trash', 'Count cancelled',
+                fn () => app(CancelStockCount::class)($this->record), fn () => $is(StockCountStatus::Draft)() && auth()->user()->can('create', StockCount::class), [], 'gray'),
+        ];
+    }
+
+    /** @param list<Component> $schema */
+    private function step(string $name, string $label, string $icon, string $done, \Closure $run, \Closure $visible, array $schema = [], string $color = 'primary'): Action
+    {
+        return Action::make($name)->label($label)->icon($icon)->color($color)->requiresConfirmation()
+            ->visible($visible)->schema($schema)
+            ->action(function (array $data, Action $action) use ($run, $done) {
+                $this->attempt(fn () => $run($data), $action);
+                $this->record->refresh();
+                $this->dispatch('stock-count-changed');
+                Notification::make()->title($done)->success()->send();
+            });
+    }
+}
