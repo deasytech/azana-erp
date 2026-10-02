@@ -10,6 +10,7 @@ use App\Domain\Feed\Models as FD;
 use App\Domain\Health\Models as H;
 use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
+use App\Domain\Procurement\Models as PC;
 use App\Domain\Production\Models as PR;
 use App\Domain\Supplier\Models as SP;
 use App\Enums\Module;
@@ -26,6 +27,8 @@ use App\Policies\InventoryMasterPolicy;
 use App\Policies\InventoryPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PriceListPolicy;
+use App\Policies\ProcurementMasterPolicy;
+use App\Policies\ProcurementPolicy;
 use App\Policies\ProductionMasterPolicy;
 use App\Policies\ProductionPolicy;
 use App\Policies\SettingsPolicy;
@@ -78,9 +81,13 @@ class AppServiceProvider extends ServiceProvider
         foreach ([I\InventoryTransaction::class, I\StockCount::class, I\StockCountLine::class, I\StockAdjustment::class] as $model) {
             Gate::policy($model, InventoryPolicy::class);
         }
-        foreach ([I\InventoryItem::class, I\InventoryLocation::class, I\InventoryBatch::class, SP\Supplier::class] as $model) {
+        foreach ([I\InventoryItem::class, I\InventoryLocation::class, I\InventoryBatch::class] as $model) {
             Gate::policy($model, InventoryMasterPolicy::class);
         }
+        foreach ([PC\PurchaseRequest::class, PC\PurchaseRequestLine::class, PC\PurchaseOrder::class, PC\PurchaseOrderLine::class, PC\GoodsReceipt::class, PC\GoodsReceiptLine::class, PC\SupplierInvoice::class, PC\SupplierPayment::class] as $model) {
+            Gate::policy($model, ProcurementPolicy::class);
+        }
+        Gate::policy(SP\Supplier::class, ProcurementMasterPolicy::class);
         Gate::policy(S\BiosecurityChecklistItem::class, BiosecurityMasterPolicy::class);
         Gate::policy(A\AnimalPhoto::class, AnimalPhotoPolicy::class);
         Gate::policy(M\FarmSetting::class, SettingsPolicy::class);
