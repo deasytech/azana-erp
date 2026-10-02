@@ -110,6 +110,10 @@ describe('purchase orders', function () {
         $line = ['inventory_item_id' => stockItem()->id, 'quantity' => '1', 'unit_cost_minor' => 100];
 
         expect(fn () => $create(supplier(), [['inventory_item_id' => stockItem()->id, 'quantity' => '1']], now()))->toThrow(DomainException::class, 'unit cost');
+        foreach (['12.5', '1e3', -1, '-5', 1.5, true, 'abc'] as $bad) {
+            expect(fn () => $create(supplier(), [['unit_cost_minor' => $bad] + $line], now()))->toThrow(DomainException::class, 'unit cost');
+        }
+        expect(fn () => $create(supplier(), [['unit_cost_minor' => '0'] + $line], now()))->not->toThrow(DomainException::class);
         expect(fn () => $create(supplier(), [$line], now()->addDay()))->toThrow(DomainException::class, 'future');
         expect(fn () => $create(supplier(), [$line], now(), now()->subDay()))->toThrow(DomainException::class, 'before it');
 
@@ -145,7 +149,7 @@ describe('purchase orders', function () {
         $request = approvedRequest($this->clerk, $this->manager);
         $order = app(CreatePurchaseOrder::class)(supplier(), [['inventory_item_id' => stockItem()->id, 'quantity' => '100', 'unit_cost_minor' => 35000]], now()->startOfDay(), null, null, $request);
 
-        expect($request->fresh()->status)->toBe(PR::Ordered);
+        expect($request->fresh()->status)->toBe(PR::Ordered)->and($request->orders)->toHaveCount(1);
         expect(fn () => app(CreatePurchaseOrder::class)(supplier(), [['inventory_item_id' => stockItem()->id, 'quantity' => '1', 'unit_cost_minor' => 1]], now(), null, null, $request))
             ->toThrow(DomainException::class, 'approved request');
 

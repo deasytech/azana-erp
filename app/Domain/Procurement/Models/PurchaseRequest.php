@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PurchaseRequest extends Model
 {
@@ -33,9 +32,9 @@ class PurchaseRequest extends Model
         return $this->hasMany(PurchaseRequestLine::class);
     }
 
-    public function order(): HasOne
+    public function orders(): HasMany
     {
-        return $this->hasOne(PurchaseOrder::class);
+        return $this->hasMany(PurchaseOrder::class);
     }
 
     public function requestedBy(): BelongsTo

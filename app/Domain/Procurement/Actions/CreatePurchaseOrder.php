@@ -33,7 +33,10 @@ class CreatePurchaseOrder
         $lines = $this->cleanLines($lines);
 
         foreach ($lines as $line) {
-            if (! isset($line['unit_cost_minor']) || (int) $line['unit_cost_minor'] < 0 || ! is_numeric($line['unit_cost_minor'])) {
+            $cost = $line['unit_cost_minor'] ?? null;
+
+            // Whole non-negative minor units only: casting first would silently truncate 12.5 or 1e3.
+            if (is_bool($cost) || filter_var($cost, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]) === false) {
                 throw new DomainException('Give a unit cost (zero or more) for every line.', 'line_cost');
             }
         }
