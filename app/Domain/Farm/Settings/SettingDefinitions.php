@@ -19,6 +19,8 @@ final class SettingDefinitions
 
     private const HEALTH = 'Health & biosecurity';
 
+    private const INVENTORY = 'Inventory';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -41,6 +43,9 @@ final class SettingDefinitions
             new SettingDefinition('health.batch_expiry_warning_days', self::HEALTH, 'Medicine batch expiry warning (days)', 'int', '60'),
             new SettingDefinition('health.open_event_alert_days', self::HEALTH, 'Alert when a health case stays open (days)', 'int', '7'),
             new SettingDefinition('health.quarantine_alert_days', self::HEALTH, 'Alert when quarantine exceeds (days)', 'int', '21'),
+            new SettingDefinition('inventory.valuation_method', self::INVENTORY, 'Stock valuation method', 'string', 'fifo', '"fifo" (oldest cost first) or "weighted_average".'),
+            new SettingDefinition('inventory.expiry_warning_days', self::INVENTORY, 'Batch expiry warning (days)', 'int', '60'),
+            new SettingDefinition('inventory.require_separate_approver', self::INVENTORY, 'Approver must differ from requester', 'bool', '1', 'Stock counts and adjustments cannot be approved by the person who raised them.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }

@@ -8,8 +8,10 @@ use App\Domain\Breeding\Models as B;
 use App\Domain\Farm\Models as M;
 use App\Domain\Feed\Models as FD;
 use App\Domain\Health\Models as H;
+use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
 use App\Domain\Production\Models as PR;
+use App\Domain\Supplier\Models as SP;
 use App\Enums\Module;
 use App\Models\User;
 use App\Policies\AnimalPhotoPolicy;
@@ -20,6 +22,8 @@ use App\Policies\BreedingPolicy;
 use App\Policies\FarmStructurePolicy;
 use App\Policies\HealthMasterPolicy;
 use App\Policies\HealthPolicy;
+use App\Policies\InventoryMasterPolicy;
+use App\Policies\InventoryPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PriceListPolicy;
 use App\Policies\ProductionMasterPolicy;
@@ -71,6 +75,12 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, ProductionPolicy::class);
         }
         Gate::policy(FD\FeedType::class, ProductionMasterPolicy::class);
+        foreach ([I\InventoryTransaction::class, I\StockCount::class, I\StockCountLine::class, I\StockAdjustment::class] as $model) {
+            Gate::policy($model, InventoryPolicy::class);
+        }
+        foreach ([I\InventoryItem::class, I\InventoryLocation::class, I\InventoryBatch::class, SP\Supplier::class] as $model) {
+            Gate::policy($model, InventoryMasterPolicy::class);
+        }
         Gate::policy(S\BiosecurityChecklistItem::class, BiosecurityMasterPolicy::class);
         Gate::policy(A\AnimalPhoto::class, AnimalPhotoPolicy::class);
         Gate::policy(M\FarmSetting::class, SettingsPolicy::class);

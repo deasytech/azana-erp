@@ -9,12 +9,18 @@ use App\Domain\Farm\Models\Building;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
 use App\Domain\Farm\Models\ProductionUnit;
+use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Feed\Actions\RecordFeedConsumption;
 use App\Domain\Feed\Models\FeedConsumptionRecord;
 use App\Domain\Feed\Models\FeedType;
 use App\Domain\Health\Actions\RecordTreatment;
 use App\Domain\Health\Models\Medicine;
 use App\Domain\Health\Models\MedicineBatch;
+use App\Domain\Inventory\Actions\IssueStock;
+use App\Domain\Inventory\Actions\ReceiveStock;
+use App\Domain\Inventory\Models\InventoryItem;
+use App\Domain\Inventory\Models\InventoryLocation;
+use App\Domain\Inventory\Models\InventoryTransaction;
 use App\Domain\Litter\Models\Litter;
 use App\Domain\Production\Actions\OpenProductionBatch;
 use App\Domain\Production\Actions\RecordBatchMortality;
@@ -22,6 +28,8 @@ use App\Domain\Production\Actions\RecordBatchWeighIn;
 use App\Domain\Production\Actions\RecordProductionCost;
 use App\Domain\Production\Models\BatchWeighIn;
 use App\Domain\Production\Models\ProductionBatch;
+use App\Enums\InventoryCategory;
+use App\Enums\InventoryTransactionType;
 use App\Enums\LookupCategory;
 use App\Enums\ProductionCostCategory;
 use App\Enums\ServiceMethod;
@@ -216,4 +224,30 @@ function scenario(): ProductionBatch
     app(RecordProductionCost::class)($batch, now()->subDays(3), ProductionCostCategory::Labour, 2000000, 'Labour');
 
     return $batch;
+}
+
+/** A stock item measured in kilograms (feed ingredient by default). */
+function stockItem(string $code = 'MAIZE', array $attrs = []): InventoryItem
+{
+    return InventoryItem::firstOrCreate(['code' => $code], $attrs + [
+        'name' => "Item {$code}", 'category' => InventoryCategory::FeedIngredient, 'unit_id' => UnitOfMeasure::firstWhere('code', 'KG')->id,
+    ]);
+}
+
+/** A store (inventory location) by code. */
+function store(string $code = 'MAIN'): InventoryLocation
+{
+    return InventoryLocation::firstOrCreate(['code' => $code], ['name' => "Store {$code}"]);
+}
+
+/** Receives stock into a store ($unitCost in minor units per unit), dated $daysAgo days back. */
+function receiveStock(InventoryItem $item, string $quantity, int $unitCost, ?InventoryLocation $store = null, int $daysAgo = 0, array $details = []): InventoryTransaction
+{
+    return app(ReceiveStock::class)(InventoryTransactionType::Receipt, $item, $store ?? store(), $quantity, now()->subDays($daysAgo)->startOfDay(), ['unit_cost_minor' => $unitCost] + $details);
+}
+
+/** Uses stock (consumption by default); returns the ledger lines. */
+function issueStock(InventoryItem $item, string $quantity, ?InventoryLocation $store = null, InventoryTransactionType $type = InventoryTransactionType::Consumption, array $details = [])
+{
+    return app(IssueStock::class)($type, $item, $store ?? store(), $quantity, now()->startOfDay(), $details);
 }
