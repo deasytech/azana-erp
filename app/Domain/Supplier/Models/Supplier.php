@@ -4,6 +4,7 @@ namespace App\Domain\Supplier\Models;
 
 use App\Domain\Farm\Concerns\HasBusinessCode;
 use App\Domain\Inventory\Models\InventoryBatch;
+use App\Domain\Procurement\Models\PurchaseOrder;
 use App\Domain\System\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,6 +24,6 @@ class Supplier extends Model
     /** Suppliers with stock history can be deactivated but never deleted. */
     public function isInUse(): bool
     {
-        return InventoryBatch::where('supplier_id', $this->id)->exists();
+        return InventoryBatch::where('supplier_id', $this->id)->exists() || PurchaseOrder::where('supplier_id', $this->id)->exists();
     }
 }
