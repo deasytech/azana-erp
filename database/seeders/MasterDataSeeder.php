@@ -9,6 +9,7 @@ use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\ProductionUnit;
 use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Feed\Models\FeedType;
+use App\Domain\Inventory\Models\InventoryLocation;
 use App\Enums\LookupCategory as C;
 use Illuminate\Database\Seeder;
 
@@ -24,6 +25,7 @@ class MasterDataSeeder extends Seeder
         $this->units();
         $this->breeds();
         $this->feedTypes();
+        $this->inventoryLocations();
 
         $farm = Farm::firstOrCreate(['code' => 'IPAF'], [
             'name' => 'Integrated Princess Azana Farms',
@@ -112,6 +114,13 @@ class MasterDataSeeder extends Seeder
             ['GESTATION', 'Sow gestation'], ['LACTATION', 'Sow lactation'], ['BOAR', 'Boar'],
         ] as [$code, $name]) {
             FeedType::firstOrCreate(['code' => $code], ['name' => $name]);
+        }
+    }
+
+    private function inventoryLocations(): void
+    {
+        foreach ([['MAIN', 'Main store'], ['FEED', 'Feed store'], ['VET', 'Veterinary store']] as [$code, $name]) {
+            InventoryLocation::firstOrCreate(['code' => $code], ['name' => $name]);
         }
     }
 }

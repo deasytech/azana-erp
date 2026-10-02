@@ -7,6 +7,7 @@ use App\Domain\Farm\Models\FarmSetting;
 use App\Domain\Farm\Settings\SettingDefinition;
 use App\Domain\Farm\Settings\SettingDefinitions;
 use App\Domain\System\Exceptions\DomainException;
+use App\Enums\ValuationMethod;
 
 /**
  * Typed read/write access to per-farm settings. Reads fall back to the registered default
@@ -57,6 +58,10 @@ class ResolveSettings
             'bool' => is_bool($value) || in_array((string) $value, ['0', '1', 'true', 'false'], true),
             default => true,
         };
+
+        if ($ok && $definition->key === 'inventory.valuation_method') {
+            $ok = ValuationMethod::tryFrom((string) $value) !== null;
+        }
 
         if (! $ok) {
             throw new DomainException("Invalid value for {$definition->label}.", 'invalid_setting');

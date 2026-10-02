@@ -88,7 +88,7 @@ it('seeds starting master data idempotently', function () {
     expect(Farm::count())->toBe(1)
         ->and(ProductionUnit::count())->toBe(4)
         ->and(Breed::count())->toBe(6)
-        ->and(FarmSetting::count())->toBe(19)
+        ->and(FarmSetting::count())->toBe(22)
         ->and(UnitOfMeasure::where('code', 'KG')->exists())->toBeTrue();
 });
 
