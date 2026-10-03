@@ -29,6 +29,7 @@ class CreateFeedConsumption extends CreateRecord
 
             return app(RecordFeedConsumption::class)($target, (int) $data['feed_type_id'], Carbon::parse($data['consumed_on']), (string) $data['quantity_kg'], [
                 'cost_per_kg_minor' => $data['cost_per_kg_minor'] ?? null, 'notes' => $data['notes'] ?? null,
+                'inventory_location_id' => $data['inventory_location_id'] ?? null,
             ]);
         } catch (DomainException $e) {
             $this->failWith($e);
