@@ -22,12 +22,18 @@ use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
 use App\Domain\Inventory\Models\InventoryTransaction;
 use App\Domain\Litter\Models\Litter;
+use App\Domain\Procurement\Actions\CreatePurchaseOrder;
+use App\Domain\Procurement\Actions\DecidePurchaseOrder;
+use App\Domain\Procurement\Actions\ReceiveGoods;
+use App\Domain\Procurement\Models\GoodsReceipt;
+use App\Domain\Procurement\Models\PurchaseOrder;
 use App\Domain\Production\Actions\OpenProductionBatch;
 use App\Domain\Production\Actions\RecordBatchMortality;
 use App\Domain\Production\Actions\RecordBatchWeighIn;
 use App\Domain\Production\Actions\RecordProductionCost;
 use App\Domain\Production\Models\BatchWeighIn;
 use App\Domain\Production\Models\ProductionBatch;
+use App\Domain\Supplier\Models\Supplier;
 use App\Enums\InventoryCategory;
 use App\Enums\InventoryTransactionType;
 use App\Enums\LookupCategory;
@@ -250,4 +256,36 @@ function receiveStock(InventoryItem $item, string $quantity, int $unitCost, ?Inv
 function issueStock(InventoryItem $item, string $quantity, ?InventoryLocation $store = null, InventoryTransactionType $type = InventoryTransactionType::Consumption, array $details = [])
 {
     return app(IssueStock::class)($type, $item, $store ?? store(), $quantity, now()->startOfDay(), $details);
+}
+
+function supplier(string $code = 'SUP1', int $terms = 30): Supplier
+{
+    return Supplier::firstOrCreate(['code' => $code], ['name' => "Supplier {$code}", 'payment_terms_days' => $terms]);
+}
+
+/**
+ * An approved purchase order (default: 100 kg of maize at 350.00 per kg = 3,500,000 minor in total).
+ *
+ * @param  list<array<string, mixed>>|null  $lines
+ */
+function purchaseOrder(?array $lines = null, ?Supplier $supplier = null, bool $approve = true): PurchaseOrder
+{
+    $order = app(CreatePurchaseOrder::class)($supplier ?? supplier(), $lines ?? [
+        ['inventory_item_id' => stockItem()->id, 'quantity' => '100', 'unit_cost_minor' => 35000],
+    ], now()->subDays(10)->startOfDay());
+
+    if ($approve) {
+        app(DecidePurchaseOrder::class)->submit($order);
+        app(DecidePurchaseOrder::class)->approve($order, userWithRole('Farm Manager'));
+    }
+
+    return $order->refresh();
+}
+
+/** Receives the given quantities against the order's lines, in order (null skips a line). */
+function receiveGoods(PurchaseOrder $order, array $quantities, ?InventoryLocation $store = null, array $extra = []): GoodsReceipt
+{
+    $lines = $order->lines->values()->map(fn ($line, $i) => isset($quantities[$i]) ? ['purchase_order_line_id' => $line->id, 'quantity' => $quantities[$i]] + ($extra[$i] ?? []) : null)->filter()->values()->all();
+
+    return app(ReceiveGoods::class)($order, $store ?? store(), now()->startOfDay(), $lines);
 }

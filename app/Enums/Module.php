@@ -22,6 +22,7 @@ enum Module: string
     case Biosecurity = 'biosecurity';
     case Production = 'production';
     case Inventory = 'inventory';
+    case Procurement = 'procurement';
 
     public function label(): string
     {
@@ -40,6 +41,7 @@ enum Module: string
             self::Biosecurity => 'Biosecurity & visitors',
             self::Production => 'Growers & finishers',
             self::Inventory => 'Inventory & stores',
+            self::Procurement => 'Purchasing & suppliers',
         };
     }
 

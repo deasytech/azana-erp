@@ -13,6 +13,7 @@ use App\Filament\Resources\FeedConsumption\Pages\ListFeedConsumption;
 use App\Filament\Support\AnimalPicker;
 use App\Filament\Support\DomainAction;
 use App\Filament\Support\MoneyInput;
+use App\Filament\Support\StockForms;
 use App\Support\Money;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -53,7 +54,8 @@ class FeedConsumptionResource extends Resource
             Select::make('feed_type_id')->label('Feed type')->required()->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
             DatePicker::make('consumed_on')->default(now())->maxDate(now())->required(),
             TextInput::make('quantity_kg')->label('Quantity (kg)')->numeric()->minValue(0.01)->step(0.01)->required(),
-            MoneyInput::make('cost_per_kg_minor', 'Cost per kg'),
+            MoneyInput::make('cost_per_kg_minor', 'Cost per kg')->helperText('Ignored when the feed is taken from a store: the stock cost is used.'),
+            StockForms::store('inventory_location_id', 'Take from store')->required(false)->helperText('Optional. Takes the feed out of stock; the feed type must be linked to a stock item.'),
             Textarea::make('notes')->columnSpanFull(),
         ]);
     }
