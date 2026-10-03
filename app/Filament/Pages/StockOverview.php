@@ -136,8 +136,10 @@ class StockOverview extends Page
                 Textarea::make('reason')->required(fn ($get) => $get('type') === T::Wastage->value),
             ])
             ->action(function (array $data, Action $action) {
+                $batchId = $data['inventory_batch_id'] ?? null;
+
                 $this->attempt(fn () => app(IssueStock::class)(T::from($data['type']), (int) $data['inventory_item_id'], (int) $data['inventory_location_id'], (string) $data['quantity'], Carbon::parse($data['occurred_on']), [
-                    'batch' => $data['inventory_batch_id'] ?? null, 'reason' => $data['reason'] ?? null,
+                    'batch' => $batchId === null || $batchId === '' ? null : (int) $batchId, 'reason' => $data['reason'] ?? null,
                 ]), $action);
 
                 Notification::make()->title('Stock taken out')->success()->send();
@@ -158,8 +160,10 @@ class StockOverview extends Page
                 Textarea::make('reason'),
             ])
             ->action(function (array $data, Action $action) {
+                $batchId = $data['inventory_batch_id'] ?? null;
+
                 $this->attempt(fn () => app(TransferStock::class)((int) $data['inventory_item_id'], (int) $data['from_id'], (int) $data['to_id'], (string) $data['quantity'], Carbon::parse($data['occurred_on']), [
-                    'batch' => $data['inventory_batch_id'] ?? null, 'reason' => $data['reason'] ?? null,
+                    'batch' => $batchId === null || $batchId === '' ? null : (int) $batchId, 'reason' => $data['reason'] ?? null,
                 ]), $action);
 
                 Notification::make()->title('Stock transferred')->success()->send();

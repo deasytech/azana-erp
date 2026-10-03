@@ -19,8 +19,11 @@ class CreateStockAdjustment extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
+        $requestAdjustment = app(RequestStockAdjustment::class);
+        $batchId = $data['inventory_batch_id'] ?? null;
+
         try {
-            return app(RequestStockAdjustment::class)((int) $data['inventory_item_id'], (int) $data['inventory_location_id'], $data['inventory_batch_id'] ?? null, (string) $data['quantity'], $data['reason']);
+            return $requestAdjustment((int) $data['inventory_item_id'], (int) $data['inventory_location_id'], $batchId === null || $batchId === '' ? null : (int) $batchId, (string) $data['quantity'], $data['reason']);
         } catch (DomainException $e) {
             $this->failWith($e);
         }

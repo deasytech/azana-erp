@@ -8,6 +8,7 @@ use App\Domain\System\Actions\NextNumber;
 use App\Domain\System\Exceptions\DomainException;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -48,6 +49,14 @@ class RecordSupplierInvoice
                 throw new DomainException("The invoice is for more than has been received and not yet invoiced ({$open} minor units).", 'invoice_exceeds_receipts');
             }
 
+            return $this->store($order, $number, $invoiceDate, $subtotalMinor, $taxMinor, $notes, $actor);
+        });
+    }
+
+    /** Creates the invoice, turning a race on the (supplier, invoice number) unique index into the usual error. */
+    private function store(PurchaseOrder $order, string $number, CarbonInterface $invoiceDate, int $subtotalMinor, int $taxMinor, ?string $notes, ?User $actor): SupplierInvoice
+    {
+        try {
             return SupplierInvoice::create([
                 'number' => sprintf('SI-%06d', ($this->nextNumber)('supplier_invoice')),
                 'supplier_id' => $order->supplier_id,
@@ -61,6 +70,22 @@ class RecordSupplierInvoice
                 'notes' => $notes,
                 'created_by' => ($actor ?? Auth::user())?->getKey(),
             ]);
-        });
+        } catch (UniqueConstraintViolationException $e) {
+            if (! $this->isDuplicateInvoiceViolation($e)) {
+                throw $e;
+            }
+
+            throw new DomainException("Invoice {$number} from this supplier has already been recorded.", 'duplicate_invoice');
+        }
+    }
+
+    /** Whether the violated unique index is the composite one over supplier_id and invoice_number. */
+    private function isDuplicateInvoiceViolation(UniqueConstraintViolationException $e): bool
+    {
+        if (in_array('supplier_id', $e->columns, true) && in_array('invoice_number', $e->columns, true)) {
+            return true;
+        }
+
+        return $e->index !== null && str_contains($e->index, 'supplier_id') && str_contains($e->index, 'invoice_number');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Domain\Procurement\Actions;
 use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Procurement\Concerns\ChecksProcurementApproval;
 use App\Domain\Procurement\Models\PurchaseOrder;
+use App\Domain\Procurement\Models\PurchaseRequest;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\PurchaseOrderStatus as Status;
 use App\Enums\PurchaseRequestStatus;
@@ -92,8 +93,32 @@ class DecidePurchaseOrder
         in_array($order->status, $allowed, true) || throw new DomainException($message, 'order_state');
     }
 
+    /**
+     * Marks the linked request approved again so it can be ordered once more, but only when this order is what
+     * put it in the ordered state and no other order for it is still live. The request is locked so two orders
+     * falling through at once cannot both release it.
+     */
     private function releaseRequest(PurchaseOrder $order): void
     {
-        $order->request?->update(['status' => PurchaseRequestStatus::Approved]);
+        if ($order->purchase_request_id === null) {
+            return;
+        }
+
+        $request = PurchaseRequest::lockForUpdate()->find($order->purchase_request_id);
+
+        if ($request === null || $request->status !== PurchaseRequestStatus::Ordered) {
+            return;
+        }
+
+        $otherLiveOrderExists = PurchaseOrder::where('purchase_request_id', $request->id)
+            ->whereKeyNot($order->id)
+            ->whereIn('status', [Status::Draft, Status::PendingApproval, Status::Approved, Status::PartiallyReceived, Status::Received])
+            ->exists();
+
+        if ($otherLiveOrderExists) {
+            return;
+        }
+
+        $request->update(['status' => PurchaseRequestStatus::Approved]);
     }
 }

@@ -71,7 +71,11 @@ class LinesRelationManager extends RelationManager
                         TextInput::make('counted_quantity')->numeric()->minValue(0)->step(0.001)->required(),
                         Textarea::make('reason')->required(),
                     ])
-                    ->action(fn (array $data, Action $action) => $this->record($action, (int) $data['inventory_item_id'], $data['inventory_batch_id'] ?? null, $data)),
+                    ->action(function (array $data, Action $action) {
+                        $batchId = $data['inventory_batch_id'] ?? null;
+
+                        $this->record($action, (int) $data['inventory_item_id'], $batchId === null || $batchId === '' ? null : (int) $batchId, $data);
+                    }),
             ])
             ->recordActions([
                 Action::make('count')->label('Enter count')->icon('heroicon-o-pencil-square')->visible(fn () => $this->editable())

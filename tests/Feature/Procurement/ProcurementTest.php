@@ -11,6 +11,7 @@ use App\Domain\Procurement\Actions\DecidePurchaseRequest;
 use App\Domain\Procurement\Actions\DecideSupplierPayment;
 use App\Domain\Procurement\Actions\GetPurchaseTrace;
 use App\Domain\Procurement\Actions\GetSupplierBalances;
+use App\Domain\Procurement\Actions\ReceiveGoods;
 use App\Domain\Procurement\Actions\RecordSupplierInvoice;
 use App\Domain\Procurement\Actions\RecordSupplierPayment;
 use App\Domain\Procurement\Actions\VoidGoodsReceipt;
@@ -159,6 +160,28 @@ describe('purchase orders', function () {
         expect($order->fresh()->status)->toBe(PO::Rejected)->and($request->fresh()->status)->toBe(PR::Approved);
     });
 
+    it('does not release a request while another live order for it stands', function () {
+        $request = approvedRequest($this->clerk, $this->manager);
+        $order = app(CreatePurchaseOrder::class)(supplier(), [['inventory_item_id' => stockItem()->id, 'quantity' => '100', 'unit_cost_minor' => 35000]], now()->startOfDay(), null, null, $request);
+        app(DecidePurchaseOrder::class)->submit($order);
+
+        // A second live order against the same request, as could only otherwise happen concurrently.
+        PurchaseOrder::create([
+            'number' => 'PO-EXTRA',
+            'supplier_id' => $order->supplier_id,
+            'purchase_request_id' => $request->id,
+            'status' => PO::Approved,
+            'ordered_on' => now()->toDateString(),
+            'payment_terms_days' => 30,
+            'currency_code' => 'NGN',
+            'total_minor' => 1000,
+        ]);
+
+        app(DecidePurchaseOrder::class)->reject($order, $this->manager, 'Too dear');
+
+        expect($order->fresh()->status)->toBe(PO::Rejected)->and($request->fresh()->status)->toBe(PR::Ordered);
+    });
+
     it('cannot be cancelled once goods have arrived', function () {
         $order = purchaseOrder();
         receiveGoods($order, ['10']);
@@ -210,6 +233,16 @@ describe('goods receipts', function () {
         app(ResolveSettings::class)->set('procurement.over_receipt_tolerance_percent', 5);
         expect(receiveGoods($order, ['105'])->lines)->toHaveCount(1);
         expect(fn () => receiveGoods($order->fresh(), ['0.001']))->toThrow(DomainException::class, 'approved order');
+    });
+
+    it('rejects a received quantity that is not a number', function () {
+        $order = purchaseOrder();
+
+        expect(fn () => app(ReceiveGoods::class)($order, store(), now()->startOfDay(), [
+            ['purchase_order_line_id' => $order->lines->first()->id, 'quantity' => ['10']],
+        ]))->toThrow(DomainException::class, 'positive number');
+
+        expect(GoodsReceipt::count())->toBe(0);
     });
 
     it('only receives against approved orders and rolls back if a line fails', function () {
