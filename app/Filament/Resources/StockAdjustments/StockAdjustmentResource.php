@@ -42,7 +42,7 @@ class StockAdjustmentResource extends Resource
         return $schema->components([
             StockForms::item(),
             StockForms::store(),
-            StockForms::batch(),
+            StockForms::batch(required: true),
             TextInput::make('quantity')->numeric()->step(0.001)->required()->rule('not_in:0')
                 ->helperText('Positive adds stock, negative removes it.'),
             Textarea::make('reason')->required()->columnSpanFull(),

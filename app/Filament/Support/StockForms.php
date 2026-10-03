@@ -22,11 +22,15 @@ class StockForms
             ->options(fn () => InventoryLocation::where('is_active', true)->orderBy('name')->pluck('name', 'id'));
     }
 
-    /** Batches of the item chosen in the form, soonest expiry first. */
-    public static function batch(string $field = 'inventory_batch_id', string $itemField = 'inventory_item_id'): Select
+    /**
+     * Batches of the item chosen in the form, soonest expiry first. Shown only for batch-tracked items.
+     * $required: the batch must be named (corrections, found stock); otherwise leaving it empty means "soonest expiry first".
+     */
+    public static function batch(string $field = 'inventory_batch_id', string $itemField = 'inventory_item_id', bool $required = false): Select
     {
         return Select::make($field)->label('Batch')->searchable()
             ->visible(fn ($get) => static::tracksBatches($get($itemField)))
+            ->required(fn ($get) => $required && static::tracksBatches($get($itemField)))
             ->options(fn ($get) => InventoryBatch::where('inventory_item_id', $get($itemField))->where('is_active', true)
                 ->orderByRaw('expiry_date is null')->orderBy('expiry_date')->get()
                 ->mapWithKeys(fn ($b) => [$b->id => $b->batch_number.($b->expiry_date ? ' (expires '.$b->expiry_date->format('d M Y').')' : '')])->all());

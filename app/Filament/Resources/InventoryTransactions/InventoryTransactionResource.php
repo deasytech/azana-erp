@@ -36,6 +36,17 @@ class InventoryTransactionResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
+    /** Lines posted by these documents are undone by voiding the document (a goods receipt, a feed record), not here. */
+    private const DOCUMENT_SOURCES = ['goods_receipt', 'production_batch', 'animal'];
+
+    /** Reverses a line together with everything posted with it, so a transfer is never left half undone. */
+    private static function reverse(InventoryTransaction $record, string $reason): void
+    {
+        $reverse = app(ReverseInventoryTransaction::class);
+
+        $record->group_uuid ? $reverse->group($record->group_uuid, $reason) : $reverse($record, $reason);
+    }
+
     public static function canCreate(): bool
     {
         return false;
@@ -68,11 +79,13 @@ class InventoryTransactionResource extends Resource
             ])
             ->recordActions([
                 Action::make('reverse')->label('Reverse')->color('danger')->requiresConfirmation()
-                    ->modalDescription('Adds an opposite line to the ledger. The original stays on record.')
-                    ->visible(fn (InventoryTransaction $r) => $r->reverses_id === null && $r->reversal === null && auth()->user()->can('update', $r))
+                    ->modalDescription(fn (InventoryTransaction $r) => $r->group_uuid && InventoryTransaction::where('group_uuid', $r->group_uuid)->count() > 1
+                        ? 'Adds opposite lines for every line posted together with this one (for example both sides of a transfer). The originals stay on record.'
+                        : 'Adds an opposite line to the ledger. The original stays on record.')
+                    ->visible(fn (InventoryTransaction $r) => $r->reverses_id === null && $r->reversal === null && ! in_array($r->source_type, self::DOCUMENT_SOURCES, true) && auth()->user()->can('update', $r))
                     ->schema([Textarea::make('reason')->required()])
                     ->action(fn (InventoryTransaction $record, array $data, Action $action) => DomainAction::run(
-                        fn () => app(ReverseInventoryTransaction::class)($record, $data['reason']), $action, 'Transaction reversed')),
+                        fn () => static::reverse($record, $data['reason']), $action, 'Transaction reversed')),
             ])
             ->defaultSort('id', 'desc');
     }

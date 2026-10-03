@@ -4,6 +4,7 @@ use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Inventory\Actions\GetStockLevels;
 use App\Domain\Inventory\Actions\RequestStockAdjustment;
 use App\Domain\Inventory\Actions\StartStockCount;
+use App\Domain\Inventory\Actions\TransferStock;
 use App\Domain\Inventory\Models\InventoryBatch;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryTransaction;
@@ -145,6 +146,43 @@ it('lists the ledger and reverses a line from it', function () {
     Livewire::test(ListInventoryTransactions::class)->assertActionHidden(TestAction::make('reverse')->table($line));
 });
 
+it('reverses both sides of a transfer together, or neither', function () {
+    $this->actingAs(owner());
+    $item = stockItem('MAIZE');
+    receiveStock($item, '100', 100, store('MAIN'));
+    $legs = app(TransferStock::class)($item, store('MAIN'), store('SILO'), '40', now()->startOfDay());
+    $out = $legs->first(fn ($l) => $l->type === T::TransferOut);
+    $in = $legs->first(fn ($l) => $l->type === T::TransferIn);
+
+    // The silo stock is used, so the transfer can no longer be undone: nothing at all is reversed.
+    issueStock($item, '30', store('SILO'));
+    Livewire::test(ListInventoryTransactions::class)
+        ->callAction(TestAction::make('reverse')->table($out), ['reason' => 'Mistake'])->assertNotified('Not saved');
+    expect(InventoryTransaction::whereNotNull('reverses_id')->count())->toBe(0);
+
+    // A transfer nothing has touched is undone on both sides at once.
+    $soya = stockItem('SOYA');
+    receiveStock($soya, '50', 200, store('MAIN'));
+    $legs = app(TransferStock::class)($soya, store('MAIN'), store('SILO'), '20', now()->startOfDay());
+    $out = $legs->first(fn ($l) => $l->type === T::TransferOut);
+    $in = $legs->first(fn ($l) => $l->type === T::TransferIn);
+
+    Livewire::test(ListInventoryTransactions::class)
+        ->callAction(TestAction::make('reverse')->table($out), ['reason' => 'Mistake'])->assertNotified('Transaction reversed');
+
+    expect(InventoryTransaction::whereIn('reverses_id', [$out->id, $in->id])->count())->toBe(2)
+        ->and(app(GetStockLevels::class)->total($soya->id))->toBe('50.000')
+        ->and(app(GetStockLevels::class)(itemId: $soya->id, locationId: store('SILO')->id))->toBeEmpty();
+    Livewire::test(ListInventoryTransactions::class)->assertActionHidden(TestAction::make('reverse')->table($in));
+});
+
+it('does not offer reversing a line that a goods receipt or feed record owns', function () {
+    $this->actingAs(owner());
+    $line = receiveStock(stockItem('MAIZE'), '10', 100, details: ['source_type' => 'goods_receipt', 'source_id' => 1]);
+
+    Livewire::test(ListInventoryTransactions::class)->assertActionHidden(TestAction::make('reverse')->table($line));
+});
+
 it('walks a count from start to approval and posts the variance', function () {
     $counter = userWithRole('Store Officer');
     $manager = userWithRole('Farm Manager');
@@ -223,6 +261,12 @@ it('requests and decides adjustments from the list', function () {
     Livewire::test(CreateStockAdjustment::class)
         ->fillForm(['inventory_item_id' => $maize->id, 'inventory_location_id' => store()->id, 'quantity' => '0', 'reason' => 'x'])
         ->call('create')->assertHasFormErrors(['quantity']);
+
+    // A batch-tracked item must name its batch, and the form says so before anything is saved.
+    $vaccine = stockItem('VAC', ['tracks_batches' => true]);
+    Livewire::test(CreateStockAdjustment::class)
+        ->fillForm(['inventory_item_id' => $vaccine->id, 'inventory_location_id' => store()->id, 'quantity' => '-1', 'reason' => 'Broken'])
+        ->call('create')->assertHasFormErrors(['inventory_batch_id' => 'required']);
 });
 
 it('blocks and unblocks a batch', function () {

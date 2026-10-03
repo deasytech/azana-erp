@@ -67,7 +67,7 @@ class LinesRelationManager extends RelationManager
                 Action::make('found')->label('Add stock found')->icon('heroicon-o-plus')->visible(fn () => $this->editable())
                     ->schema([
                         StockForms::item(),
-                        StockForms::batch(),
+                        StockForms::batch(required: true),
                         TextInput::make('counted_quantity')->numeric()->minValue(0)->step(0.001)->required(),
                         Textarea::make('reason')->required(),
                     ])

@@ -47,24 +47,31 @@ class ViewStockCount extends ViewRecord
     #[On('stock-count-changed')]
     public function refreshCount(): void
     {
-        $this->record->refresh();
+        $this->stockCount()->refresh();
+    }
+
+    private function stockCount(): StockCount
+    {
+        assert($this->record instanceof StockCount);
+
+        return $this->record;
     }
 
     protected function getHeaderActions(): array
     {
-        $is = fn (StockCountStatus $status) => fn () => $this->record->status === $status;
+        $is = fn (StockCountStatus $status) => fn () => $this->stockCount()->status === $status;
 
         return [
             $this->step('submit', 'Submit for approval', 'heroicon-o-paper-airplane', 'Count submitted',
-                fn () => app(SubmitStockCount::class)($this->record), fn () => $is(StockCountStatus::Draft)() && auth()->user()->can('create', StockCount::class)),
+                fn () => app(SubmitStockCount::class)($this->stockCount()), fn () => $is(StockCountStatus::Draft)() && auth()->user()->can('create', StockCount::class)),
             $this->step('approve', 'Approve', 'heroicon-o-check-circle', 'Count approved and stock adjusted',
-                fn (array $d) => app(ApproveStockCount::class)($this->record, auth()->user(), $d['notes'] ?? null),
-                fn () => $is(StockCountStatus::Submitted)() && auth()->user()->can('approve', $this->record), [Textarea::make('notes')], 'success'),
+                fn (array $d) => app(ApproveStockCount::class)($this->stockCount(), auth()->user(), $d['notes'] ?? null),
+                fn () => $is(StockCountStatus::Submitted)() && auth()->user()->can('approve', $this->stockCount()), [Textarea::make('notes')], 'success'),
             $this->step('reject', 'Reject', 'heroicon-o-x-circle', 'Count rejected',
-                fn (array $d) => app(RejectStockCount::class)($this->record, auth()->user(), $d['reason']),
-                fn () => $is(StockCountStatus::Submitted)() && auth()->user()->can('approve', $this->record), [Textarea::make('reason')->required()], 'danger'),
+                fn (array $d) => app(RejectStockCount::class)($this->stockCount(), auth()->user(), $d['reason']),
+                fn () => $is(StockCountStatus::Submitted)() && auth()->user()->can('approve', $this->stockCount()), [Textarea::make('reason')->required()], 'danger'),
             $this->step('cancel', 'Cancel count', 'heroicon-o-trash', 'Count cancelled',
-                fn () => app(CancelStockCount::class)($this->record), fn () => $is(StockCountStatus::Draft)() && auth()->user()->can('create', StockCount::class), [], 'gray'),
+                fn () => app(CancelStockCount::class)($this->stockCount()), fn () => $is(StockCountStatus::Draft)() && auth()->user()->can('create', StockCount::class), [], 'gray'),
         ];
     }
 
@@ -75,7 +82,7 @@ class ViewStockCount extends ViewRecord
             ->visible($visible)->schema($schema)
             ->action(function (array $data, Action $action) use ($run, $done) {
                 $this->attempt(fn () => $run($data), $action);
-                $this->record->refresh();
+                $this->stockCount()->refresh();
                 $this->dispatch('stock-count-changed');
                 Notification::make()->title($done)->success()->send();
             });
