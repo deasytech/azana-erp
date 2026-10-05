@@ -45,9 +45,13 @@ class ManageFeedFormulaVersions
     {
         return DB::transaction(function () use ($formula, $actor) {
             $source = FeedFormula::with('items')->findOrFail($formula->id);
-            $latest = (int) FeedFormula::where('code', $source->code)->lockForUpdate()->max('version');
 
-            if (FeedFormula::where('code', $source->code)->where('status', FormulaStatus::Draft)->exists()) {
+            // Lock every version of this code (an aggregate cannot take FOR UPDATE on all databases), so two people
+            // starting a new version at once take turns; the unique (code, version) index backs this up.
+            $versions = FeedFormula::where('code', $source->code)->lockForUpdate()->get(['id', 'version', 'status']);
+            $latest = (int) $versions->max('version');
+
+            if ($versions->contains(fn (FeedFormula $v) => $v->status === FormulaStatus::Draft)) {
                 throw new DomainException('This formula already has a draft version; finish or delete it first.', 'draft_exists');
             }
 

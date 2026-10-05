@@ -92,6 +92,16 @@ describe('formulas', function () {
         expect(fn () => $versions->retire($v2))->toThrow(DomainException::class, 'active');
     });
 
+    it('numbers a new version after the latest one, whichever version it is copied from', function () {
+        $versions = app(ManageFeedFormulaVersions::class);
+        $v1 = millFixture()['formula'];
+        $v2 = $versions->activate($versions->newVersion($v1));
+
+        $v3 = $versions->newVersion($v1->fresh());   // copied from the old, retired version
+
+        expect($v2->version)->toBe(2)->and($v3->version)->toBe(3)->and($v3->items)->toHaveCount(3)->and($v3->code)->toBe($v1->code);
+    });
+
     it('cannot be activated without a stock item for its finished feed', function () {
         $formula = app(SaveFeedFormula::class)(formulaData());
 
