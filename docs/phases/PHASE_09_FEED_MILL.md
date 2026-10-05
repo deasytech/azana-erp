@@ -17,8 +17,8 @@ Implement feed manufacturing as a production system.
 - Inventory integration.
 
 ## Acceptance Criteria
-- [ ] Nutritionist can configure formulas.
-- [ ] Production order calculates expected material requirements.
-- [ ] Completion consumes raw materials.
-- [ ] Completion creates finished-feed stock.
-- [ ] Production cost is calculated.
+- [x] Nutritionist can configure formulas.
+- [x] Production order calculates expected material requirements.
+- [x] Completion consumes raw materials.
+- [x] Completion creates finished-feed stock.
+- [x] Production cost is calculated.
