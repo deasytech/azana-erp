@@ -23,6 +23,6 @@ class FeedType extends Model
 
     public function isInUse(): bool
     {
-        return FeedConsumptionRecord::where('feed_type_id', $this->id)->exists();
+        return FeedConsumptionRecord::where('feed_type_id', $this->id)->exists() || FeedFormula::where('feed_type_id', $this->id)->exists();
     }
 }

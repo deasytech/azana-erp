@@ -21,6 +21,8 @@ use App\Policies\BiosecurityMasterPolicy;
 use App\Policies\BiosecurityPolicy;
 use App\Policies\BreedingPolicy;
 use App\Policies\FarmStructurePolicy;
+use App\Policies\FeedMillMasterPolicy;
+use App\Policies\FeedMillPolicy;
 use App\Policies\HealthMasterPolicy;
 use App\Policies\HealthPolicy;
 use App\Policies\InventoryMasterPolicy;
@@ -78,6 +80,10 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, ProductionPolicy::class);
         }
         Gate::policy(FD\FeedType::class, ProductionMasterPolicy::class);
+        Gate::policy(FD\FeedFormula::class, FeedMillMasterPolicy::class);
+        foreach ([FD\FeedFormulaItem::class, FD\FeedProductionOrder::class, FD\FeedProductionOrderLine::class, FD\FeedProductionBatch::class] as $model) {
+            Gate::policy($model, FeedMillPolicy::class);
+        }
         foreach ([I\InventoryTransaction::class, I\StockCount::class, I\StockCountLine::class, I\StockAdjustment::class] as $model) {
             Gate::policy($model, InventoryPolicy::class);
         }

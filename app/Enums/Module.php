@@ -23,6 +23,7 @@ enum Module: string
     case Production = 'production';
     case Inventory = 'inventory';
     case Procurement = 'procurement';
+    case FeedMill = 'feed-mill';
 
     public function label(): string
     {
@@ -42,6 +43,7 @@ enum Module: string
             self::Production => 'Growers & finishers',
             self::Inventory => 'Inventory & stores',
             self::Procurement => 'Purchasing & suppliers',
+            self::FeedMill => 'Feed mill',
         };
     }
 

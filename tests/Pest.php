@@ -10,8 +10,16 @@ use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
 use App\Domain\Farm\Models\ProductionUnit;
 use App\Domain\Farm\Models\UnitOfMeasure;
+use App\Domain\Feed\Actions\CompleteFeedProduction;
+use App\Domain\Feed\Actions\ConfirmFeedConsumption;
+use App\Domain\Feed\Actions\CreateFeedProductionOrder;
+use App\Domain\Feed\Actions\ManageFeedFormulaVersions;
 use App\Domain\Feed\Actions\RecordFeedConsumption;
+use App\Domain\Feed\Actions\SaveFeedFormula;
 use App\Domain\Feed\Models\FeedConsumptionRecord;
+use App\Domain\Feed\Models\FeedFormula;
+use App\Domain\Feed\Models\FeedProductionBatch;
+use App\Domain\Feed\Models\FeedProductionOrder;
 use App\Domain\Feed\Models\FeedType;
 use App\Domain\Health\Actions\RecordTreatment;
 use App\Domain\Health\Models\Medicine;
@@ -302,4 +310,52 @@ function approvedRequest($clerk, $manager)
     $decide->submit($request);
 
     return $decide->approve($request, $manager);
+}
+
+/**
+ * A feed mill ready to work: raw stock in the RAW store (1000 kg maize @350.00, 500 kg soya @900.00, 200 kg premix
+ *
+ * @2000.00 in batch PX-1), a stock item for finished grower meal (tracks expiry) and an active formula of
+ * 60% maize / 30% soya / 10% premix with 2% process loss.
+ *
+ * @return array{maize: InventoryItem, soya: InventoryItem, premix: InventoryItem, finished: InventoryItem, raw: InventoryLocation, out: InventoryLocation, formula: FeedFormula}
+ */
+function millFixture(): array
+{
+    $maize = stockItem('MAIZE');
+    $soya = stockItem('SOYA');
+    $premix = stockItem('PREMIX', ['tracks_batches' => true]);
+    $finished = stockItem('GROWER-MEAL', ['category' => InventoryCategory::FinishedFeed, 'feed_type_id' => growerFeed()->id, 'tracks_expiry' => true]);
+    $raw = store('RAW');
+
+    receiveStock($maize, '1000', 35000, $raw, 5);
+    receiveStock($soya, '500', 90000, $raw, 5);
+    receiveStock($premix, '200', 200000, $raw, 5, ['batch_number' => 'PX-1', 'supplier_id' => supplier()->id]);
+
+    $formula = app(SaveFeedFormula::class)([
+        'code' => 'grower-std', 'name' => 'Grower standard', 'feed_type_id' => growerFeed()->id, 'process_loss_percent' => '2',
+        'crude_protein_percent' => '16.5', 'energy_kcal_per_kg' => '3100',
+        'items' => [
+            ['inventory_item_id' => $maize->id, 'inclusion_percent' => '60'],
+            ['inventory_item_id' => $soya->id, 'inclusion_percent' => '30'],
+            ['inventory_item_id' => $premix->id, 'inclusion_percent' => '10'],
+        ],
+    ]);
+
+    return ['maize' => $maize, 'soya' => $soya, 'premix' => $premix, 'finished' => $finished, 'raw' => $raw, 'out' => store('FINISHED'),
+        'formula' => app(ManageFeedFormulaVersions::class)->activate($formula)];
+}
+
+function plannedFeedOrder(array $mill, string $outputKg = '1000'): FeedProductionOrder
+{
+    return app(CreateFeedProductionOrder::class)($mill['formula'], $outputKg, now()->startOfDay(), $mill['raw'], $mill['out']);
+}
+
+/** Order for 1000 kg, materials confirmed as planned, completed with 990 kg made and 10,000.00 of other costs. */
+function completedFeedRun(array $mill): FeedProductionBatch
+{
+    $order = plannedFeedOrder($mill);
+    app(ConfirmFeedConsumption::class)->asPlanned($order);
+
+    return app(CompleteFeedProduction::class)($order, '990', now()->startOfDay(), 1000000);
 }

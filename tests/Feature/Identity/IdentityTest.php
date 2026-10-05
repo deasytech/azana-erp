@@ -26,8 +26,8 @@ beforeEach(function () {
     Filament::setCurrentPanel('admin');
 });
 
-it('seeds all twelve required roles', function () {
-    expect(Role::pluck('name'))->toHaveCount(12)
+it('seeds the required roles (the twelve from the brief plus the nutritionist)', function () {
+    expect(Role::pluck('name'))->toHaveCount(13)
         ->toContain('Owner/Director', 'Veterinarian', 'Farm Worker', 'Accountant');
 });
 
@@ -313,5 +313,5 @@ it('can seed demo users repeatedly', function () {
     $this->seed();
     $this->seed();
 
-    expect(User::where('email', 'like', '%@azana.test')->count())->toBe(12);
+    expect(User::where('email', 'like', '%@azana.test')->count())->toBe(13);
 });
