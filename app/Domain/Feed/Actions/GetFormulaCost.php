@@ -37,7 +37,7 @@ class GetFormulaCost
             $total = bcadd($total, $cost, 10);
             $lines[] = [
                 'item' => $line->item->name,
-                'kg_per_tonne' => bcmul($kg, '1000', 3),
+                'kg_per_tonne' => Ratio::average(bcmul($kg, '1000', 10), '1', 3),
                 'unit_cost_minor' => $unitCost,
                 'cost_per_kg_minor' => Ratio::average($cost, '1', 2),
             ];

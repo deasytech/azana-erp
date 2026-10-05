@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 09 - Feed Formulation and Feed Mill Manufacturing (not started)
+Phase 10 - Semen Production, Laboratory QC and Semen Inventory (not started)
 
 ## Completed
 
@@ -186,6 +186,28 @@ Phase 09 - Feed Formulation and Feed Mill Manufacturing (not started)
   - Payments record the money out only; posting to the finance ledger is Phase 14. Money is shown in the first farm's currency.
   - Lines owned by a goods receipt or a feed record cannot be reversed from the ledger screen; void the document instead.
   - Phase 09 production posts to the ledger as `production` (finished feed) and `consumption` (raw materials) through the same actions.
+
+### Phase 09 - Feed Formulation and Feed Mill (2026-10-05)
+- Delivery: two stacked PRs - domain (#22) and UI, tests and docs (`phase-09-ui`).
+- Tests: `vendor/bin/pest` - 390 passed (added `tests/Feature/Feed/FeedMillTest.php` and `FeedMillUiTest.php`; helpers `millFixture`, `plannedFeedOrder`, `completedFeedRun`, `approvedRequest` in `tests/Pest.php`). The worked run below was calculated by hand and is asserted in the tests.
+- Package changes: none.
+- What was done:
+  - Schema (1 migration): `feed_formulas`, `feed_formula_items`, `feed_production_orders`, `feed_production_order_lines`, `feed_production_batches`. Code in `app/Domain/Feed`. Feed types already existed (Phase 07).
+  - **Formulas:** a recipe for one feed type - ingredients are stock items given as a percentage of the mix, an expected process loss, and an optional nutritional specification (crude protein, fibre, fat, calcium, phosphorus, lysine, energy; targets typed in by the nutritionist, not calculated). A draft can be saved while the ingredients do not yet add up to 100%; activation needs exactly 100%, active ingredients and a stock item for the finished feed (a stock item linked to the feed type). Active formulas never change: a new version is copied into a draft, and activating it retires the previous active version of that code. New versions are serialized by locking the code's rows.
+  - **Cost:** `GetFormulaCost` prices a formula at today's ingredient costs (what is on hand, else the last receipt): per kg of finished feed (allowing for process loss), per bag (`feed.bag_weight_kg`, default 25) and per tonne, and names ingredients with no cost yet.
+  - **Production orders:** `FM-000123`. Planned from an active formula for an amount of finished feed, a source store and an output store; the materials needed (output / (1 - loss), times each inclusion, in each ingredient's own unit) are calculated and kept on the order, so later formula changes never alter it. The order shows what the source store lacks. Production staff confirm what was actually used (or use the planned quantities) before completing.
+  - **Completion** (`CompleteFeedProduction`, all or nothing in one transaction): the confirmed materials are taken out of the source store through the inventory ledger (valued by it, batches closest to expiry first), the finished feed is received into the output store as a new batch (order number or a chosen batch number, expiry from `feed.finished_feed_shelf_life_days` if the item expires) at the production cost, and the cost is worked out: materials + other costs, per kg of feed actually made. All ledger lines of the run share one group id with the order as their source, so a feed record -> finished batch -> run -> raw-material batch -> supplier is traceable. Domain event `FeedProductionCompleted`.
+  - Worked run (tested): 1,000 kg at 2% loss from 60/30/10 maize/soya/premix needs 612.245 / 306.122 / 102.041 kg; with maize 350.00, soya 900.00 and premix 2,000.00 per kg the materials cost 693,877.55, other costs 10,000.00, total 703,877.55 over 990 kg made = 710.99 per kg; a 100 kg feed record taken from that batch costs 71,098.74 (rounded to whole minor units).
+  - A planned order can be cancelled; a completed run can be reversed (the finished feed leaves stock, the materials return at the cost they left with), refused when any of the finished feed has been used.
+  - Admin UI (Feed mill group): Formulas (create/edit drafts with an ingredient list and running total; view with nutrition, cost per kg/bag/tonne and ingredient table; activate, retire, new version), Production orders (create; view with materials against stock, confirm quantities, use planned, complete, cancel, reverse) and Finished batches (cost per kg of every run).
+  - Permissions: new `feed-mill` module and a new **Nutritionist** role (formulas: view/create/edit, no approve). Feed Mill Manager, General and Farm Manager have everything except delete; Store Officer, Accountant and Sales Officer can view. Reversing a run needs `feed-mill.approve`. Formulas are deletable only while an unused draft.
+- Migration notes: 1 new reversible migration, 2 new farm settings (bag weight, finished-feed shelf life), the Nutritionist role (existing databases get it on the next role seed).
+- Known issues / notes:
+  - Activating a formula needs `feed-mill.edit`, so a nutritionist can activate their own formulas; make activation approval-only if a second pair of eyes is wanted.
+  - Nutritional values are targets; there is no ingredient analysis table to calculate them from yet.
+  - Other production costs (labour, power, bags) are one amount typed at completion; Phase 14 costing may break them down.
+  - A production run uses one source store and one output store; multi-store mixing is not modelled.
+  - Formula cost uses the current ingredient cost, which can differ from what a run later costs under FIFO; the finished batch always carries the real ledger cost.
 
 ## In Progress
 None
