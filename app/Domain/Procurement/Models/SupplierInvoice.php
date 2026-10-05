@@ -65,6 +65,12 @@ class SupplierInvoice extends Model
     /** Minor units paid so far (payments that are paid and not voided). */
     public function paidMinor(): int
     {
+        if ($this->relationLoaded('payments')) {
+            return (int) $this->payments
+                ->filter(fn (SupplierPayment $payment) => $payment->status === PaymentStatus::Paid)
+                ->sum('amount_minor');
+        }
+
         return (int) $this->payments()->where('status', PaymentStatus::Paid)->sum('amount_minor');
     }
 

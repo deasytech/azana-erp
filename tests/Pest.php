@@ -23,7 +23,9 @@ use App\Domain\Inventory\Models\InventoryLocation;
 use App\Domain\Inventory\Models\InventoryTransaction;
 use App\Domain\Litter\Models\Litter;
 use App\Domain\Procurement\Actions\CreatePurchaseOrder;
+use App\Domain\Procurement\Actions\CreatePurchaseRequest;
 use App\Domain\Procurement\Actions\DecidePurchaseOrder;
+use App\Domain\Procurement\Actions\DecidePurchaseRequest;
 use App\Domain\Procurement\Actions\ReceiveGoods;
 use App\Domain\Procurement\Models\GoodsReceipt;
 use App\Domain\Procurement\Models\PurchaseOrder;
@@ -288,4 +290,16 @@ function receiveGoods(PurchaseOrder $order, array $quantities, ?InventoryLocatio
     $lines = $order->lines->values()->map(fn ($line, $i) => isset($quantities[$i]) ? ['purchase_order_line_id' => $line->id, 'quantity' => $quantities[$i]] + ($extra[$i] ?? []) : null)->filter()->values()->all();
 
     return app(ReceiveGoods::class)($order, $store ?? store(), now()->startOfDay(), $lines);
+}
+
+/** A purchase request raised by $clerk and approved by $manager. */
+function approvedRequest($clerk, $manager)
+{
+    $decide = app(DecidePurchaseRequest::class);
+    $request = app(CreatePurchaseRequest::class)([
+        ['inventory_item_id' => stockItem()->id, 'quantity' => '100', 'estimated_unit_cost_minor' => 35000],
+    ], now()->addDays(7), 'Running low', $clerk);
+    $decide->submit($request);
+
+    return $decide->approve($request, $manager);
 }

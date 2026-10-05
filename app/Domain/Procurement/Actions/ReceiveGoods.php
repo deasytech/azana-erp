@@ -104,7 +104,8 @@ class ReceiveGoods
         foreach ($lines as $line) {
             $orderLine = $order->lines->firstWhere('id', (int) ($line['purchase_order_line_id'] ?? 0))
                 ?? throw new DomainException('A received line does not belong to this order.', 'invalid_order_line');
-            $quantity = (string) ($line['quantity'] ?? '');
+            // Cast only scalars: an array or object would otherwise silently become the string "Array".
+            $quantity = is_scalar($line['quantity'] ?? null) ? (string) $line['quantity'] : '';
 
             if (isset($seen[$orderLine->id])) {
                 throw new DomainException('Each order line may appear only once per delivery.', 'duplicate_line');

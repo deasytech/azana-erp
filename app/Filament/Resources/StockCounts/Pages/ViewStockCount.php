@@ -8,21 +8,18 @@ use App\Domain\Inventory\Actions\RejectStockCount;
 use App\Domain\Inventory\Actions\SubmitStockCount;
 use App\Domain\Inventory\Models\StockCount;
 use App\Enums\StockCountStatus;
-use App\Filament\Concerns\NotifiesDomainErrors;
+use App\Filament\Concerns\HasWorkflowSteps;
 use App\Filament\Resources\StockCounts\StockCountResource;
-use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Livewire\Attributes\On;
 
 class ViewStockCount extends ViewRecord
 {
-    use NotifiesDomainErrors;
+    use HasWorkflowSteps;
 
     protected static string $resource = StockCountResource::class;
 
@@ -75,16 +72,9 @@ class ViewStockCount extends ViewRecord
         ];
     }
 
-    /** @param list<Component> $schema */
-    private function step(string $name, string $label, string $icon, string $done, \Closure $run, \Closure $visible, array $schema = [], string $color = 'primary'): Action
+    protected function afterStep(): void
     {
-        return Action::make($name)->label($label)->icon($icon)->color($color)->requiresConfirmation()
-            ->visible($visible)->schema($schema)
-            ->action(function (array $data, Action $action) use ($run, $done) {
-                $this->attempt(fn () => $run($data), $action);
-                $this->stockCount()->refresh();
-                $this->dispatch('stock-count-changed');
-                Notification::make()->title($done)->success()->send();
-            });
+        $this->stockCount()->refresh();
+        $this->dispatch('stock-count-changed');
     }
 }
