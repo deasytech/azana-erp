@@ -23,6 +23,8 @@ final class SettingDefinitions
 
     private const PROCUREMENT = 'Purchasing';
 
+    private const FEED_MILL = 'Feed mill';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -52,6 +54,8 @@ final class SettingDefinitions
             new SettingDefinition('procurement.payment_approval_threshold_minor', self::PROCUREMENT, 'Supplier payments above this need approval (minor units)', 'int', '100000000', 'Default is 1,000,000.00 in the farm currency.'),
             new SettingDefinition('procurement.over_receipt_tolerance_percent', self::PROCUREMENT, 'Over-receipt tolerance (%)', 'decimal', '0', 'How far above the ordered quantity a delivery may be received.'),
             new SettingDefinition('procurement.require_separate_approver', self::PROCUREMENT, 'Approver must differ from requester', 'bool', '1', 'Requests, orders and large payments cannot be approved by the person who raised them.'),
+            new SettingDefinition('feed.bag_weight_kg', self::FEED_MILL, 'Feed bag weight (kg)', 'decimal', '25', 'Used to show the cost of a bag of feed.'),
+            new SettingDefinition('feed.finished_feed_shelf_life_days', self::FEED_MILL, 'Finished feed shelf life (days)', 'int', '90', 'Expiry given to a finished-feed batch when its stock item tracks expiry.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }
