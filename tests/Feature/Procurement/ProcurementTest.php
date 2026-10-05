@@ -32,17 +32,6 @@ beforeEach(function () {
     $this->manager = userWithRole('Farm Manager');
 });
 
-function approvedRequest($clerk, $manager)
-{
-    $decide = app(DecidePurchaseRequest::class);
-    $request = app(CreatePurchaseRequest::class)([
-        ['inventory_item_id' => stockItem()->id, 'quantity' => '100', 'estimated_unit_cost_minor' => 35000],
-    ], now()->addDays(7), 'Running low', $clerk);
-    $decide->submit($request);
-
-    return $decide->approve($request, $manager);
-}
-
 describe('purchase requests', function () {
     it('goes from draft to approved only through someone else with approval rights', function () {
         $request = app(CreatePurchaseRequest::class)([['inventory_item_id' => stockItem()->id, 'quantity' => '100']], null, null, $this->clerk);

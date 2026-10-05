@@ -218,12 +218,15 @@ it('holds a large payment for approval and lets another user approve it', functi
 
     $this->actingAs($manager);
     Livewire::test(ListSupplierPayments::class)
-        ->callAction(TestAction::make('approve')->table($payment), ['notes' => 'ok'])->assertNotified('Payment approved');
+        ->callAction(TestAction::make('approve')->table($payment), ['notes' => 'Approved after phone check'])->assertNotified('Payment approved');
 
     expect($payment->fresh()->status)->toBe(PaymentStatus::Paid)->and($invoice->fresh()->balanceMinor())->toBe(0);
 
     Livewire::test(ListSupplierPayments::class)->callAction(TestAction::make('void')->table($payment->fresh()), ['reason' => 'Bounced'])->assertNotified('Payment voided');
     expect($invoice->fresh()->balanceMinor())->toBe(3500000);
+
+    // A payment that was approved and then voided shows why it was voided, not only the approval note.
+    Livewire::test(ListSupplierPayments::class)->assertSee('Voided: Bounced')->assertDontSee('Approved after phone check');
 });
 
 it('shows what each supplier is owed', function () {

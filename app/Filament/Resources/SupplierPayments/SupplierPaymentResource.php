@@ -53,7 +53,9 @@ class SupplierPaymentResource extends Resource
                         PaymentStatus::Paid => 'success', PaymentStatus::PendingApproval => 'warning', default => 'gray',
                     }),
                 TextColumn::make('createdBy.name')->label('Entered by')->placeholder('-'),
-                TextColumn::make('decidedBy.name')->label('Decided by')->placeholder('-')->description(fn (SupplierPayment $r) => $r->decision_notes ?? $r->void_reason),
+                TextColumn::make('decidedBy.name')->label('Decided by')->placeholder('-')->description(fn (SupplierPayment $r) => $r->status === PaymentStatus::Voided
+                    ? ($r->void_reason ? "Voided: {$r->void_reason}" : $r->decision_notes)
+                    : $r->decision_notes),
             ])
             ->filters([
                 SelectFilter::make('status')->options(AnimalResource::enumOptions(PaymentStatus::cases())),
