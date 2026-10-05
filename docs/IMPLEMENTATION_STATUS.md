@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 08 - Inventory Transaction Engine and Procurement (not started)
+Phase 09 - Feed Formulation and Feed Mill Manufacturing (not started)
 
 ## Completed
 
@@ -161,6 +161,31 @@ Phase 08 - Inventory Transaction Engine and Procurement (not started)
   - Money is shown in the first farm's currency (`Farm::defaultCurrency()`); older screens still assume NGN.
   - "Cost per pig" and "cost per kg gained" use the definitions above (written into the `GetBatchPerformance` comments); a finance view (Phase 14) may add others.
   - Sales and slaughter of untracked pigs (Phases 11-12) should call `RemovePigsFromBatch`; tracked animals already flow through `ChangeAnimalStatus`.
+
+### Phase 08 - Inventory Transaction Engine and Procurement (2026-10-05)
+- Delivery: four stacked PRs - inventory ledger (#14), procurement (#17), inventory UI (#18) and procurement UI with docs (`phase-08-procurement-ui`).
+- Tests: `vendor/bin/pest` - 351 passed (added `tests/Feature/Inventory/{InventoryLedgerTest,StockControlTest,InventoryUiTest}.php`, `tests/Feature/Procurement/{ProcurementTest,ProcurementUiTest}.php`; helpers `stockItem`, `store`, `receiveStock`, `issueStock`, `supplier`, `purchaseOrder`, `receiveGoods` in `tests/Pest.php`).
+- Package changes: none.
+- What was done:
+  - Schema (3 migrations): suppliers, inventory locations (stores), items, batches; the ledger (`inventory_transactions`), cost layers, stock counts and lines, stock adjustments; purchase requests/orders and lines, goods receipts and lines, supplier invoices and payments. Code in `app/Domain/Inventory`, `app/Domain/Supplier` and `app/Domain/Procurement`.
+  - **Ledger:** `PostInventoryTransaction` is the only way stock changes - one signed line per item, store and batch, never edited or deleted, stock can never go negative, idempotency keys supported. Types: opening, purchase, receipt, production, consumption, sale, transfer in/out, return, wastage, adjustment. Mistakes are undone by `ReverseInventoryTransaction` (an opposite line); a receipt can be reversed only while all of it is still held, an issue comes back at the value it left with. Domain event `InventoryTransactionPosted`.
+  - **Valuation:** each receipt keeps a cost layer; issues use FIFO (default) or weighted average, set by `inventory.valuation_method`. Values are whole minor units and the last unit taken from a layer takes all its value, so no cost is lost to rounding. Balances read from the layers, which tests check always agree with the ledger.
+  - **Batches:** items can be tracked by batch and expiry. Receiving creates the batch (supplier, expiry). Issuing without naming a batch uses the one closest to expiry first (`IssueStock`); expired stock cannot be received, consumed, sold or transferred but can be written off or corrected. Batches can be blocked (recall).
+  - `ReceiveStock`, `IssueStock`, `TransferStock` (both legs, at the cost it left with); `GetStockLevels`; `GetReorderAlerts` (item `reorder_level`); `GetExpiryAlerts` (`inventory.expiry_warning_days`).
+  - **Counts and adjustments:** a count of a store is started (system quantities snapshotted), counted line by line, submitted (every line counted, every difference explained) and approved by someone holding `inventory.approve` - by default not the person who submitted it (`inventory.require_separate_approver`) - which posts each variance as an adjustment. Manual adjustments follow the same approve/reject path. Wastage posts immediately with a reason (it is not an adjustment).
+  - **Feed from stock:** `RecordFeedConsumption` can name a store; the feed is then taken out of stock through the ledger, its cost comes from the ledger, and voiding the feed record reverses the stock (linked by `feed_consumption_records.inventory_group`). A feed type is linked to its stock item on the item.
+  - **Procurement:** purchase requests (draft, submitted, approved, rejected, ordered, cancelled); purchase orders from a request or directly, with the supplier's terms and the currency copied on, needing approval unless within `procurement.po_approval_threshold_minor` (default 0 = always); goods receipts post to the ledger at the ordered cost (batch, expiry and supplier kept), may not exceed the order plus `procurement.over_receipt_tolerance_percent`, and can be voided (reversing the stock) unless the goods were used or invoiced; supplier invoices matched to the value received and not yet invoiced (tax on top, due date from the order's terms); payments in parts, never above what is owed, with a payment above `procurement.payment_approval_threshold_minor` held for approval (it still reserves its amount). `GetPurchaseTrace` follows an order from request to payment; `GetSupplierBalances` shows owed and overdue.
+  - Admin UI - **Inventory** group: stock on hand (receive / use or write off / transfer), stock alerts, stock ledger (filters, reverse - which undoes everything posted with the line, so both sides of a transfer), stock counts, adjustments, items, stores, batches. **Purchasing** group: supplier balances, suppliers, purchase requests, purchase orders (approve, receive goods, record invoice; tabs for items, receipts, invoices and payments), goods receipts, supplier invoices, supplier payments. Feed records have a "Take from store" field.
+  - Permissions: new `inventory` and `procurement` modules (nothing deletable; items, stores, batches and suppliers only while unreferenced). General and Farm Manager everything except delete; Store Officer and Feed Mill Manager operate (no approve); Accountant purchasing without approve; Farm Worker may view/receive stock. The shared approval gate is `App\Domain\System\Actions\AssertMayDecide`.
+- Migration notes: 3 new reversible migrations. Starter stores (main, feed, veterinary) and 7 new farm settings (valuation method, expiry warning, separate approver for inventory and for purchasing, PO and payment approval limits, over-receipt tolerance).
+- Known issues / notes:
+  - Medicine and vaccine stock is not yet linked to treatments and vaccinations (a medicine's batch still holds identity and expiry only); deducting medicine used from stock is follow-up work.
+  - Weighted average is computed per item, store and batch pool; switching the valuation method later is safe (layers serve both).
+  - Counts adjust by the variance found at count time; stock used since the count must still cover a shortfall or the approval is refused.
+  - Purchase requests and orders cannot be edited once created (cancel and recreate). There is no "close order" for a part-delivered order that will not be completed.
+  - Payments record the money out only; posting to the finance ledger is Phase 14. Money is shown in the first farm's currency.
+  - Lines owned by a goods receipt or a feed record cannot be reversed from the ledger screen; void the document instead.
+  - Phase 09 production posts to the ledger as `production` (finished feed) and `consumption` (raw materials) through the same actions.
 
 ## In Progress
 None
