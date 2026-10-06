@@ -64,6 +64,7 @@ class MasterDataSeeder extends Seeder
             C::MedicineType->value => ['vaccine' => 'Vaccine', 'antibiotic' => 'Antibiotic', 'antiparasitic' => 'Antiparasitic', 'anti_inflammatory' => 'Anti-inflammatory', 'vitamin_supplement' => 'Vitamin / supplement', 'hormone' => 'Hormone', 'other' => 'Other'],
             C::MortalityCause->value => ['crushed' => 'Crushed by sow', 'scours' => 'Scours / diarrhoea', 'respiratory' => 'Respiratory disease', 'disease_other' => 'Other disease', 'starvation' => 'Starvation / weak', 'injury' => 'Injury', 'euthanised' => 'Euthanised', 'unknown' => 'Unknown'],
             C::CullReason->value => ['poor_performance' => 'Poor performance', 'reproductive_failure' => 'Reproductive failure', 'lameness' => 'Lameness', 'age' => 'Age', 'disease' => 'Disease', 'injury' => 'Injury', 'low_weight' => 'Low weight / poor growth', 'other' => 'Other'],
+            C::CustomerType->value => ['farmer' => 'Farmer', 'breeder' => 'Breeder', 'butcher' => 'Butcher / processor', 'retailer' => 'Retailer', 'institution' => 'Institution', 'individual' => 'Individual'],
             C::PriceCategory->value => ['pig' => 'Pig sales', 'semen' => 'Semen', 'meat' => 'Meat', 'feed' => 'Feed', 'other' => 'Other'],
         ];
 

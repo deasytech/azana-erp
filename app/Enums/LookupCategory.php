@@ -15,6 +15,7 @@ enum LookupCategory: string
     case MedicineType = 'medicine_type';
     case MortalityCause = 'mortality_cause';
     case CullReason = 'cull_reason';
+    case CustomerType = 'customer_type';
 
     public function label(): string
     {
@@ -29,6 +30,7 @@ enum LookupCategory: string
             self::MedicineType => 'Medicine type',
             self::MortalityCause => 'Cause of death',
             self::CullReason => 'Culling reason',
+            self::CustomerType => 'Customer type',
         };
     }
 }

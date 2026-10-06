@@ -7,6 +7,7 @@ use App\Domain\Farm\Models\FarmSetting;
 use App\Domain\Farm\Settings\SettingDefinition;
 use App\Domain\Farm\Settings\SettingDefinitions;
 use App\Domain\System\Exceptions\DomainException;
+use App\Enums\CreditEnforcement;
 use App\Enums\ValuationMethod;
 
 /**
@@ -15,6 +16,12 @@ use App\Enums\ValuationMethod;
  */
 class ResolveSettings
 {
+    /** Settings whose value must be one of an enum's cases. */
+    private const CHOICE_SETTINGS = [
+        'inventory.valuation_method' => ValuationMethod::class,
+        'sales.credit_enforcement' => CreditEnforcement::class,
+    ];
+
     public function get(string $key, ?Farm $farm = null): int|string|bool
     {
         $definition = SettingDefinitions::find($key);
@@ -59,8 +66,8 @@ class ResolveSettings
             default => true,
         };
 
-        if ($ok && $definition->key === 'inventory.valuation_method') {
-            $ok = ValuationMethod::tryFrom((string) $value) !== null;
+        if ($ok && isset(self::CHOICE_SETTINGS[$definition->key])) {
+            $ok = self::CHOICE_SETTINGS[$definition->key]::tryFrom((string) $value) !== null;
         }
 
         if (! $ok) {
