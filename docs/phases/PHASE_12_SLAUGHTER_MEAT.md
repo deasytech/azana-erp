@@ -18,8 +18,8 @@ Create the slaughter-to-meat production chain.
 - By-products/waste.
 
 ## Acceptance Criteria
-- [ ] Every slaughtered animal is traceable.
-- [ ] Carcass yield calculations work.
-- [ ] Meat batches link to source animals/batches.
-- [ ] Meat enters inventory through transactions.
-- [ ] Withdrawal/health restrictions are enforced.
+- [x] Every slaughtered animal is traceable.
+- [x] Carcass yield calculations work.
+- [x] Meat batches link to source animals/batches.
+- [x] Meat enters inventory through transactions.
+- [x] Withdrawal/health restrictions are enforced.

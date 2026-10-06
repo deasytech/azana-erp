@@ -11,8 +11,10 @@ use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Feed\Models\FeedType;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
+use App\Domain\Meat\Models\MeatProduct;
 use App\Enums\InventoryCategory;
 use App\Enums\LookupCategory as C;
+use App\Enums\MeatProductKind;
 use Illuminate\Database\Seeder;
 
 /**
@@ -29,6 +31,7 @@ class MasterDataSeeder extends Seeder
         $this->feedTypes();
         $this->inventoryLocations();
         $this->semenItems();
+        $this->meatProducts();
 
         $farm = Farm::firstOrCreate(['code' => 'IPAF'], [
             'name' => 'Integrated Princess Azana Farms',
@@ -123,7 +126,7 @@ class MasterDataSeeder extends Seeder
 
     private function inventoryLocations(): void
     {
-        foreach ([['MAIN', 'Main store'], ['FEED', 'Feed store'], ['VET', 'Veterinary store'], ['SEMEN', 'Semen laboratory store']] as [$code, $name]) {
+        foreach ([['MAIN', 'Main store'], ['FEED', 'Feed store'], ['VET', 'Veterinary store'], ['SEMEN', 'Semen laboratory store'], ['COLD1', 'Cold room 1']] as [$code, $name]) {
             InventoryLocation::firstOrCreate(['code' => $code], ['name' => $name]);
         }
     }
@@ -138,6 +141,26 @@ class MasterDataSeeder extends Seeder
                 'name' => "Semen dose - {$breed->name}", 'category' => InventoryCategory::Semen, 'unit_id' => $dose->id,
                 'tracks_batches' => true, 'tracks_expiry' => true, 'breed_id' => $breed->id,
             ]);
+        }
+    }
+
+    /** The cuts and by-products that come off a pig, each stocked in kg by batch with a use-by date. */
+    private function meatProducts(): void
+    {
+        $kg = UnitOfMeasure::firstWhere('code', 'KG');
+
+        foreach ([
+            ['CARCASS', 'Whole carcass (dressed)', MeatProductKind::WholeCarcass, 5], ['LEG', 'Leg', MeatProductKind::PrimaryCut, 5],
+            ['LOIN', 'Loin', MeatProductKind::PrimaryCut, 5], ['SHOULDER', 'Shoulder', MeatProductKind::PrimaryCut, 5],
+            ['BELLY', 'Belly', MeatProductKind::PrimaryCut, 5], ['RIBS', 'Ribs', MeatProductKind::PrimaryCut, 5],
+            ['LIVER', 'Liver', MeatProductKind::Offal, 3], ['HEAD', 'Head', MeatProductKind::ByProduct, 3],
+            ['TROTTERS', 'Trotters', MeatProductKind::ByProduct, 3], ['FAT', 'Back fat', MeatProductKind::ByProduct, 7],
+        ] as [$code, $name, $kind, $shelfLife]) {
+            $item = InventoryItem::firstOrCreate(['code' => "MEAT-{$code}"], [
+                'name' => $name, 'category' => InventoryCategory::Meat, 'unit_id' => $kg->id, 'tracks_batches' => true, 'tracks_expiry' => true,
+            ]);
+
+            MeatProduct::firstOrCreate(['code' => $code], ['name' => $name, 'kind' => $kind, 'inventory_item_id' => $item->id, 'shelf_life_days' => $shelfLife]);
         }
     }
 }
