@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('idempotency_key', 64)->nullable()->unique();
             $table->timestamp('created_at')->useCurrent();
 
-            $table->index(['inventory_item_id', 'inventory_location_id']);
+            $table->index(['inventory_item_id', 'inventory_location_id'], 'inventory_transactions_item_location_index');
             $table->index(['source_type', 'source_id']);
         });
 
