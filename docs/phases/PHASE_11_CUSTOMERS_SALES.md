@@ -20,8 +20,8 @@ Implement customer management and commercial sales.
 - Customer history.
 
 ## Acceptance Criteria
-- [ ] Credit limits are enforced/warned according to configuration.
-- [ ] Sales allocate real inventory.
-- [ ] Payments update balances.
-- [ ] Historical prices remain unchanged.
-- [ ] Semen sales retain batch-level traceability.
+- [x] Credit limits are enforced/warned according to configuration.
+- [x] Sales allocate real inventory.
+- [x] Payments update balances.
+- [x] Historical prices remain unchanged.
+- [x] Semen sales retain batch-level traceability.
