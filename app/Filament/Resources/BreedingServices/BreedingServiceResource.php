@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\BreedingServices;
 
 use App\Domain\Breeding\Models\BreedingService;
+use App\Domain\Semen\Models\SemenBatch;
+use App\Enums\SemenBatchStatus;
 use App\Enums\ServiceMethod;
 use App\Enums\ServiceOutcome;
 use App\Filament\Resources\Animals\AnimalResource;
@@ -10,6 +12,7 @@ use App\Filament\Resources\BreedingServices\Pages\CreateBreedingService;
 use App\Filament\Resources\BreedingServices\Pages\ListBreedingServices;
 use App\Filament\Resources\BreedingServices\Pages\ViewBreedingService;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\StockForms;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -45,7 +48,12 @@ class BreedingServiceResource extends Resource
             DatePicker::make('serviced_on')->required()->default(now())->maxDate(now()),
             Select::make('method')->options(AnimalResource::enumOptions(ServiceMethod::cases()))->required()->default(ServiceMethod::Natural->value),
             AnimalPicker::boar()->helperText('Required for natural mating; optional for AI.'),
-            TextInput::make('semen_source')->maxLength(255)->helperText('For AI: boar / supplier of the semen when no boar is chosen.'),
+            Select::make('semen_batch_id')->label('Semen batch')->searchable()->live()
+                ->options(fn () => SemenBatch::with(['boar', 'breed', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
+                    ->filter->isSellable()->mapWithKeys(fn (SemenBatch $b) => [$b->id => "{$b->number} ({$b->boar->animal_number}, expires {$b->expiry_date->format('d M')})"])->all())
+                ->helperText('For AI with our own released semen: one dose is taken from stock and the batch\'s boar is recorded as sire.'),
+            StockForms::store('semen_location_id', 'Take the dose from')->required(fn ($get) => filled($get('semen_batch_id')))->visible(fn ($get) => filled($get('semen_batch_id'))),
+            TextInput::make('semen_source')->maxLength(255)->helperText('For AI with outside semen: boar / supplier when no batch or boar is chosen.'),
             Select::make('technician_id')->label('Technician (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
             TextInput::make('technician_name')->label('Technician (name)')->maxLength(255),
             Textarea::make('notes')->columnSpanFull(),
@@ -55,12 +63,12 @@ class BreedingServiceResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['sow', 'boar']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['sow', 'boar', 'semenBatch']))
             ->columns([
                 TextColumn::make('serviced_on')->date()->sortable(),
                 TextColumn::make('sow.animal_number')->label('Sow')->searchable(),
                 TextColumn::make('method')->formatStateUsing(fn ($state) => $state->label())->badge(),
-                TextColumn::make('boar')->label('Boar / semen')->state(fn (BreedingService $r) => $r->boar?->animal_number ?? $r->semen_source),
+                TextColumn::make('boar')->label('Boar / semen')->state(fn (BreedingService $r) => $r->semenBatch?->number ?? $r->boar?->animal_number ?? $r->semen_source),
                 TextColumn::make('outcome')->badge()->formatStateUsing(fn ($state) => $state->label())
                     ->color(fn ($state) => match ($state) {
                         ServiceOutcome::Pregnant, ServiceOutcome::Farrowed => 'success',

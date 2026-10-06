@@ -35,7 +35,7 @@ class ViewBreedingService extends ViewRecord
                 TextEntry::make('sow.animal_number')->label('Sow')->weight('bold'),
                 TextEntry::make('serviced_on')->date(),
                 TextEntry::make('method')->formatStateUsing(fn ($state) => $state->label()),
-                TextEntry::make('boar')->label('Boar / semen')->state(fn (BreedingService $r) => $r->boar?->animal_number ?? $r->semen_source ?? '-'),
+                TextEntry::make('boar')->label('Boar / semen')->state(fn (BreedingService $r) => $r->semenBatch?->number ?? $r->boar?->animal_number ?? $r->semen_source ?? '-'),
                 TextEntry::make('technician')->state(fn (BreedingService $r) => $r->technicianLabel() ?? '-'),
                 TextEntry::make('outcome')->badge()->formatStateUsing(fn ($state) => $state->label()),
             ]),

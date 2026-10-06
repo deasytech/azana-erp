@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PriceLists\RelationManagers;
 
+use App\Domain\Inventory\Models\InventoryItem;
 use App\Filament\Support\MoneyInput;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -28,6 +29,9 @@ class ItemsRelationManager extends RelationManager
             TextInput::make('description')->required()->maxLength(255),
             Select::make('unit_id')->label('Unit')->relationship('unit', 'name')->required()->preload()->searchable(),
             MoneyInput::make('unit_price_minor', 'Unit price')->required(),
+            Select::make('inventory_item_id')->label('Stock item')->searchable()
+                ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
+                ->helperText('Link a price to a stock item, e.g. a breed\'s semen dose, so sales and reports can find it.'),
         ]);
     }
 
@@ -38,6 +42,7 @@ class ItemsRelationManager extends RelationManager
                 TextColumn::make('code')->searchable(),
                 TextColumn::make('description')->searchable(),
                 TextColumn::make('unit.code')->label('Unit'),
+                TextColumn::make('inventoryItem.name')->label('Stock item')->placeholder('-'),
                 TextColumn::make('unit_price_minor')->label('Unit price')
                     ->state(fn ($record) => $record->unitPrice()->format()),
             ])

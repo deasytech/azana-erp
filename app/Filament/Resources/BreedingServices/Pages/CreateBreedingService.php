@@ -33,6 +33,8 @@ class CreateBreedingService extends CreateRecord
                 filled($data['technician_id'] ?? null) ? User::find($data['technician_id']) : null,
                 $data['technician_name'] ?? null,
                 $data['notes'] ?? null,
+                semenBatchId: filled($data['semen_batch_id'] ?? null) ? (int) $data['semen_batch_id'] : null,
+                semenLocationId: filled($data['semen_location_id'] ?? null) ? (int) $data['semen_location_id'] : null,
             );
         } catch (DomainException $e) {
             $this->failWith($e);
