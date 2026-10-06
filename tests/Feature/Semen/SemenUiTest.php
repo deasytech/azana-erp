@@ -72,6 +72,8 @@ it('adds a boar to the programme and edits its limits', function () {
     Livewire::test(CreateSemenBoar::class)->fillForm(['animal_id' => $boar->id, 'status' => 'active'])->call('create')->assertHasFormErrors(['animal_id']);
     Livewire::test(CreateSemenBoar::class)->fillForm(['animal_id' => $sow->id, 'status' => 'active'])->call('create')->assertHasFormErrors(['animal_id']);
 
+    Livewire::test(EditSemenBoar::class, ['record' => $programme->getRouteKey()])->fillForm(['target_doses_per_week' => 100001])->call('save')->assertHasFormErrors(['target_doses_per_week']);
+
     Livewire::test(EditSemenBoar::class, ['record' => $programme->getRouteKey()])->fillForm(['status' => 'resting', 'target_doses_per_week' => 70])->call('save')->assertHasNoFormErrors();
     expect($programme->fresh()->status)->toBe(SemenBoarStatus::Resting)->and($programme->fresh()->target_doses_per_week)->toBe(70);
 });
@@ -185,6 +187,10 @@ it('links a price to the breed\'s semen item', function () {
     $batch = releasedSemen();
     semenBatchPage($batch)->assertSee('NGN 15,000.00');
     Livewire::test(ItemsRelationManager::class, ['ownerRecord' => $list, 'pageClass' => EditPriceList::class])->assertSee('Semen dose - Duroc');
+
+    // A price list in another currency is shown in its own currency, not the farm's.
+    $list->update(['currency_code' => 'USD']);
+    semenBatchPage($batch)->assertSee('USD 15,000.00')->assertDontSee('NGN 15,000.00');
 });
 
 it('inseminates a sow with a released batch from the service form', function () {

@@ -48,7 +48,7 @@ class SemenBoarResource extends Resource
                 ->helperText('A resting or retired boar is not collected from.'),
             TextInput::make('min_interval_days')->label('Days between collections')->numeric()->integer()->minValue(0)->maxValue(365)
                 ->helperText('Leave empty to use the farm setting.'),
-            TextInput::make('target_doses_per_week')->label('Target doses per week')->numeric()->integer()->minValue(0)
+            TextInput::make('target_doses_per_week')->label('Target doses per week')->numeric()->integer()->minValue(0)->maxValue(100000)
                 ->helperText('Leave empty to use the farm target.'),
             Textarea::make('notes')->columnSpanFull(),
         ]);

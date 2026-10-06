@@ -14,8 +14,8 @@ use App\Domain\Semen\Models\SemenBatch;
 use App\Enums\SemenBatchStatus as Status;
 use App\Filament\Concerns\HasWorkflowSteps;
 use App\Filament\Resources\SemenBatches\SemenBatchResource;
-use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\StockForms;
+use App\Support\Money;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
@@ -53,7 +53,7 @@ class ViewSemenBatch extends ViewRecord
                 TextEntry::make('collected_on')->date(),
                 TextEntry::make('expiry_date')->date()->color(fn (SemenBatch $r) => $r->isExpired() ? 'danger' : null),
                 TextEntry::make('sellable')->label('Sellable now')->state(fn (SemenBatch $r) => $r->isSellable() ? 'Yes' : 'No')->badge()->color(fn (string $state) => $state === 'Yes' ? 'success' : 'gray'),
-                TextEntry::make('dose_price')->label('Price per dose')->state(fn () => ($p = $this->price()) ? MoneyColumn::format($p['price_minor']) : 'No price set'),
+                TextEntry::make('dose_price')->label('Price per dose')->state(fn () => ($p = $this->price()) ? Money::ofMinor($p['price_minor'], $p['currency'])->format() : 'No price set'),
                 TextEntry::make('doses_produced')->label('Doses made')->placeholder('Not processed yet'),
                 TextEntry::make('dose_volume_ml')->label('Dose volume (ml)')->placeholder('-'),
                 TextEntry::make('diluent')->placeholder('-'),
