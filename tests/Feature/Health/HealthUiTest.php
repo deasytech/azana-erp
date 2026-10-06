@@ -332,7 +332,9 @@ it('shows alerts, reminders and the mortality analysis', function () {
 
     Livewire::test(HealthAlerts::class)->assertSee($sick->animal_number)->assertSee('open case');
     Livewire::test(VaccinationsDue::class)->assertSee($young->animal_number)->assertSee('Overdue');
-    Livewire::test(MortalityAnalysis::class)->assertSee('Grower')->set('dimension', 'cause')->assertSee('Respiratory disease');
+    Livewire::test(MortalityAnalysis::class)->assertSee('Grower')->set('dimension', 'cause')->assertSee('Respiratory disease')
+        ->set('from', now()->subDays(367)->toDateString())->set('to', now()->toDateString())->assertSee('no more than 366 days')->assertDontSee('Respiratory disease')
+        ->set('from', now()->subDays(366)->toDateString())->assertDontSee('no more than 366 days')->assertSee('Respiratory disease');
 });
 
 it('validates the mortality analysis period and grouping instead of failing', function () {

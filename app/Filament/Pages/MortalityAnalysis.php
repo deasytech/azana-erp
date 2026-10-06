@@ -24,6 +24,9 @@ class MortalityAnalysis extends Page
 
     protected static ?int $navigationSort = 19;
 
+    /** The longest period the report will cover (a year and a leap day). */
+    private const MAX_DAYS = 366;
+
     public string $dimension = 'stage';
 
     public string $from = '';
@@ -53,7 +56,7 @@ class MortalityAnalysis extends Page
     /** @return list<string> problems with the chosen period or grouping (empty when the input is usable) */
     public function inputErrors(): array
     {
-        return Validator::make(
+        $errors = Validator::make(
             ['from' => $this->from, 'to' => $this->to, 'dimension' => $this->dimension],
             [
                 'from' => ['required', 'date_format:Y-m-d'],
@@ -62,6 +65,13 @@ class MortalityAnalysis extends Page
             ],
             ['to.after_or_equal' => 'The end date must be on or after the start date.'],
         )->errors()->all();
+
+        // Only once the dates are valid: an unbounded period would make the report scan every record ever kept.
+        if ($errors === [] && Carbon::parse($this->from)->diffInDays(Carbon::parse($this->to)) > self::MAX_DAYS) {
+            $errors[] = 'Choose a period of no more than '.self::MAX_DAYS.' days.';
+        }
+
+        return $errors;
     }
 
     /** @return ?array{total: int, rows: Collection<int, array{label: string, count: int, percent: ?string}>} null while the input is invalid */
