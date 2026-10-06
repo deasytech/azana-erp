@@ -24,6 +24,7 @@ enum Module: string
     case Inventory = 'inventory';
     case Procurement = 'procurement';
     case FeedMill = 'feed-mill';
+    case Semen = 'semen';
 
     public function label(): string
     {
@@ -44,6 +45,7 @@ enum Module: string
             self::Inventory => 'Inventory & stores',
             self::Procurement => 'Purchasing & suppliers',
             self::FeedMill => 'Feed mill',
+            self::Semen => 'Semen & laboratory',
         };
     }
 

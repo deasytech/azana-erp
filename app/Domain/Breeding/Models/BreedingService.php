@@ -3,6 +3,7 @@
 namespace App\Domain\Breeding\Models;
 
 use App\Domain\Animal\Models\Animal;
+use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\System\Concerns\Auditable;
 use App\Domain\System\Concerns\ImmutableRecord;
 use App\Enums\ServiceMethod;
@@ -44,6 +45,11 @@ class BreedingService extends Model
     public function sow(): BelongsTo
     {
         return $this->belongsTo(Animal::class, 'sow_id');
+    }
+
+    public function semenBatch(): BelongsTo
+    {
+        return $this->belongsTo(SemenBatch::class);
     }
 
     public function boar(): BelongsTo

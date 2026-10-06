@@ -60,6 +60,7 @@ class RoleSeeder extends Seeder
             'inventory' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'procurement' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'feed-mill' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            'semen' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Farm Manager' => [
             self::FARM => [A::View, A::Create, A::Edit, A::Export, A::Print],
@@ -72,6 +73,7 @@ class RoleSeeder extends Seeder
             'inventory' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'procurement' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'feed-mill' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            'semen' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Breeding Manager' => [
             self::FARM => [A::View], self::MASTER => [A::View], 'settings' => [A::View],
@@ -80,18 +82,20 @@ class RoleSeeder extends Seeder
             'health' => [A::View, A::Create],
             'biosecurity' => [A::View, A::Create],
             'production' => [A::View],
+            'semen' => [A::View, A::Create],
         ],
         'Veterinarian' => [
             self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create], 'breeding' => [A::View, A::Create],
             'health' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'biosecurity' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'production' => [A::View],
+            'semen' => [A::View],
         ],
-        'Semen Laboratory Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View], 'breeding' => [A::View], 'health' => [A::View], 'biosecurity' => [A::View, A::Create]],
+        'Semen Laboratory Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View], 'breeding' => [A::View], 'health' => [A::View], 'biosecurity' => [A::View, A::Create], 'inventory' => [A::View, A::Create, A::Edit, A::Export, A::Print], 'semen' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print]],
         'Feed Mill Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'production' => [A::View], 'inventory' => [A::View, A::Create, A::Edit, A::Export, A::Print], 'procurement' => [A::View, A::Create], 'feed-mill' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print]],
         'Nutritionist' => [self::FARM => [A::View], self::MASTER => [A::View], 'inventory' => [A::View], 'feed-mill' => [A::View, A::Create, A::Edit, A::Export, A::Print]],
-        'Store Officer' => [self::FARM => [A::View], self::MASTER => [A::View], 'biosecurity' => [A::View, A::Create], 'production' => [A::View], 'inventory' => [A::View, A::Create, A::Edit, A::Export, A::Print], 'procurement' => [A::View, A::Create, A::Edit, A::Export, A::Print], 'feed-mill' => [A::View]],
-        'Sales Officer' => [self::FARM => [A::View], self::MASTER => [A::View], self::PRICES => [A::View], 'animals' => [A::View], 'health' => [A::View], 'production' => [A::View], 'inventory' => [A::View]],
+        'Store Officer' => [self::FARM => [A::View], self::MASTER => [A::View], 'biosecurity' => [A::View, A::Create], 'production' => [A::View], 'inventory' => [A::View, A::Create, A::Edit, A::Export, A::Print], 'procurement' => [A::View, A::Create, A::Edit, A::Export, A::Print], 'feed-mill' => [A::View], 'semen' => [A::View]],
+        'Sales Officer' => [self::FARM => [A::View], self::MASTER => [A::View], self::PRICES => [A::View], 'animals' => [A::View], 'health' => [A::View], 'production' => [A::View], 'inventory' => [A::View], 'semen' => [A::View]],
         'Slaughter Manager' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View], 'health' => [A::View], 'biosecurity' => [A::View], 'production' => [A::View]],
         'Accountant' => [
             self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View],
@@ -100,8 +104,9 @@ class RoleSeeder extends Seeder
             'inventory' => [A::View, A::Export],
             'procurement' => [A::View, A::Create, A::Edit, A::Export, A::Print],
             'feed-mill' => [A::View, A::Export],
+            'semen' => [A::View, A::Export],
         ],
-        'Farm Worker' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create], 'breeding' => [A::View, A::Create], 'health' => [A::View, A::Create], 'biosecurity' => [A::View, A::Create], 'production' => [A::View, A::Create], 'inventory' => [A::View, A::Create]],
+        'Farm Worker' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create], 'breeding' => [A::View, A::Create], 'health' => [A::View, A::Create], 'biosecurity' => [A::View, A::Create], 'production' => [A::View, A::Create], 'inventory' => [A::View, A::Create], 'semen' => [A::View, A::Create]],
     ];
 
     public function run(): void

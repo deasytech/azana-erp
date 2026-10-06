@@ -5,6 +5,7 @@ use App\Domain\Animal\Models\Animal;
 use App\Domain\Breeding\Actions\RecordFarrowing;
 use App\Domain\Breeding\Actions\RecordService;
 use App\Domain\Breeding\Models\BreedingService;
+use App\Domain\Farm\Models\Breed;
 use App\Domain\Farm\Models\Building;
 use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\Pen;
@@ -43,6 +44,12 @@ use App\Domain\Production\Actions\RecordBatchWeighIn;
 use App\Domain\Production\Actions\RecordProductionCost;
 use App\Domain\Production\Models\BatchWeighIn;
 use App\Domain\Production\Models\ProductionBatch;
+use App\Domain\Semen\Actions\ManageSemenBoar;
+use App\Domain\Semen\Actions\ProcessSemenBatch;
+use App\Domain\Semen\Actions\RecordSemenCollection;
+use App\Domain\Semen\Actions\RecordSemenQc;
+use App\Domain\Semen\Actions\ReleaseSemenBatch;
+use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\Supplier\Models\Supplier;
 use App\Enums\InventoryCategory;
 use App\Enums\InventoryTransactionType;
@@ -358,4 +365,42 @@ function completedFeedRun(array $mill): FeedProductionBatch
     app(ConfirmFeedConsumption::class)->asPlanned($order);
 
     return app(CompleteFeedProduction::class)($order, '990', now()->startOfDay(), 1000000);
+}
+
+/** A registered boar of the breed (Duroc by default) already in the semen programme. */
+function semenBoar(string $breedCode = 'DUR', array $programme = []): Animal
+{
+    $boar = register(['sex' => 'male', 'category_id' => categoryId('boar'), 'breed_id' => Breed::firstWhere('code', $breedCode)->id]);
+    app(ManageSemenBoar::class)->enrol($boar, $programme);
+
+    return $boar;
+}
+
+/** Collects 250 ml (unless told otherwise) from the boar $daysAgo days ago; returns the new batch. */
+function collectSemen(Animal $boar, int $daysAgo = 0, string $volume = '250'): SemenBatch
+{
+    return app(RecordSemenCollection::class)($boar, now()->subDays($daysAgo), $volume);
+}
+
+/** Records a passing QC (80% motile, 300 million/ml, 10% abnormal) as a laboratory manager. */
+function passSemenQc(SemenBatch $batch, ?User $analyst = null): SemenBatch
+{
+    app(RecordSemenQc::class)($batch, '80', '300', '10', null, $analyst ?? userWithRole('Semen Laboratory Manager'));
+
+    return $batch->refresh();
+}
+
+/** A batch that passed QC and was processed into the most doses it can yield (24 for the standard 250 ml sample). */
+function processedSemen(?Animal $boar = null): SemenBatch
+{
+    $batch = passSemenQc(collectSemen($boar ?? semenBoar()));
+    app(ProcessSemenBatch::class)($batch, 24, '80', 'BTS');
+
+    return $batch->refresh();
+}
+
+/** A processed batch released into the SEMEN store by a farm manager. */
+function releasedSemen(?Animal $boar = null): SemenBatch
+{
+    return app(ReleaseSemenBatch::class)(processedSemen($boar), userWithRole('Farm Manager'), store('SEMEN'));
 }
