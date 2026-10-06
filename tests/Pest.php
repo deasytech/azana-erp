@@ -31,6 +31,9 @@ use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
 use App\Domain\Inventory\Models\InventoryTransaction;
 use App\Domain\Litter\Models\Litter;
+use App\Domain\Meat\Actions\ProduceMeat;
+use App\Domain\Meat\Models\MeatProduct;
+use App\Domain\Meat\Models\MeatProductionBatch;
 use App\Domain\Procurement\Actions\CreatePurchaseOrder;
 use App\Domain\Procurement\Actions\CreatePurchaseRequest;
 use App\Domain\Procurement\Actions\DecidePurchaseOrder;
@@ -60,11 +63,19 @@ use App\Domain\Semen\Actions\RecordSemenCollection;
 use App\Domain\Semen\Actions\RecordSemenQc;
 use App\Domain\Semen\Actions\ReleaseSemenBatch;
 use App\Domain\Semen\Models\SemenBatch;
+use App\Domain\Slaughter\Actions\ManageSlaughterBatch;
+use App\Domain\Slaughter\Actions\RecordSlaughter;
+use App\Domain\Slaughter\Actions\RecordSlaughterIntake;
+use App\Domain\Slaughter\Models\Carcass;
+use App\Domain\Slaughter\Models\SlaughterBatch;
+use App\Domain\Slaughter\Models\SlaughterRecord;
 use App\Domain\Supplier\Models\Supplier;
+use App\Enums\AnteMortemResult;
 use App\Enums\CreditStatus;
 use App\Enums\InventoryCategory;
 use App\Enums\InventoryTransactionType;
 use App\Enums\LookupCategory;
+use App\Enums\PostMortemResult;
 use App\Enums\ProductionCostCategory;
 use App\Enums\ReceiptMethod;
 use App\Enums\ServiceMethod;
@@ -454,4 +465,35 @@ function dispatched(SalesOrder $order, int $daysAgo = 0): Invoice
 function pay(Customer $customer, int $minor, ?array $allocations = null, int $daysAgo = 0): Payment
 {
     return app(RecordCustomerPayment::class)($customer, $minor, ReceiptMethod::BankTransfer, now()->subDays($daysAgo)->startOfDay(), null, $allocations);
+}
+
+/** A slaughter day scheduled for today. */
+function slaughterDay(): SlaughterBatch
+{
+    return app(ManageSlaughterBatch::class)->schedule(now()->startOfDay());
+}
+
+/** Receives a grower pig (a new one unless given) at 100.00 kg live weight, costing 20,000.00 to raise, and passes inspection. */
+function receivePig(SlaughterBatch $day, ?Animal $pig = null, string $liveKg = '100.00', ?int $cost = 2000000): SlaughterRecord
+{
+    return app(RecordSlaughterIntake::class)($day, $pig ?? register(['category_id' => categoryId('grower')]), $liveKg, AnteMortemResult::Passed, null, 1, $cost);
+}
+
+/** Receives and slaughters a pig: 100.00 kg live, 76.00 kg hot carcass (76% dressing), passed fit for food. */
+function slaughterPig(?SlaughterBatch $day = null, string $hotKg = '76.00', ?int $cost = 2000000): Carcass
+{
+    return app(RecordSlaughter::class)(receivePig($day ?? slaughterDay(), cost: $cost), $hotKg, PostMortemResult::Passed);
+}
+
+/** @param array<string, string> $weights kilograms by product code, e.g. ['LEG' => '20.00'] */
+function meatLines(array $weights): array
+{
+    return collect($weights)->map(fn ($kg, $code) => ['meat_product_id' => MeatProduct::firstWhere('code', $code)->id, 'weight_kg' => $kg])->values()->all();
+}
+
+/** Makes meat from the carcass: leg 20, loin 15, shoulder 18, belly 12 and liver 2 kg, 6 kg waste, 1,000.00 other cost. */
+function makeMeat(?Carcass $carcass = null): MeatProductionBatch
+{
+    return app(ProduceMeat::class)([($carcass ?? slaughterPig())->id], store('COLD1'), now()->startOfDay(),
+        meatLines(['LEG' => '20.00', 'LOIN' => '15.00', 'SHOULDER' => '18.00', 'BELLY' => '12.00', 'LIVER' => '2.00']), '6.00', 100000);
 }

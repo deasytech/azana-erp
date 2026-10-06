@@ -29,6 +29,8 @@ final class SettingDefinitions
 
     private const SALES = 'Sales & credit';
 
+    private const SLAUGHTER = 'Slaughter & meat';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -73,6 +75,8 @@ final class SettingDefinitions
             new SettingDefinition('sales.block_credit_when_overdue', self::SALES, 'No new credit while a customer is overdue', 'bool', '1', 'Applies when the credit limit rule is "block".'),
             new SettingDefinition('sales.discount_approval_threshold_percent', self::SALES, 'Discounts above this (%) need approval', 'decimal', '10', 'An order with a larger discount can only be confirmed by someone who can approve.'),
             new SettingDefinition('sales.require_separate_approver', self::SALES, 'Credit approver must differ from who set up the customer', 'bool', '1'),
+            new SettingDefinition('slaughter.require_separate_approver', self::SLAUGHTER, 'Carcass weight corrections need a different approver', 'bool', '1', 'A corrected carcass weight must be approved by someone other than who recorded the slaughter.'),
+            new SettingDefinition('slaughter.min_dressing_percent_alert', self::SLAUGHTER, 'Flag a carcass below this dressing (%)', 'decimal', '65', 'Shown on the yield report when a carcass dresses out below this.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }

@@ -10,10 +10,12 @@ use App\Domain\Feed\Models as FD;
 use App\Domain\Health\Models as H;
 use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
+use App\Domain\Meat\Models as MT;
 use App\Domain\Procurement\Models as PC;
 use App\Domain\Production\Models as PR;
 use App\Domain\Sales\Models as SA;
 use App\Domain\Semen\Models as SM;
+use App\Domain\Slaughter\Models as SL;
 use App\Domain\Supplier\Models as SP;
 use App\Enums\Module;
 use App\Models\User;
@@ -39,6 +41,8 @@ use App\Policies\SalesMasterPolicy;
 use App\Policies\SalesPolicy;
 use App\Policies\SemenPolicy;
 use App\Policies\SettingsPolicy;
+use App\Policies\SlaughterMasterPolicy;
+use App\Policies\SlaughterPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -90,6 +94,10 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, SalesPolicy::class);
         }
         Gate::policy(SA\Customer::class, SalesMasterPolicy::class);
+        foreach ([SL\SlaughterBatch::class, SL\SlaughterRecord::class, SL\Carcass::class, SL\CarcassAdjustment::class, MT\MeatProductionBatch::class, MT\MeatProductionLine::class] as $model) {
+            Gate::policy($model, SlaughterPolicy::class);
+        }
+        Gate::policy(MT\MeatProduct::class, SlaughterMasterPolicy::class);
         foreach ([SM\SemenBoar::class, SM\SemenCollection::class, SM\SemenBatch::class, SM\SemenQcRecord::class] as $model) {
             Gate::policy($model, SemenPolicy::class);
         }

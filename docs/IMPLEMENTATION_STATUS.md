@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 12 - Slaughter, Carcass, Meat Processing and Meat Inventory (not started)
+Phase 13 - Meat Sales and End-to-End Traceability (not started)
 
 ## Completed
 
@@ -257,6 +257,27 @@ Phase 12 - Slaughter, Carcass, Meat Processing and Meat Inventory (not started)
   - Prices for pigs are typed on each line; only semen has a price list entry to default from.
   - Refunds of deposits and customer statements are not built; the finance phase owns them. Receipts post no accounting journal yet (Phase 14).
   - Meat sales (Phase 13) will use the same order, invoice and payment documents with a new line kind.
+
+### Phase 12 - Slaughter, Carcass, Meat Processing and Meat Inventory (2026-10-08)
+- Delivery: one PR for the whole phase (under 100 files), committed in two steps - domain, then UI and docs.
+- Tests: `vendor/bin/pest` - 536 passed (added `tests/Feature/Slaughter/SlaughterDomainTest.php` and `SlaughterUiTest.php`; helpers `slaughterDay`, `receivePig`, `slaughterPig`, `meatLines`, `makeMeat` in `tests/Pest.php`). A worked run is asserted: a pig of 100 kg live with a 76 kg carcass dresses at 76.00%; its 20,000.00 cost to raise plus 1,000.00 of processing is shared by weight over 67 kg of products (leg 20, loin 15, shoulder 18, belly 12, liver 2) = leg 6,268.66, loin 4,701.49, shoulder 5,641.79, belly 3,761.19, liver 626.87 (total 21,000.00).
+- Package changes: none.
+- What was done:
+  - Schema (1 migration): `meat_products`, `slaughter_batches`, `slaughter_records`, `carcasses`, `carcass_adjustments`, `meat_production_batches`, `meat_production_lines`. Code in `app/Domain/Slaughter` and `app/Domain/Meat`.
+  - **Slaughter days** (`ManageSlaughterBatch`): `SB-000001`, scheduled, in progress while pigs are received, closed once nothing is left waiting; cancelling is allowed until a pig is slaughtered and sends received pigs back.
+  - **Intake and inspection** (`RecordSlaughterIntake`): a tracked animal or a group of pigs from a production batch is received with its live weight and an ante-mortem inspection. A pig that fails (notes required) is rejected and goes no further. **Withdrawal periods and quarantine are enforced** (and again when the pig is slaughtered); a pig reserved for a customer's order, already received, inactive or over the plausible weight is refused; batch groups cannot exceed the pigs free (head count less customer reservations and pigs already waiting). The live weight is also recorded as the animal's weight. The cost of raising the pig is taken from the farm's records (`GetLiveCost`: feed recorded against the animal plus, for a batch member or group, the batch's cost per pig) unless typed in.
+  - **Slaughter and carcass** (`RecordSlaughter`): hot carcass weight (no more than the live weight), post-mortem inspection (fit, partly condemned with the weight condemned, or condemned). The carcass is numbered `CAR-000001` and its **dressing percentage = carcass weight / live weight x 100** is stored; the animal is marked slaughtered (or the pigs come off their batch). A fully condemned carcass is a recorded loss and makes no meat. Event `SlaughterCompleted`.
+  - **Weight corrections** (`AdjustCarcassWeight`): a "slaughter adjustment" - needs `slaughter.approve` and, by default, someone other than who recorded the slaughter (`slaughter.require_separate_approver`); only before the carcass is processed; kept with old weight, new weight, reason and approver.
+  - **Meat production** (`ProduceMeat`, all or nothing): carcasses hanging in the chiller are made into products from the **product catalogue** (10 starter products seeded: whole carcass, leg, loin, shoulder, belly, ribs, liver, head, trotters, fat; each is its own stock item in kg). What is made plus waste cannot weigh more than the carcasses' usable weight (hot weight less condemned). The cost of raising the pigs plus processing costs is **attributed to the products by weight** (the last takes the rounding remainder so nothing is lost), and each product **enters inventory through a ledger transaction** in a cold room, in a batch numbered like `IPA-MT-20261008-001` with a use-by date (production date + the product's shelf life). Event `MeatProduced`. A run can be reversed (the meat leaves stock, the carcasses hang again), refused once any has been sold or used.
+  - **Traceability:** meat stock batch -> meat production batch -> carcass -> slaughter record -> animal or production batch (`GetMeatTrace`); every ledger line carries the meat batch as its source. Meat stock by product, batch, use-by and cost: `GetMeatStock`. Yield: `GetSlaughterYield` (dressing against `production.target_dressing_percent`, losses, carcasses below `slaughter.min_dressing_percent_alert`, per slaughter day). Use-by dates feed the inventory expiry alerts.
+  - Admin UI (Slaughter & meat group): Meat stock, Slaughter days (schedule; receive a pig or group; record slaughter per pig; close or cancel), Carcasses (yield, correct weight), Meat production (make meat from chosen carcasses; products, cost, traced-to tab; reverse), Yield report (period checked on the server), Product catalogue.
+  - Permissions: new `slaughter` module. Slaughter Manager, General and Farm Manager have everything except delete (corrections and reversals need approve); Veterinarian view/create/edit (inspections); Store Officer, Sales Officer, Accountant view. Nothing is deletable; a catalogue product only while no meat has been made from it.
+- Migration notes: 1 new reversible migration (verified up/down/up and seeded on MySQL), 2 new farm settings, a cold room store and 10 starter products with their stock items from the master data seeder.
+- Known issues / notes:
+  - Withdrawal periods are per animal, so pigs received from a batch as an untracked group are not checked against them (Phase 07 note still applies); track treated pigs individually.
+  - By-products (head, trotters, fat) are stocked and costed like any product; waste has no cost or stock. A condemned carcass's cost is a loss, not carried onto meat.
+  - Carcass chilling shrink is not modelled (the hot weight is used throughout).
+  - Phase 13 sells meat from these cold-room batches using the Phase 11 order, invoice and payment documents with a new line kind.
 
 ## In Progress
 None

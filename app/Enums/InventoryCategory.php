@@ -12,6 +12,7 @@ enum InventoryCategory: string
     case SparePart = 'spare_part';
     case Packaging = 'packaging';
     case Semen = 'semen';
+    case Meat = 'meat';
     case Other = 'other';
 
     public function label(): string
