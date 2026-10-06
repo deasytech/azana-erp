@@ -39,7 +39,7 @@ class MeatProductResource extends MasterResource
             static::nameField(),
             Select::make('kind')->options(AnimalResource::enumOptions(MeatProductKind::cases()))->required(),
             Select::make('inventory_item_id')->label('Stock item')->required()->searchable()->unique(ignoreRecord: true)
-                ->options(fn () => InventoryItem::where('category', InventoryCategory::Meat)->where('is_active', true)->whereHas('unit', fn ($q) => $q->where('code', 'KG'))->orderBy('name')->pluck('name', 'id'))
+                ->options(fn () => InventoryItem::where('category', InventoryCategory::Meat)->where('is_active', true)->where('tracks_batches', true)->whereHas('unit', fn ($q) => $q->where('code', 'KG'))->orderBy('name')->pluck('name', 'id'))
                 ->helperText('A meat item counted in kg and tracked by batch; make one under Inventory > Items first.'),
             TextInput::make('shelf_life_days')->label('Use-by after (days)')->numeric()->integer()->minValue(1)->maxValue(730)->required(),
             TextInput::make('storage_note')->maxLength(255)->helperText('For example: keep at 0-4 C.'),
