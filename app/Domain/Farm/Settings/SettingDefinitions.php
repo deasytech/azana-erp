@@ -25,6 +25,8 @@ final class SettingDefinitions
 
     private const FEED_MILL = 'Feed mill';
 
+    private const SEMEN = 'Semen & laboratory';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -56,6 +58,15 @@ final class SettingDefinitions
             new SettingDefinition('procurement.require_separate_approver', self::PROCUREMENT, 'Approver must differ from requester', 'bool', '1', 'Requests, orders and large payments cannot be approved by the person who raised them.'),
             new SettingDefinition('feed.bag_weight_kg', self::FEED_MILL, 'Feed bag weight (kg)', 'decimal', '25', 'Used to show the cost of a bag of feed.'),
             new SettingDefinition('feed.finished_feed_shelf_life_days', self::FEED_MILL, 'Finished feed shelf life (days)', 'int', '90', 'Expiry given to a finished-feed batch when its stock item tracks expiry.'),
+            new SettingDefinition('semen.shelf_life_days', self::SEMEN, 'Semen shelf life (days)', 'int', '4', 'A batch expires this many days after collection.'),
+            new SettingDefinition('semen.min_collection_interval_days', self::SEMEN, 'Minimum days between collections', 'int', '4', 'A boar can override this.'),
+            new SettingDefinition('semen.min_motility_percent', self::SEMEN, 'QC: minimum motility (%)', 'decimal', '70'),
+            new SettingDefinition('semen.min_concentration_million_per_ml', self::SEMEN, 'QC: minimum concentration (million sperm/ml)', 'decimal', '200'),
+            new SettingDefinition('semen.max_abnormal_percent', self::SEMEN, 'QC: maximum abnormal forms (%)', 'decimal', '20'),
+            new SettingDefinition('semen.sperm_per_dose_million', self::SEMEN, 'Motile sperm per dose (million)', 'int', '2500', 'Limits how many doses an ejaculate can be made into.'),
+            new SettingDefinition('semen.cost_per_dose_minor', self::SEMEN, 'Cost per dose (minor units)', 'int', '0', 'Stock value given to each released dose.'),
+            new SettingDefinition('semen.target_doses_per_week', self::SEMEN, 'Target doses per boar per week', 'int', '40', 'Planning target; a boar can override it.'),
+            new SettingDefinition('semen.require_separate_approver', self::SEMEN, 'Releaser must differ from the QC analyst', 'bool', '1', 'A batch must be released by someone other than the person who recorded its QC.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }

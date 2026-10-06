@@ -6,7 +6,11 @@ use App\Domain\Animal\Models\Animal;
 use App\Domain\Breeding\Events\BreedingServiceRecorded;
 use App\Domain\Breeding\Models\BreedingService;
 use App\Domain\Farm\Actions\ResolveSettings;
+use App\Domain\Inventory\Actions\IssueStock;
+use App\Domain\Semen\Actions\AssertSemenBatchSellable;
+use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\System\Exceptions\DomainException;
+use App\Enums\InventoryTransactionType;
 use App\Enums\ReproductiveStatus;
 use App\Enums\ServiceMethod;
 use App\Models\User;
@@ -23,6 +27,8 @@ class RecordService
     public function __construct(
         private readonly ResolveSettings $settings,
         private readonly GetSowStatus $sowStatus,
+        private readonly AssertSemenBatchSellable $sellable,
+        private readonly IssueStock $issueStock,
     ) {}
 
     public function __invoke(
@@ -36,8 +42,11 @@ class RecordService
         ?string $notes = null,
         ?User $actor = null,
         ?string $idempotencyKey = null,
+        ?int $semenBatchId = null,
+        ?int $semenLocationId = null,
+        int $doses = 1,
     ): BreedingService {
-        return DB::transaction(function () use ($sow, $method, $servicedOn, $boarId, $semenSource, $technician, $technicianName, $notes, $actor, $idempotencyKey) {
+        return DB::transaction(function () use ($sow, $method, $servicedOn, $boarId, $semenSource, $technician, $technicianName, $notes, $actor, $idempotencyKey, $semenBatchId, $semenLocationId, $doses) {
             $sow = Animal::lockForUpdate()->with('category')->findOrFail($sow->id);
 
             if ($idempotencyKey && ($existing = BreedingService::firstWhere('idempotency_key', $idempotencyKey))) {
@@ -50,7 +59,15 @@ class RecordService
 
             $semenSource = $semenSource !== null && trim($semenSource) !== '' ? trim($semenSource) : null;
             $this->assertSow($sow, $servicedOn);
-            $this->assertSire($method, $boarId, $semenSource);
+
+            // Semen from a released batch: the sire is the batch's boar (who may since have left the farm).
+            $batch = $semenBatchId ? $this->semenBatch($method, $semenBatchId, $boarId, $semenLocationId, $doses) : null;
+
+            if ($batch) {
+                $boarId = $batch->animal_id;
+            } else {
+                $this->assertSire($method, $boarId, $semenSource);
+            }
 
             $service = BreedingService::create([
                 'sow_id' => $sow->id,
@@ -58,6 +75,7 @@ class RecordService
                 'method' => $method,
                 'serviced_on' => $servicedOn,
                 'semen_source' => $semenSource,
+                'semen_batch_id' => $batch?->id,
                 'technician_id' => $technician?->getKey(),
                 'technician_name' => $technicianName,
                 'notes' => $notes,
@@ -66,10 +84,36 @@ class RecordService
                 ...$this->expectedDates($servicedOn),
             ]);
 
+            if ($batch) {
+                // The doses used leave stock through the ledger, traceable to this service.
+                ($this->issueStock)(InventoryTransactionType::Consumption, $batch->inventoryBatch->inventory_item_id, $semenLocationId, (string) $doses, $servicedOn, [
+                    'batch' => $batch->inventory_batch_id, 'source_type' => 'breeding_service', 'source_id' => $service->id, 'reason' => "AI of {$sow->animal_number} with {$batch->number}",
+                ], $actor);
+            }
+
             BreedingServiceRecorded::dispatch($service);
 
             return $service;
         });
+    }
+
+    private function semenBatch(ServiceMethod $method, int $batchId, ?int $boarId, ?int $locationId, int $doses): SemenBatch
+    {
+        if ($method !== ServiceMethod::ArtificialInsemination) {
+            throw new DomainException('Semen batches are used for artificial insemination.', 'semen_method');
+        }
+
+        if ($locationId === null || $doses < 1) {
+            throw new DomainException('Say which store the doses come from, and how many were used.', 'semen_store');
+        }
+
+        $batch = ($this->sellable)($batchId);
+
+        if ($boarId !== null && $boarId !== $batch->animal_id) {
+            throw new DomainException("{$batch->number} is not from the chosen boar.", 'semen_boar_mismatch');
+        }
+
+        return $batch;
     }
 
     /** @return array<string, CarbonInterface> */

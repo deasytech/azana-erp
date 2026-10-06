@@ -9,7 +9,9 @@ use App\Domain\Farm\Models\LookupValue;
 use App\Domain\Farm\Models\ProductionUnit;
 use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Feed\Models\FeedType;
+use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
+use App\Enums\InventoryCategory;
 use App\Enums\LookupCategory as C;
 use Illuminate\Database\Seeder;
 
@@ -26,6 +28,7 @@ class MasterDataSeeder extends Seeder
         $this->breeds();
         $this->feedTypes();
         $this->inventoryLocations();
+        $this->semenItems();
 
         $farm = Farm::firstOrCreate(['code' => 'IPAF'], [
             'name' => 'Integrated Princess Azana Farms',
@@ -119,8 +122,21 @@ class MasterDataSeeder extends Seeder
 
     private function inventoryLocations(): void
     {
-        foreach ([['MAIN', 'Main store'], ['FEED', 'Feed store'], ['VET', 'Veterinary store']] as [$code, $name]) {
+        foreach ([['MAIN', 'Main store'], ['FEED', 'Feed store'], ['VET', 'Veterinary store'], ['SEMEN', 'Semen laboratory store']] as [$code, $name]) {
             InventoryLocation::firstOrCreate(['code' => $code], ['name' => $name]);
+        }
+    }
+
+    /** One semen stock item per breed, counted in doses and tracked by batch and expiry. */
+    private function semenItems(): void
+    {
+        $dose = UnitOfMeasure::firstWhere('code', 'DOSE');
+
+        foreach (Breed::orderBy('code')->get() as $breed) {
+            InventoryItem::firstOrCreate(['code' => "SEMEN-{$breed->code}"], [
+                'name' => "Semen dose - {$breed->name}", 'category' => InventoryCategory::Semen, 'unit_id' => $dose->id,
+                'tracks_batches' => true, 'tracks_expiry' => true, 'breed_id' => $breed->id,
+            ]);
         }
     }
 }

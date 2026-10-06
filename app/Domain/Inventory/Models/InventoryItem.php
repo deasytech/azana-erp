@@ -3,6 +3,7 @@
 namespace App\Domain\Inventory\Models;
 
 use App\Domain\Farm\Concerns\HasBusinessCode;
+use App\Domain\Farm\Models\Breed;
 use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Feed\Models\FeedType;
 use App\Domain\System\Concerns\Auditable;
@@ -49,6 +50,11 @@ class InventoryItem extends Model
     public function feedType(): BelongsTo
     {
         return $this->belongsTo(FeedType::class);
+    }
+
+    public function breed(): BelongsTo
+    {
+        return $this->belongsTo(Breed::class);
     }
 
     public function batches(): HasMany

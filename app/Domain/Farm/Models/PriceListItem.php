@@ -3,6 +3,7 @@
 namespace App\Domain\Farm\Models;
 
 use App\Domain\Farm\Concerns\HasBusinessCode;
+use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\System\Concerns\Auditable;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,11 @@ class PriceListItem extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(UnitOfMeasure::class, 'unit_id');
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
     }
 
     public function unitPrice(): Money
