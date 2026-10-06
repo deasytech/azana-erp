@@ -27,9 +27,15 @@ class ProcessSemenBatch
             return 0;
         }
 
+        $perDose = (string) $this->settings->get('semen.sperm_per_dose_million');
+
+        if (bccomp($perDose, '1', 0) < 0) {
+            throw new DomainException('Set the motile sperm per dose (semen settings) to 1 million or more before processing semen.', 'sperm_per_dose');
+        }
+
         $motileSperm = bcmul(bcmul((string) $batch->collection->volume_ml, (string) $qc->concentration_million_per_ml, 4), bcdiv((string) $qc->motility_percent, '100', 6), 4);
 
-        return (int) bcdiv($motileSperm, (string) $this->settings->get('semen.sperm_per_dose_million'), 0);
+        return (int) bcdiv($motileSperm, $perDose, 0);
     }
 
     public function __invoke(SemenBatch $batch, int $doses, string $doseVolumeMl, ?string $diluent = null, ?User $actor = null): SemenBatch

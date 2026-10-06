@@ -190,6 +190,15 @@ describe('processing and release', function () {
         expect($done->doses_produced)->toBe(24)->and($done->diluent)->toBe('BTS');
     });
 
+    it('says so, rather than dividing by zero, when sperm per dose is not set', function () {
+        $batch = passSemenQc(collectSemen(semenBoar()));
+        app(ResolveSettings::class)->set('semen.sperm_per_dose_million', 0);
+
+        expect(fn () => app(ProcessSemenBatch::class)($batch, 5, '80'))->toThrow(DomainException::class, 'sperm per dose');
+        expect(fn () => app(ProcessSemenBatch::class)->maxDoses($batch->load('collection')))->toThrow(DomainException::class, 'sperm per dose');
+        expect($batch->fresh()->doses_produced)->toBeNull();
+    });
+
     it('cannot process a batch that has not passed', function () {
         expect(fn () => app(ProcessSemenBatch::class)(collectSemen(semenBoar()), 5, '80'))->toThrow(DomainException::class, 'passed QC');
     });
@@ -398,6 +407,23 @@ describe('reports and prices', function () {
         expect(collect($report['rows'])->firstWhere('animal_id', $idle->id)['collections'])->toBe(0);
     });
 
+    it('counts a batch as passed or failed by what the laboratory decided, whatever became of it since', function () {
+        $boar = semenBoar();
+        $gone = releasedSemen($boar);
+        $other = semenBoar();
+        $failed = collectSemen($other);
+        app(RecordSemenQc::class)($failed, '10', '300', '10');
+        app(ManageSemenBatch::class)->destroy($failed, 'Discarded');
+        $unchecked = collectSemen(semenBoar());
+
+        app(ManageSemenBatch::class)->destroy($gone, 'Cold chain failed');    // passed QC, then destroyed
+        $rows = collect(app(GetSemenProduction::class)(now()->subDays(6), now())['rows']);
+
+        expect($rows->firstWhere('animal_id', $boar->id))->toMatchArray(['passed' => 1, 'failed' => 0])
+            ->and($rows->firstWhere('animal_id', $other->id))->toMatchArray(['passed' => 0, 'failed' => 1])
+            ->and($rows->firstWhere('animal_id', $unchecked->animal_id))->toMatchArray(['collections' => 1, 'passed' => 0, 'failed' => 0]);
+    });
+
     it('uses a boar\'s own target and ignores a resting boar\'s', function () {
         $own = semenBoar(programme: ['target_doses_per_week' => 100]);
         $resting = semenBoar(programme: ['status' => 'resting']);
@@ -448,4 +474,8 @@ it('grants semen rights by role', function () {
         ->and(farmWorker()->can('semen.create'))->toBeTrue()->and(farmWorker()->can('semen.approve'))->toBeFalse()
         ->and(userWithRole('Sales Officer')->can('semen.view'))->toBeTrue()->and(userWithRole('Sales Officer')->can('semen.create'))->toBeFalse()
         ->and($lab->can('delete', collectSemen(semenBoar())))->toBeFalse();
+
+    // Not even the owner: the owner bypass covers permission names like "semen.delete", never the policy's own rule.
+    $batch = collectSemen(semenBoar());
+    expect(owner()->can('delete', $batch))->toBeFalse()->and(owner()->can('deleteAny', SemenBatch::class))->toBeFalse();
 });

@@ -5,7 +5,6 @@ namespace App\Domain\Semen\Actions;
 use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\Semen\Models\SemenBoar;
-use App\Enums\SemenBatchStatus;
 use App\Enums\SemenBoarStatus;
 use App\Support\Ratio;
 use Carbon\CarbonInterface;
@@ -21,7 +20,7 @@ class GetSemenProduction
     {
         $weeks = bcdiv((string) max(1, $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay()) + 1), '7', 6);
         $farmTarget = (int) $this->settings->get('semen.target_doses_per_week');
-        $batches = SemenBatch::whereBetween('collected_on', [$from->copy()->startOfDay(), $to->copy()->startOfDay()])->get()->groupBy('animal_id');
+        $batches = SemenBatch::with('latestQc')->whereBetween('collected_on', [$from->copy()->startOfDay(), $to->copy()->startOfDay()])->get()->groupBy('animal_id');
 
         $rows = SemenBoar::with('animal')->get()->map(function (SemenBoar $boar) use ($batches, $weeks, $farmTarget) {
             $own = $batches->get($boar->animal_id, collect());
@@ -33,8 +32,9 @@ class GetSemenProduction
                 'animal_id' => $boar->animal_id,
                 'status' => $boar->status->label(),
                 'collections' => $own->count(),
-                'passed' => $own->whereIn('status', [SemenBatchStatus::Passed, SemenBatchStatus::Released, SemenBatchStatus::Quarantined])->count(),
-                'failed' => $own->where('status', SemenBatchStatus::Failed)->count(),
+                // What the laboratory decided, not where the batch is now: a passed batch later expired or destroyed still passed.
+                'passed' => $own->filter(fn (SemenBatch $b) => $b->latestQc?->passed === true)->count(),
+                'failed' => $own->filter(fn (SemenBatch $b) => $b->latestQc?->passed === false)->count(),
                 'doses' => $doses,
                 'target_doses' => $target,
                 'attainment_percent' => $target > 0 ? Ratio::percent($doses, $target, 1) : null,
