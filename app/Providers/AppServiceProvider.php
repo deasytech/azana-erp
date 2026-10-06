@@ -12,6 +12,7 @@ use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
 use App\Domain\Procurement\Models as PC;
 use App\Domain\Production\Models as PR;
+use App\Domain\Sales\Models as SA;
 use App\Domain\Semen\Models as SM;
 use App\Domain\Supplier\Models as SP;
 use App\Enums\Module;
@@ -34,6 +35,8 @@ use App\Policies\ProcurementMasterPolicy;
 use App\Policies\ProcurementPolicy;
 use App\Policies\ProductionMasterPolicy;
 use App\Policies\ProductionPolicy;
+use App\Policies\SalesMasterPolicy;
+use App\Policies\SalesPolicy;
 use App\Policies\SemenPolicy;
 use App\Policies\SettingsPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -83,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
         }
         Gate::policy(FD\FeedType::class, ProductionMasterPolicy::class);
         Gate::policy(FD\FeedFormula::class, FeedMillMasterPolicy::class);
+        foreach ([SA\SalesOrder::class, SA\SalesOrderLine::class, SA\StockReservation::class, SA\Invoice::class, SA\InvoiceLine::class, SA\Payment::class, SA\PaymentAllocation::class] as $model) {
+            Gate::policy($model, SalesPolicy::class);
+        }
+        Gate::policy(SA\Customer::class, SalesMasterPolicy::class);
         foreach ([SM\SemenBoar::class, SM\SemenCollection::class, SM\SemenBatch::class, SM\SemenQcRecord::class] as $model) {
             Gate::policy($model, SemenPolicy::class);
         }

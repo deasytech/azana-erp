@@ -44,6 +44,16 @@ use App\Domain\Production\Actions\RecordBatchWeighIn;
 use App\Domain\Production\Actions\RecordProductionCost;
 use App\Domain\Production\Models\BatchWeighIn;
 use App\Domain\Production\Models\ProductionBatch;
+use App\Domain\Sales\Actions\ConfirmSalesOrder;
+use App\Domain\Sales\Actions\CreateSalesOrder;
+use App\Domain\Sales\Actions\DispatchSalesOrder;
+use App\Domain\Sales\Actions\RecordCustomerPayment;
+use App\Domain\Sales\Actions\SaveCustomer;
+use App\Domain\Sales\Actions\SetCustomerCredit;
+use App\Domain\Sales\Models\Customer;
+use App\Domain\Sales\Models\Invoice;
+use App\Domain\Sales\Models\Payment;
+use App\Domain\Sales\Models\SalesOrder;
 use App\Domain\Semen\Actions\ManageSemenBoar;
 use App\Domain\Semen\Actions\ProcessSemenBatch;
 use App\Domain\Semen\Actions\RecordSemenCollection;
@@ -51,10 +61,12 @@ use App\Domain\Semen\Actions\RecordSemenQc;
 use App\Domain\Semen\Actions\ReleaseSemenBatch;
 use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\Supplier\Models\Supplier;
+use App\Enums\CreditStatus;
 use App\Enums\InventoryCategory;
 use App\Enums\InventoryTransactionType;
 use App\Enums\LookupCategory;
 use App\Enums\ProductionCostCategory;
+use App\Enums\ReceiptMethod;
 use App\Enums\ServiceMethod;
 use App\Models\Role;
 use App\Models\User;
@@ -403,4 +415,43 @@ function processedSemen(?Animal $boar = null): SemenBatch
 function releasedSemen(?Animal $boar = null): SemenBatch
 {
     return app(ReleaseSemenBatch::class)(processedSemen($boar), userWithRole('Farm Manager'), store('SEMEN'));
+}
+
+/** A customer (cash terms until credit is approved). */
+function customer(array $over = []): Customer
+{
+    return app(SaveCustomer::class)($over + ['name' => 'Green Acres Farm', 'customer_type_id' => lookup(LookupCategory::CustomerType, 'farmer')]);
+}
+
+/** A customer with approved credit (default limit 10,000,000.00, 30-day terms). */
+function creditCustomer(int $limitMinor = 1000000000, int $terms = 30, array $over = []): Customer
+{
+    return app(SetCustomerCredit::class)(customer($over), CreditStatus::Approved, $limitMinor, $terms, userWithRole('Farm Manager'));
+}
+
+/** A draft order of semen doses from the batch at 15,000.00 a dose (unless a price is given). */
+function semenOrder(Customer $customer, SemenBatch $batch, int $doses = 10, array $line = [], ?string $daysAgo = null): SalesOrder
+{
+    return app(CreateSalesOrder::class)($customer, [[
+        'kind' => 'semen', 'semen_batch_id' => $batch->id, 'inventory_location_id' => store('SEMEN')->id, 'quantity' => $doses, 'unit_price_minor' => 1500000,
+    ] + $line], now()->subDays((int) $daysAgo)->startOfDay());
+}
+
+/** A confirmed order of the draft, confirmed by a farm manager. */
+function confirmed(SalesOrder $order): SalesOrder
+{
+    return app(ConfirmSalesOrder::class)($order, userWithRole('Farm Manager'));
+}
+
+/** Confirms and dispatches an order (today unless $daysAgo); returns its invoice. */
+function dispatched(SalesOrder $order, int $daysAgo = 0): Invoice
+{
+    $daysAgo > 0 && $order->update(['ordered_on' => now()->subDays($daysAgo)->startOfDay()]);   // an older sale was ordered then too
+
+    return app(DispatchSalesOrder::class)(confirmed($order), now()->subDays($daysAgo)->startOfDay(), 'DN-1');
+}
+
+function pay(Customer $customer, int $minor, ?array $allocations = null, int $daysAgo = 0): Payment
+{
+    return app(RecordCustomerPayment::class)($customer, $minor, ReceiptMethod::BankTransfer, now()->subDays($daysAgo)->startOfDay(), null, $allocations);
 }

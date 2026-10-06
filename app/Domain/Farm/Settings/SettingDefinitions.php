@@ -27,6 +27,8 @@ final class SettingDefinitions
 
     private const SEMEN = 'Semen & laboratory';
 
+    private const SALES = 'Sales & credit';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -67,6 +69,10 @@ final class SettingDefinitions
             new SettingDefinition('semen.cost_per_dose_minor', self::SEMEN, 'Cost per dose (minor units)', 'int', '0', 'Stock value given to each released dose.'),
             new SettingDefinition('semen.target_doses_per_week', self::SEMEN, 'Target doses per boar per week', 'int', '40', 'Planning target; a boar can override it.'),
             new SettingDefinition('semen.require_separate_approver', self::SEMEN, 'Releaser must differ from the QC analyst', 'bool', '1', 'A batch must be released by someone other than the person who recorded its QC.'),
+            new SettingDefinition('sales.credit_enforcement', self::SALES, 'Credit limit rule', 'string', 'block', '"block" refuses an order that takes a customer over their limit, "warn" allows it with a warning, "off" does not check.'),
+            new SettingDefinition('sales.block_credit_when_overdue', self::SALES, 'No new credit while a customer is overdue', 'bool', '1', 'Applies when the credit limit rule is "block".'),
+            new SettingDefinition('sales.discount_approval_threshold_percent', self::SALES, 'Discounts above this (%) need approval', 'decimal', '10', 'An order with a larger discount can only be confirmed by someone who can approve.'),
+            new SettingDefinition('sales.require_separate_approver', self::SALES, 'Credit approver must differ from who set up the customer', 'bool', '1'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }

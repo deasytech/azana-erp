@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 11 - Customers, Semen Sales and Pig Sales (not started)
+Phase 12 - Slaughter, Carcass, Meat Processing and Meat Inventory (not started)
 
 ## Completed
 
@@ -233,6 +233,30 @@ Phase 11 - Customers, Semen Sales and Pig Sales (not started)
   - Sales (Phase 11) must call `AssertSemenBatchSellable` and issue doses of the batch's inventory batch; nothing else sells semen yet.
   - The doses in a batch are one inventory batch; splitting a batch across stores is done with an ordinary stock transfer.
   - Boar fertility trends and breed-level production targets beyond the weekly dose target are Phase 16 reporting.
+
+### Phase 11 - Customers, Semen Sales and Pig Sales (2026-10-07)
+- Delivery: one PR for the whole phase (under 100 files), committed in two steps - domain, then UI and docs.
+- Tests: `vendor/bin/pest` - 495 passed (added `tests/Feature/Sales/SalesDomainTest.php` and `SalesUiTest.php`; helpers `customer`, `creditCustomer`, `semenOrder`, `confirmed`, `dispatched`, `pay` in `tests/Pest.php`). A worked sale is asserted: 10 semen doses at 15,000.00 with a 10% discount (135,000.00) plus a tracked pig of 110.5 kg at 1,200.00 per kg (132,600.00) = 267,600.00.
+- Package changes: none.
+- What was done:
+  - Schema (1 migration): `customers`, `sales_orders`, `sales_order_lines`, `stock_reservations`, `invoices`, `invoice_lines`, `payments`, `payment_allocations`. Code in `app/Domain/Sales`. Semen and pig sales are order-line kinds (semen / tracked pig / pigs from a batch) rather than separate tables, so one order can mix them.
+  - **Customers** (`SaveCustomer`): numbered `C-000001`, with a customer type (new lookup category: farmer, breeder, butcher, retailer, institution, individual). A customer starts on cash terms: credit is set separately.
+  - **Credit** (`SetCustomerCredit`): a limit, payment terms and a status (none, approved, on hold, blocked), set by someone holding `sales.approve` and, by default, not whoever set the customer up (`sales.require_separate_approver`). Only an approved limit counts; on hold means a limit of zero.
+  - **Orders** (`CreateSalesOrder`): every line copies its price (and the discount) onto itself, so later price-list changes never alter an order or an invoice; semen defaults to the price list's price for the breed. Idempotency key supported.
+  - **Credit rule** (`CheckCustomerCredit`, setting `sales.credit_enforcement`): what the customer would owe after the order (outstanding + this order - any deposit) must stay within the approved limit. "block" refuses, "warn" confirms and keeps the warning on the order, "off" does not check. A blocked customer is refused; with `sales.block_credit_when_overdue` (on) a customer with overdue invoices gets no new credit. A customer with no credit buys by paying in advance (a deposit).
+  - **Confirm and reserve** (`ConfirmSalesOrder`): a discount above `sales.discount_approval_threshold_percent` (default 10) needs someone who can approve. Semen doses are reserved by batch and store (what others have reserved is not available), tracked pigs are checked for withdrawal periods and quarantine and cannot be reserved twice, pigs from a batch are reserved against its head count. Cancelling releases the reservations.
+  - **Dispatch** (`DispatchSalesOrder`, all or nothing): semen leaves stock through the inventory ledger by batch (source: the order), tracked pigs become sold (the Phase 06 withdrawal guard applies again), batch pigs come off its head count, and the invoice is issued (`INV-000001`, due after the customer's terms) from the order's lines with the traceability kept: invoice line -> semen batch -> boar -> collection, or -> animal / production batch. Any deposit the customer holds is applied to it. Semen is re-checked with `AssertSemenBatchSellable`, so a failed, quarantined, expired or blocked batch can never be sold. Event `SaleConfirmed`.
+  - **Payments** (`RecordCustomerPayment`): cash, bank transfer or POS, `RCT-000001`. A payment settles the invoices named, or the oldest first; a part payment settles part; whatever is left stays with the customer as a **deposit** and is applied to their next invoice (or by hand, `AllocateCustomerFunds`). A payment can be voided (the invoices owe again). Event `PaymentReceived`. Invoices and allocations are immutable.
+  - **Balances and history:** `GetCustomerAccount` (owes, overdue, deposit, credit headroom), `GetOutstandingBalances`, `GetCustomerHistory` (orders, invoices and payments, newest first).
+  - Admin UI (Sales group): Outstanding balances, Orders (line form for semen / pigs; page with confirm, dispatch and invoice, cancel; lines with reservations), Invoices (lines traced to batch/boar/animal, payments applied), Payments received (apply to oldest, chosen invoices or keep as deposit; prefilled from a customer or invoice; void), Customers (account summary, Set credit, Receive payment; orders, invoices and payments tabs).
+  - Permissions: new `sales` module. General and Farm Manager everything except delete (approving credit and large discounts); Sales Officer and Accountant view/create/edit/export/print; Store Officer, Semen Laboratory Manager view. Customers are deletable only before they have sales history; nothing else is deletable.
+- Migration notes: 1 new reversible migration; 4 new farm settings (credit rule, no credit while overdue, discount approval limit, separate credit approver); new customer-type lookup values.
+- Known issues / notes:
+  - An invoice cannot be voided or edited: a sold tracked pig cannot be reinstated until the Phase 15 approval workflow, so corrections need credit notes, which come with finance (Phase 14).
+  - Sales of untracked pigs from a batch do not check withdrawal periods (treatments are per animal; Phase 07 note still applies).
+  - Prices for pigs are typed on each line; only semen has a price list entry to default from.
+  - Refunds of deposits and customer statements are not built; the finance phase owns them. Receipts post no accounting journal yet (Phase 14).
+  - Meat sales (Phase 13) will use the same order, invoice and payment documents with a new line kind.
 
 ## In Progress
 None
