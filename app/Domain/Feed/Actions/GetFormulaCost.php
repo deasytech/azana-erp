@@ -19,7 +19,7 @@ class GetFormulaCost
 
     public function __construct(private readonly StockValuation $valuation, private readonly ResolveSettings $settings) {}
 
-    /** @return array{per_kg_minor: int, per_bag_minor: int, per_tonne_minor: int, bag_kg: string, lines: list<array{item: string, kg_per_tonne: string, unit_cost_minor: int, cost_per_kg_minor: string}>, unpriced: list<string>} */
+    /** @return array{per_kg_minor: int, per_bag_minor: int, per_tonne_minor: int, bag_kg: string, lines: list<array{item_id: int, item: string, kg_per_tonne: string, unit_cost_minor: int, cost_per_kg_minor: string}>, unpriced: list<string>} */
     public function __invoke(FeedFormula $formula): array
     {
         $inputPerKg = $this->inputKg('1', (string) $formula->process_loss_percent);
@@ -36,6 +36,7 @@ class GetFormulaCost
             $unitCost === 0 && $unpriced[] = $line->item->name;
             $total = bcadd($total, $cost, 10);
             $lines[] = [
+                'item_id' => $line->item->id,
                 'item' => $line->item->name,
                 'kg_per_tonne' => Ratio::average(bcmul($kg, '1000', 10), '1', 3),
                 'unit_cost_minor' => $unitCost,

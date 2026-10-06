@@ -101,6 +101,20 @@ it('shows a formula\'s nutrition, cost and ingredients', function () {
         ->assertSee('Item MAIZE')->assertSee('60.0000%')->assertSee('612.245');
 });
 
+it('keeps ingredients with the same name apart on the ingredients tab', function () {
+    $this->actingAs(owner());
+    $cheap = stockItem('MAIZE-A', ['name' => 'Maize']);
+    $dear = stockItem('MAIZE-B', ['name' => 'Maize']);
+    receiveStock($cheap, '100', 10000);
+    receiveStock($dear, '100', 90000);
+    $formula = app(SaveFeedFormula::class)(['code' => 'twins', 'name' => 'Twins', 'feed_type_id' => growerFeed()->id, 'items' => [
+        ['inventory_item_id' => $cheap->id, 'inclusion_percent' => '50'], ['inventory_item_id' => $dear->id, 'inclusion_percent' => '50'],
+    ]]);
+
+    Livewire::test(IngredientsRelationManager::class, ['ownerRecord' => $formula, 'pageClass' => ViewFeedFormula::class])
+        ->assertSee('NGN 100.00')->assertSee('NGN 900.00');   // each line shows its own item's cost, not the other's
+});
+
 it('activates a draft, starts a new version and retires from the formula page', function () {
     $this->actingAs(owner());
     stockItem('GROWER-MEAL', ['feed_type_id' => growerFeed()->id]);

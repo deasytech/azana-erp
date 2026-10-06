@@ -16,14 +16,14 @@ class IngredientsRelationManager extends RelationManager
 
     protected static ?string $title = 'Ingredients';
 
-    /** @var array<string, array<string, mixed>>|null cost lines keyed by item name */
+    /** @var array<int, array<string, mixed>>|null cost lines keyed by inventory item id (names are not unique) */
     protected ?array $costLines = null;
 
     private function costLine(FeedFormulaItem $item): array
     {
-        $this->costLines ??= collect(app(GetFormulaCost::class)($this->getOwnerRecord())['lines'])->keyBy('item')->all();
+        $this->costLines ??= collect(app(GetFormulaCost::class)($this->getOwnerRecord())['lines'])->keyBy('item_id')->all();
 
-        return $this->costLines[$item->item->name] ?? [];
+        return $this->costLines[$item->inventory_item_id] ?? [];
     }
 
     public function table(Table $table): Table
