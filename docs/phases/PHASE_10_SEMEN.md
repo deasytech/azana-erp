@@ -16,8 +16,8 @@ Implement semen as a first-class commercial product.
 - Price lists.
 
 ## Acceptance Criteria
-- [ ] Every collection creates a traceable batch.
-- [ ] QC status controls saleability.
-- [ ] Failed batches cannot be sold.
-- [ ] Inventory distinguishes breed, boar, batch and expiry.
-- [ ] Planning targets are configurable.
+- [x] Every collection creates a traceable batch.
+- [x] QC status controls saleability.
+- [x] Failed batches cannot be sold.
+- [x] Inventory distinguishes breed, boar, batch and expiry.
+- [x] Planning targets are configurable.

@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 10 - Semen Production, Laboratory QC and Semen Inventory (not started)
+Phase 11 - Customers, Semen Sales and Pig Sales (not started)
 
 ## Completed
 
@@ -208,6 +208,31 @@ Phase 10 - Semen Production, Laboratory QC and Semen Inventory (not started)
   - Other production costs (labour, power, bags) are one amount typed at completion; Phase 14 costing may break them down.
   - A production run uses one source store and one output store; multi-store mixing is not modelled.
   - Formula cost uses the current ingredient cost, which can differ from what a run later costs under FIFO; the finished batch always carries the real ledger cost.
+
+### Phase 10 - Semen Production, Laboratory QC and Semen Inventory (2026-10-06)
+- Delivery: two stacked PRs - domain (#27) and UI, tests and docs (`phase-10-ui`).
+- Tests: `vendor/bin/pest` - 444 passed (added `tests/Feature/Semen/SemenDomainTest.php` and `SemenUiTest.php`; helpers `semenBoar`, `collectSemen`, `passSemenQc`, `processedSemen`, `releasedSemen` in `tests/Pest.php`).
+- Package changes: none.
+- What was done:
+  - Schema (1 migration): `semen_boars`, `semen_collections`, `semen_batches`, `semen_qc_records`, plus `inventory_items.breed_id` (one semen stock item per breed), `breeding_services.semen_batch_id` and `price_list_items.inventory_item_id`. Code in `app/Domain/Semen`.
+  - **Boar programme** (`ManageSemenBoar`): an active boar is enrolled as active, resting or retired, with an optional rest period and weekly target of its own.
+  - **Collections** (`RecordSemenCollection`): from an active, collecting, non-quarantined boar that has rested (`semen.min_collection_interval_days`, default 4, or the boar's own); volume 0.1-1000 ml; idempotency key supported. **Every collection creates its batch at once**, numbered like `IPA-SM-DUR-20260904-001` (prefix, breed code, date, daily sequence), expiring after `semen.shelf_life_days` (default 4), status pending QC. Event `SemenBatchCollected`.
+  - **Laboratory QC** (`RecordSemenQc`): motility, concentration and abnormal forms are judged against the farm's standards (`semen.min_motility_percent` 70, `semen.min_concentration_million_per_ml` 200, `semen.max_abnormal_percent` 20): a batch that meets them is passed, one that does not is failed and the reasons are kept. QC is recorded once and never edited.
+  - **Processing** (`ProcessSemenBatch`): the doses made cannot exceed what the ejaculate yields - volume x concentration x motility / `semen.sperm_per_dose_million` (default 2,500 million). Example: 250 ml x 300 million/ml x 80% = 60,000 million -> at most 24 doses.
+  - **Release** (`ReleaseSemenBatch`): a processed, passed batch is released by someone holding `semen.approve` and (by default, `semen.require_separate_approver`) not the analyst who recorded the QC. Its doses are received into the breed's semen stock item through the inventory ledger, by batch and expiry, valued at `semen.cost_per_dose_minor` (default 0). Event `SemenBatchReleased`.
+  - **Saleability:** `AssertSemenBatchSellable` is the single rule - released, not expired, not blocked. A failed batch never reaches stock, so it can never be sold; a quarantined batch's stock is blocked in the inventory ledger. Phase 11 sales and AI both go through it.
+  - **Quarantine, destruction, expiry** (`ManageSemenBatch`, `ExpireSemenBatches`): a batch can be quarantined (stock blocked) and cleared with approval, or destroyed with a reason; destroying or expiring writes the doses left off the ledger as wastage. A daily scheduled job expires batches past their date.
+  - **Artificial insemination:** `RecordService` accepts a released batch: AI only, one or more doses taken from a named store through the ledger (source: the service), the batch's boar recorded as sire even if that boar has left the farm.
+  - **Reports:** `GetSemenProduction` (collections, passed/failed by the lab's decision, doses and attainment against weekly targets - a boar's own, else `semen.target_doses_per_week`, default 40 - for any period), `GetSemenStock` (doses by breed, boar, batch, expiry, store and sellability), `GetSemenPrice` (dose price from the active price lists in force, via the price list item's stock item).
+  - Admin UI (Semen group): Semen stock, Batches (record a collection; batch page with collection, QC, price per dose, and Record QC / Record doses made / Release / Quarantine / Clear quarantine / Destroy steps), Production report (period checked on the server), Boars. Price list items can be linked to a stock item; the breeding service form can pick a released batch and the store the dose comes from.
+  - Permissions: new `semen` module. Semen Laboratory Manager, General and Farm Manager have everything except delete (release and destroy need approve); Breeding Manager and Farm Worker view/create; Veterinarian, Store Officer and Sales Officer view; Accountant view/export. Nothing is deletable, not even by the Owner.
+- Migration notes: 1 new reversible migration (verified up/down/up on SQLite and MySQL), 9 new farm settings, a semen laboratory store and one semen stock item per breed (`SEMEN-<BREED>`) from the master data seeder.
+- Known issues / notes:
+  - A failed batch cannot be retested; it can only be destroyed.
+  - Released doses carry no stock value until `semen.cost_per_dose_minor` is set.
+  - Sales (Phase 11) must call `AssertSemenBatchSellable` and issue doses of the batch's inventory batch; nothing else sells semen yet.
+  - The doses in a batch are one inventory batch; splitting a batch across stores is done with an ordinary stock transfer.
+  - Boar fertility trends and breed-level production targets beyond the weekly dose target are Phase 16 reporting.
 
 ## In Progress
 None

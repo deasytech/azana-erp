@@ -7,6 +7,7 @@ use App\Domain\System\Concerns\Auditable;
 use App\Enums\SemenBoarStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SemenBoar extends Model
 {
@@ -24,6 +25,11 @@ class SemenBoar extends Model
     public function animal(): BelongsTo
     {
         return $this->belongsTo(Animal::class);
+    }
+
+    public function collections(): HasMany
+    {
+        return $this->hasMany(SemenCollection::class, 'animal_id', 'animal_id');
     }
 
     public function isInUse(): bool
