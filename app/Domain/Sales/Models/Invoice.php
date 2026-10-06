@@ -44,6 +44,11 @@ class Invoice extends Model
     /** Minor units paid, from payments that have not been voided. */
     public function paidMinor(): int
     {
+        // Lists load the allocations and their payments up front; use them rather than asking the database again.
+        if ($this->relationLoaded('allocations') && $this->allocations->every(fn (PaymentAllocation $a) => $a->relationLoaded('payment'))) {
+            return (int) $this->allocations->reject(fn (PaymentAllocation $a) => $a->payment->isVoided())->sum('amount_minor');
+        }
+
         return (int) $this->allocations()->whereHas('payment', fn ($q) => $q->whereNull('voided_at'))->sum('amount_minor');
     }
 

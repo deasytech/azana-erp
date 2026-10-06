@@ -35,6 +35,7 @@ use App\Enums\ReservationStatus;
 use App\Enums\SalesOrderStatus as S;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class]);
@@ -489,6 +490,24 @@ describe('payments and balances', function () {
             ->and($balances->first())->toMatchArray(['outstanding' => 2000000, 'deposit' => 0])
             ->and($balances->last())->toMatchArray(['outstanding' => 0, 'deposit' => 700000]);
     });
+});
+
+it('works out what an invoice has been paid from its loaded payments, without asking the database again', function () {
+    $customer = creditCustomer();
+    $invoice = dispatched(semenOrder($customer, releasedSemen(), 4));    // 60,000.00
+    pay($customer, 2000000);
+    $voided = pay($customer, 1500000);
+    app(VoidCustomerPayment::class)($voided, 'Bounced');
+
+    $loaded = Invoice::with('allocations.payment')->find($invoice->id);
+    DB::enableQueryLog();
+    $paid = $loaded->paidMinor();
+    $balance = $loaded->balanceMinor();
+    $queries = count(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    expect($paid)->toBe(2000000)->and($balance)->toBe(4000000)->and($queries)->toBe(0)
+        ->and(Invoice::find($invoice->id)->paidMinor())->toBe(2000000);   // the same answer when nothing is loaded
 });
 
 it('grants sales rights by role', function () {

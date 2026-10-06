@@ -2,10 +2,13 @@
 
 namespace App\Domain\Sales\Actions;
 
+use App\Domain\Animal\Models\Animal;
 use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Health\Actions\AssertAnimalCanEnterFoodChain;
+use App\Domain\Inventory\Models\InventoryBatch;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Services\StockValuation;
+use App\Domain\Production\Models\ProductionBatch;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesOrder;
 use App\Domain\Sales\Models\SalesOrderLine;
@@ -16,6 +19,7 @@ use App\Enums\ReservationStatus;
 use App\Enums\SalesLineKind;
 use App\Enums\SalesOrderStatus;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -44,7 +48,7 @@ class ConfirmSalesOrder
             $this->assertDiscountAllowed($order, $confirmer);
             $warning = ($this->credit)($customer, $order->total_minor, $order->currency_code);
 
-            foreach ($order->lines as $line) {
+            foreach ($this->inLockOrder($order) as $line) {
                 $this->reserve($order, $line);
             }
 
@@ -52,6 +56,21 @@ class ConfirmSalesOrder
 
             return $order;
         });
+    }
+
+    /**
+     * The lines in a fixed order - semen batches, then animals, then production batches, each by id - so two orders that
+     * share stock always lock it in the same sequence and cannot wait on each other.
+     *
+     * @return Collection<int, SalesOrderLine>
+     */
+    private function inLockOrder(SalesOrder $order)
+    {
+        return $order->lines->sortBy(fn (SalesOrderLine $l) => match ($l->kind) {
+            SalesLineKind::Semen => [0, $l->semenBatch->inventory_batch_id ?? 0, $l->id],
+            SalesLineKind::PigAnimal => [1, $l->animal_id, $l->id],
+            SalesLineKind::PigBatch => [2, $l->production_batch_id, $l->id],
+        })->values();
     }
 
     private function assertDiscountAllowed(SalesOrder $order, User $confirmer): void
@@ -78,6 +97,9 @@ class ConfirmSalesOrder
         $batch = ($this->sellable)($line->semen_batch_id);
         $item = InventoryItem::findOrFail($batch->inventoryBatch->inventory_item_id);
 
+        // Hold the batch's row while its reservations are counted and added, so a second order cannot count the same doses as free.
+        InventoryBatch::lockForUpdate()->findOrFail($batch->inventory_batch_id);
+
         $held = (string) StockReservation::where('inventory_batch_id', $batch->inventory_batch_id)->where('inventory_location_id', $line->inventory_location_id)
             ->where('status', ReservationStatus::Active)->sum('quantity');
         $free = bcsub($this->stock->onHand($item->id, $line->inventory_location_id, $batch->inventory_batch_id), $held, 3);
@@ -94,7 +116,7 @@ class ConfirmSalesOrder
 
     private function reserveAnimal(SalesOrder $order, SalesOrderLine $line): void
     {
-        $animal = $line->animal;
+        $animal = Animal::lockForUpdate()->with('category')->findOrFail($line->animal_id);
 
         $animal->isActive() || throw new DomainException("{$animal->animal_number} is {$animal->status->label()} and cannot be sold.", 'animal_not_active');
         ($this->foodChain)($animal, $order->ordered_on);
@@ -108,7 +130,7 @@ class ConfirmSalesOrder
 
     private function reserveBatchPigs(SalesOrderLine $line): void
     {
-        $batch = $line->productionBatch;
+        $batch = ProductionBatch::lockForUpdate()->findOrFail($line->production_batch_id);
 
         $batch->isActive() || throw new DomainException("{$batch->code} is closed.", 'batch_closed');
         $held = (int) StockReservation::where('production_batch_id', $batch->id)->where('status', ReservationStatus::Active)->sum('quantity');
