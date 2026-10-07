@@ -44,7 +44,7 @@ class DispatchSalesOrder
     public function __invoke(SalesOrder $order, CarbonInterface $dispatchedOn, ?string $dispatchNote = null, ?User $actor = null): Invoice
     {
         return DB::transaction(function () use ($order, $dispatchedOn, $dispatchNote, $actor) {
-            $order = SalesOrder::lockForUpdate()->with(['lines.animal', 'lines.productionBatch'])->findOrFail($order->id);
+            $order = SalesOrder::lockForUpdate()->with(['lines.animal', 'lines.productionBatch', 'lines.meatLine.product'])->findOrFail($order->id);
             $customer = Customer::findOrFail($order->customer_id);
 
             $this->validate($order, $customer, $dispatchedOn);
@@ -85,6 +85,7 @@ class DispatchSalesOrder
         match ($line->kind) {
             SalesLineKind::Semen => $this->handSemen($order, $line, $on, $reason, $actor),
             SalesLineKind::PigAnimal => ($this->changeStatus)($line->animal, AnimalStatus::Sold, $reason, $on, $actor),
+            SalesLineKind::Meat => $this->handMeat($order, $line, $on, $reason, $actor),
             SalesLineKind::PigBatch => ($this->removePigs)($line->productionBatch, BatchEventType::Sale, (int) $line->heads, $on, $reason, $actor, "sale:{$order->number}:{$line->id}"),
         };
     }
@@ -95,6 +96,15 @@ class DispatchSalesOrder
 
         ($this->issueStock)(InventoryTransactionType::Sale, $batch->inventoryBatch->inventory_item_id, $line->inventory_location_id, (string) (int) $line->quantity, $on, [
             'batch' => $batch->inventory_batch_id, 'source_type' => 'sales_order', 'source_id' => $order->id, 'reason' => $reason,
+        ], $actor);
+    }
+
+    private function handMeat(SalesOrder $order, SalesOrderLine $line, CarbonInterface $on, string $reason, ?User $actor): void
+    {
+        $lot = $line->meatLine;
+
+        ($this->issueStock)(InventoryTransactionType::Sale, $lot->product->inventory_item_id, $line->inventory_location_id, (string) $line->quantity, $on, [
+            'batch' => $lot->inventory_batch_id, 'source_type' => 'sales_order', 'source_id' => $order->id, 'reason' => $reason,
         ], $actor);
     }
 
@@ -116,7 +126,7 @@ class DispatchSalesOrder
                 'sales_order_line_id' => $line->id, 'kind' => $line->kind, 'description' => $line->description, 'unit' => $line->unit,
                 'quantity' => $line->quantity, 'unit_price_minor' => $line->unit_price_minor, 'discount_percent' => $line->discount_percent,
                 'line_total_minor' => $line->line_total_minor, 'semen_batch_id' => $line->semen_batch_id,
-                'animal_id' => $line->animal_id, 'production_batch_id' => $line->production_batch_id,
+                'animal_id' => $line->animal_id, 'production_batch_id' => $line->production_batch_id, 'meat_production_line_id' => $line->meat_production_line_id,
             ]);
         }
 

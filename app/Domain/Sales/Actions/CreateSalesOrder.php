@@ -3,16 +3,21 @@
 namespace App\Domain\Sales\Actions;
 
 use App\Domain\Animal\Models\Animal;
+use App\Domain\Farm\Actions\GetItemPrice;
 use App\Domain\Farm\Models\Farm;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
+use App\Domain\Meat\Models\MeatProduct;
+use App\Domain\Meat\Models\MeatProductionLine;
 use App\Domain\Production\Models\ProductionBatch;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesOrder;
+use App\Domain\Sales\Services\StockAvailability;
 use App\Domain\Semen\Actions\GetSemenPrice;
 use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\System\Actions\NextNumber;
 use App\Domain\System\Exceptions\DomainException;
+use App\Enums\MeatProductionStatus;
 use App\Enums\SalesLineKind;
 use App\Models\User;
 use App\Support\Ratio;
@@ -25,11 +30,19 @@ use Illuminate\Support\Facades\DB;
  *  - semen:      semen_batch_id, inventory_location_id, quantity (doses); the price defaults to the price list's
  *  - pig_animal: animal_id, unit (head|kg), quantity (kg when priced by weight), unit_price_minor
  *  - pig_batch:  production_batch_id, heads, unit (head|kg), quantity (total kg when priced by weight), unit_price_minor
+ *  - meat:       inventory_location_id (cold room), quantity (kg), and either meat_product_id (the lots are picked, earliest
+ *                use-by first) or meat_production_line_id (one named lot); the price defaults to the price list's
  * optionally with discount_percent. The price is copied onto the line, so later price changes never alter the order.
  */
 class CreateSalesOrder
 {
-    public function __construct(private readonly NextNumber $nextNumber, private readonly GetSemenPrice $semenPrice) {}
+    public function __construct(
+        private readonly NextNumber $nextNumber,
+        private readonly GetSemenPrice $semenPrice,
+        private readonly GetItemPrice $itemPrice,
+        private readonly PickMeat $pickMeat,
+        private readonly StockAvailability $availability,
+    ) {}
 
     /** @param list<array<string, mixed>> $lines */
     public function __invoke(Customer|int $customer, array $lines, CarbonInterface $orderedOn, ?string $notes = null, ?User $actor = null, ?string $idempotencyKey = null): SalesOrder
@@ -50,7 +63,7 @@ class CreateSalesOrder
             $customer = Customer::findOrFail($customer instanceof Customer ? $customer->id : $customer);
             $customer->is_active || throw new DomainException("{$customer->name} is not an active customer.", 'inactive_customer');
 
-            $rows = array_map(fn (array $line) => $this->line($line), array_values($lines));
+            $rows = array_merge(...array_map(fn (array $line) => $this->rows($line), array_values($lines)));
             $this->assertNoDuplicates($rows);
 
             $order = SalesOrder::create([
@@ -73,17 +86,20 @@ class CreateSalesOrder
     }
 
     /**
+     * One line as entered becomes one order row, or several for meat picked from more than one lot.
+     *
      * @param  array<string, mixed>  $line
-     * @return array<string, mixed>
+     * @return list<array<string, mixed>>
      */
-    private function line(array $line): array
+    private function rows(array $line): array
     {
         $kind = SalesLineKind::tryFrom((string) ($line['kind'] ?? '')) ?? throw new DomainException('Choose what each line sells.', 'line_kind');
 
-        $row = match ($kind) {
-            SalesLineKind::Semen => $this->semenLine($line),
-            SalesLineKind::PigAnimal => $this->animalLine($line),
-            SalesLineKind::PigBatch => $this->batchLine($line),
+        $partials = match ($kind) {
+            SalesLineKind::Semen => [$this->semenLine($line)],
+            SalesLineKind::PigAnimal => [$this->animalLine($line)],
+            SalesLineKind::PigBatch => [$this->batchLine($line)],
+            SalesLineKind::Meat => $this->meatLines($line),
         };
 
         $discount = (string) ($line['discount_percent'] ?? '0');
@@ -92,17 +108,63 @@ class CreateSalesOrder
             throw new DomainException('A discount is a percentage from 0 to 100.', 'discount');
         }
 
-        if (! is_int($row['unit_price_minor']) || $row['unit_price_minor'] < 0) {
-            throw new DomainException('Give a price (zero or more, in whole minor units) for every line.', 'line_price');
+        return array_map(function (array $row) use ($kind, $discount) {
+            if (! is_int($row['unit_price_minor']) || $row['unit_price_minor'] < 0) {
+                throw new DomainException('Give a price (zero or more, in whole minor units) for every line.', 'line_price');
+            }
+
+            $gross = bcmul((string) $row['quantity'], (string) $row['unit_price_minor'], 6);
+
+            return $row + [
+                'kind' => $kind,
+                'discount_percent' => $discount,
+                'line_total_minor' => Ratio::toWhole(bcmul($gross, bcsub('1', bcdiv($discount, '100', 6), 6), 6)),
+            ];
+        }, $partials);
+    }
+
+    /**
+     * Meat is sold by weight from a cold room: from the lot named, or picked automatically (earliest use-by first).
+     *
+     * @param  array<string, mixed>  $line
+     * @return list<array<string, mixed>>
+     */
+    private function meatLines(array $line): array
+    {
+        $location = InventoryLocation::where('is_active', true)->find($line['inventory_location_id'] ?? 0) ?? throw new DomainException('Choose the cold room the meat comes from.', 'meat_store');
+        $kg = (string) ($line['quantity'] ?? '');
+
+        if (! preg_match('/^\d{1,8}(\.\d{1,3})?$/', $kg) || bccomp($kg, '0', 3) <= 0) {
+            throw new DomainException('Enter the weight of meat sold, in kg (at most 3 decimals).', 'meat_weight');
         }
 
-        $gross = bcmul((string) $row['quantity'], (string) $row['unit_price_minor'], 6);
+        if (filled($line['meat_production_line_id'] ?? null)) {
+            $lot = MeatProductionLine::with(['product.item', 'batch'])->find($line['meat_production_line_id']) ?? throw new DomainException('That meat batch does not exist.', 'meat_lot');
+            $lot->batch->status === MeatProductionStatus::Produced || throw new DomainException("{$lot->batch->number} was reversed and its meat is not in stock.", 'meat_lot');
+            $this->assertLotHasStock($lot, $location->id, $kg);
+            $picks = [['lot' => $lot, 'kg' => bcadd($kg, '0', 3)]];
+        } else {
+            $product = MeatProduct::where('is_active', true)->find($line['meat_product_id'] ?? 0) ?? throw new DomainException('Choose the meat product.', 'meat_product');
+            $picks = ($this->pickMeat)($product, $location->id, $kg);
+        }
 
-        return $row + [
-            'kind' => $kind,
-            'discount_percent' => $discount,
-            'line_total_minor' => Ratio::toWhole(bcmul($gross, bcsub('1', bcdiv($discount, '100', 6), 6), 6)),
-        ];
+        return array_map(fn (array $pick) => [
+            'description' => "{$pick['lot']->product->name} ({$pick['lot']->batch->number}, use by {$pick['lot']->use_by->format('d M Y')})",
+            'unit' => 'kg', 'quantity' => $pick['kg'], 'meat_production_line_id' => $pick['lot']->id, 'inventory_location_id' => $location->id,
+            'unit_price_minor' => $line['unit_price_minor'] ?? ($this->itemPrice)($pick['lot']->product->inventory_item_id)['price_minor'] ?? null,
+        ], $picks);
+    }
+
+    /** A named lot is checked here just as picked lots are: it must have the weight free in the chosen cold room (confirmation checks again). */
+    private function assertLotHasStock(MeatProductionLine $lot, int $locationId, string $kg): void
+    {
+        $free = $this->availability->free($lot->product->inventory_item_id, $locationId, $lot->inventory_batch_id);
+
+        if (bccomp($free, $kg, 3) < 0) {
+            $free = bccomp($free, '0', 3) > 0 ? $free : '0.000';
+
+            throw new DomainException("{$lot->product->name} from {$lot->batch->number}: only {$free} kg is free in that cold room (the rest is reserved for other orders or is not there), {$kg} kg needed.", 'insufficient_meat');
+        }
     }
 
     /** @param array<string, mixed> $line */
@@ -180,7 +242,7 @@ class CreateSalesOrder
     /** @param list<array<string, mixed>> $rows */
     private function assertNoDuplicates(array $rows): void
     {
-        foreach (['semen_batch_id', 'animal_id', 'production_batch_id'] as $key) {
+        foreach (['semen_batch_id', 'animal_id', 'production_batch_id', 'meat_production_line_id'] as $key) {
             $ids = array_filter(array_column($rows, $key));
 
             if (count($ids) !== count(array_unique($ids))) {

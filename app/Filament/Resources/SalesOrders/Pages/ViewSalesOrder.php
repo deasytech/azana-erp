@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesOrders\Pages;
 use App\Domain\Sales\Actions\CancelSalesOrder;
 use App\Domain\Sales\Actions\ConfirmSalesOrder;
 use App\Domain\Sales\Actions\DispatchSalesOrder;
+use App\Domain\Sales\Actions\GetPickingList;
 use App\Domain\Sales\Models\SalesOrder;
 use App\Enums\SalesOrderStatus as Status;
 use App\Filament\Concerns\HasWorkflowSteps;
@@ -18,6 +19,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
@@ -66,6 +68,9 @@ class ViewSalesOrder extends ViewRecord
                 TextEntry::make('credit_warning')->label('Credit warning')->color('danger')->visible(fn (SalesOrder $o) => $o->credit_warning !== null)->columnSpanFull(),
                 TextEntry::make('cancel_reason')->label('Cancelled because')->visible(fn (SalesOrder $o) => $o->cancel_reason !== null)->columnSpanFull(),
             ]),
+            Section::make('Picking list')->description('What to fetch, and from where, to fill this order.')
+                ->visible(fn (SalesOrder $o) => in_array($o->status, [Status::Confirmed, Status::Dispatched], true))
+                ->schema([ViewEntry::make('picking')->hiddenLabel()->view('filament.sales.picking-list')->state(fn (SalesOrder $o) => app(GetPickingList::class)($o))]),
         ]);
     }
 

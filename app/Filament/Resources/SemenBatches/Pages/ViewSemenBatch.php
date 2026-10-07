@@ -13,9 +13,11 @@ use App\Domain\Semen\Actions\ReleaseSemenBatch;
 use App\Domain\Semen\Models\SemenBatch;
 use App\Enums\SemenBatchStatus as Status;
 use App\Filament\Concerns\HasWorkflowSteps;
+use App\Filament\Pages\TraceExplorer;
 use App\Filament\Resources\SemenBatches\SemenBatchResource;
 use App\Filament\Support\StockForms;
 use App\Support\Money;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
@@ -88,6 +90,9 @@ class ViewSemenBatch extends ViewRecord
         $settings = app(ResolveSettings::class);
 
         return [
+            Action::make('trace')->label('Trace this product')->icon('heroicon-o-magnifying-glass')->color('gray')
+                ->visible(fn () => TraceExplorer::canAccess())
+                ->url(fn () => TraceExplorer::urlFor('semen_batch', $this->batch()->number)),
             $this->step('qc', 'Record QC', 'heroicon-o-beaker', 'QC recorded',
                 fn (array $d) => app(RecordSemenQc::class)($this->batch(), (string) $d['motility'], (string) $d['concentration'], (string) $d['abnormal'], $d['notes'] ?? null),
                 fn () => $in(Status::PendingQc) && $may('create'),
