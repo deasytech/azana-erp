@@ -12,6 +12,7 @@ use App\Domain\Meat\Models\MeatProductionLine;
 use App\Domain\Production\Models\ProductionBatch;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesOrder;
+use App\Domain\Sales\Services\StockAvailability;
 use App\Domain\Semen\Actions\GetSemenPrice;
 use App\Domain\Semen\Models\SemenBatch;
 use App\Domain\System\Actions\NextNumber;
@@ -40,6 +41,7 @@ class CreateSalesOrder
         private readonly GetSemenPrice $semenPrice,
         private readonly GetItemPrice $itemPrice,
         private readonly PickMeat $pickMeat,
+        private readonly StockAvailability $availability,
     ) {}
 
     /** @param list<array<string, mixed>> $lines */
@@ -139,6 +141,7 @@ class CreateSalesOrder
         if (filled($line['meat_production_line_id'] ?? null)) {
             $lot = MeatProductionLine::with(['product.item', 'batch'])->find($line['meat_production_line_id']) ?? throw new DomainException('That meat batch does not exist.', 'meat_lot');
             $lot->batch->status === MeatProductionStatus::Produced || throw new DomainException("{$lot->batch->number} was reversed and its meat is not in stock.", 'meat_lot');
+            $this->assertLotHasStock($lot, $location->id, $kg);
             $picks = [['lot' => $lot, 'kg' => bcadd($kg, '0', 3)]];
         } else {
             $product = MeatProduct::where('is_active', true)->find($line['meat_product_id'] ?? 0) ?? throw new DomainException('Choose the meat product.', 'meat_product');
@@ -150,6 +153,18 @@ class CreateSalesOrder
             'unit' => 'kg', 'quantity' => $pick['kg'], 'meat_production_line_id' => $pick['lot']->id, 'inventory_location_id' => $location->id,
             'unit_price_minor' => $line['unit_price_minor'] ?? ($this->itemPrice)($pick['lot']->product->inventory_item_id)['price_minor'] ?? null,
         ], $picks);
+    }
+
+    /** A named lot is checked here just as picked lots are: it must have the weight free in the chosen cold room (confirmation checks again). */
+    private function assertLotHasStock(MeatProductionLine $lot, int $locationId, string $kg): void
+    {
+        $free = $this->availability->free($lot->product->inventory_item_id, $locationId, $lot->inventory_batch_id);
+
+        if (bccomp($free, $kg, 3) < 0) {
+            $free = bccomp($free, '0', 3) > 0 ? $free : '0.000';
+
+            throw new DomainException("{$lot->product->name} from {$lot->batch->number}: only {$free} kg is free in that cold room (the rest is reserved for other orders or is not there), {$kg} kg needed.", 'insufficient_meat');
+        }
     }
 
     /** @param array<string, mixed> $line */

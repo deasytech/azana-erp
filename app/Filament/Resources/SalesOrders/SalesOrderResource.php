@@ -68,13 +68,12 @@ class SalesOrderResource extends Resource
                         ->options(fn () => SemenBatch::with(['boar', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
                             ->filter->isSellable()->mapWithKeys(fn (SemenBatch $b) => [$b->id => "{$b->number} ({$b->boar->animal_number}, expires {$b->expiry_date->format('d M')})"])->all()),
                     StockForms::store()->visible(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true))->required(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true))
-                        ->label(fn ($get) => $get('kind') === SalesLineKind::Meat->value ? 'Take meat from (cold room)' : 'Take doses from'),
+                        ->label(fn ($get) => $get('kind') === SalesLineKind::Meat->value ? 'Take meat from (cold room)' : 'Take doses from')->live(),
                     Select::make('meat_product_id')->label('Meat product')->searchable()->live()->visible($is(SalesLineKind::Meat))->required($is(SalesLineKind::Meat))
                         ->options(fn () => MeatProduct::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                     Select::make('meat_production_line_id')->label('Specific batch (optional)')->searchable()->visible($is(SalesLineKind::Meat))
                         ->helperText('Leave empty to pick the batches closest to their use-by date.')
-                        ->options(fn ($get) => collect(app(GetMeatStock::class)())->where('product_id', (int) $get('meat_product_id'))->where('expired', false)
-                            ->mapWithKeys(fn (array $r) => [$r['line_id'] => "{$r['batch']} - {$r['kg']} kg, use by {$r['use_by']->format('d M')}"])->all()),
+                        ->options(fn ($get) => static::meatLotOptions((int) $get('meat_product_id'), (int) $get('inventory_location_id'))),
                     AnimalPicker::any()->visible($is(SalesLineKind::PigAnimal))->required($is(SalesLineKind::PigAnimal))->label('Pig'),
                     Select::make('production_batch_id')->label('Batch')->searchable()->visible($is(SalesLineKind::PigBatch))->required($is(SalesLineKind::PigBatch))
                         ->options(fn () => ProductionBatch::where('status', BatchStatus::Active->value)->orderBy('code')->get()->mapWithKeys(fn ($b) => [$b->id => "{$b->code} - {$b->name}"])->all()),
@@ -89,6 +88,17 @@ class SalesOrderResource extends Resource
                     TextInput::make('discount_percent')->label('Discount (%)')->numeric()->minValue(0)->maxValue(100)->step(0.01)->default(0),
                 ]),
         ]);
+    }
+
+    /**
+     * The lots of a meat product that can be named on a line: unexpired, and held in the chosen cold room (what each one shows is the weight there).
+     *
+     * @return array<int, string> label by meat production line id
+     */
+    public static function meatLotOptions(int $productId, int $locationId): array
+    {
+        return collect(app(GetMeatStock::class)())->where('product_id', $productId)->where('location_id', $locationId)->where('expired', false)
+            ->mapWithKeys(fn (array $r) => [$r['line_id'] => "{$r['batch']} - {$r['kg']} kg, use by {$r['use_by']->format('d M')}"])->all();
     }
 
     public static function table(Table $table): Table

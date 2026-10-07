@@ -5,6 +5,7 @@ use App\Domain\Farm\Models\PriceList;
 use App\Domain\Farm\Models\PriceListItem;
 use App\Domain\Farm\Models\UnitOfMeasure;
 use App\Domain\Inventory\Actions\GetStockLevels;
+use App\Domain\Inventory\Actions\TransferStock;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryTransaction;
 use App\Domain\Meat\Actions\ReverseMeatProduction;
@@ -21,6 +22,7 @@ use App\Domain\System\Exceptions\DomainException;
 use App\Enums\InventoryTransactionType as T;
 use App\Enums\LookupCategory;
 use App\Enums\SalesOrderStatus as S;
+use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
 
@@ -31,9 +33,10 @@ beforeEach(function () {
 
 function legOrder(Customer $customer, string $kg, array $extra = []): SalesOrder
 {
-    return app(CreateSalesOrder::class)($customer, [[
+    // What the test passes in wins over the defaults (with +, the left side wins).
+    return app(CreateSalesOrder::class)($customer, [$extra + [
         'kind' => 'meat', 'meat_product_id' => MeatProduct::firstWhere('code', 'LEG')->id, 'inventory_location_id' => store('COLD1')->id, 'quantity' => $kg, 'unit_price_minor' => 250000,
-    ] + $extra], now());
+    ]], now());
 }
 
 it('picks meat with the earliest use-by date first, across lots', function () {
@@ -55,6 +58,31 @@ it('sells the lot that was named', function () {
     $order = legOrder(creditCustomer(), '8', ['meat_production_line_id' => $lotB->id]);
 
     expect($order->lines)->toHaveCount(1)->and($order->lines->sole()->meat_production_line_id)->toBe($lotB->id);
+});
+
+it('checks a named lot has the weight free in that cold room too', function () {
+    [$a, $b] = twoLotsOfLeg();   // 20 kg in each lot, in the cold room
+    $lotA = $a->lines->first(fn ($l) => $l->product->code === 'LEG');
+    $customer = creditCustomer();
+
+    expect(fn () => legOrder($customer, '21', ['meat_production_line_id' => $lotA->id]))->toThrow(DomainException::class, 'only 20.000 kg is free');
+    expect(fn () => legOrder($customer, '5', ['meat_production_line_id' => $lotA->id, 'inventory_location_id' => store('COLD2')->id]))->toThrow(DomainException::class, 'only 0.000 kg is free');
+
+    confirmed(legOrder($customer, '15', ['meat_production_line_id' => $lotA->id]));   // 15 kg of the lot is now held
+    expect(fn () => legOrder(creditCustomer(over: ['name' => 'Other']), '6', ['meat_production_line_id' => $lotA->id]))->toThrow(DomainException::class, 'only 5.000 kg is free');
+    expect(legOrder(creditCustomer(over: ['name' => 'Third']), '5', ['meat_production_line_id' => $lotA->id])->lines)->toHaveCount(1);
+});
+
+it('offers only the lots held in the chosen cold room when naming a lot', function () {
+    $batch = makeMeat();
+    $leg = MeatProduct::firstWhere('code', 'LEG');
+    $lot = $batch->lines->first(fn ($l) => $l->meat_product_id === $leg->id);
+    app(TransferStock::class)(InventoryItem::firstWhere('code', 'MEAT-LEG'), store('COLD1'), store('COLD2'), '8', now()->startOfDay());
+
+    expect(SalesOrderResource::meatLotOptions($leg->id, store('COLD1')->id))->toHaveCount(1)->toHaveKey($lot->id)
+        ->and(array_values(SalesOrderResource::meatLotOptions($leg->id, store('COLD2')->id))[0])->toContain('8.000 kg')
+        ->and(SalesOrderResource::meatLotOptions($leg->id, store('COLD3')->id))->toBe([])
+        ->and(SalesOrderResource::meatLotOptions(MeatProduct::firstWhere('code', 'LOIN')->id, store('COLD2')->id))->toBe([]);
 });
 
 it('refuses more meat than is free, counting what other orders hold', function () {
