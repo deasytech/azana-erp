@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Animal\Actions\LookupAnimal;
 use App\Filament\Resources\Animals\AnimalResource;
+use App\Http\Resources\AnimalSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,18 +27,6 @@ class AnimalLookupController extends Controller
             return redirect(AnimalResource::getUrl('view', ['record' => $animal]));
         }
 
-        $animal->loadMissing(['category', 'breed', 'currentPen.building', 'currentLocation']);
-
-        return response()->json([
-            'animal_number' => $animal->animal_number,
-            'public_id' => $animal->public_id,
-            'sex' => $animal->sex->value,
-            'category' => $animal->category->name,
-            'breed' => $animal->breed?->name,
-            'status' => $animal->status->value,
-            'position' => $animal->positionLabel(),
-            'latest_weight_kg' => $animal->latestWeight()?->weight_kg,
-            'url' => AnimalResource::getUrl('view', ['record' => $animal]),
-        ]);
+        return (new AnimalSummary($animal))->response();
     }
 }

@@ -33,8 +33,8 @@ Implement the mobile operational layer.
 - Complete Task
 
 ## Acceptance Criteria
-- [ ] Core field transactions can be captured without internet.
-- [ ] Sync resumes automatically.
-- [ ] Duplicate submissions do not duplicate transactions.
-- [ ] Conflicts are surfaced.
-- [ ] Mobile uses the same domain actions as web.
+- [x] Core field transactions can be captured without internet.
+- [x] Sync resumes automatically.
+- [x] Duplicate submissions do not duplicate transactions.
+- [x] Conflicts are surfaced.
+- [x] Mobile uses the same domain actions as web.

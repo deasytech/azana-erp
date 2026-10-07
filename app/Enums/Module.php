@@ -30,6 +30,7 @@ enum Module: string
     case Finance = 'finance';
     case Tasks = 'tasks';
     case Reports = 'reports';
+    case Mobile = 'mobile';
 
     public function label(): string
     {
@@ -56,6 +57,7 @@ enum Module: string
             self::Finance => 'Finance & costing',
             self::Tasks => 'Tasks & alerts',
             self::Reports => 'Dashboards & reports',
+            self::Mobile => 'Mobile app',
         };
     }
 
@@ -66,6 +68,8 @@ enum Module: string
             // Read-only trails: never editable or deletable, by anyone.
             self::AuditLogs, self::LoginActivity => [PermissionAction::View, PermissionAction::Export],
             self::Settings => [PermissionAction::View, PermissionAction::Edit],
+            // View: sign in to the mobile app (what a person may then do is decided by their other permissions). Edit: review the sync log's conflicts.
+            self::Mobile => [PermissionAction::View, PermissionAction::Edit],
             default => PermissionAction::cases(),
         };
     }

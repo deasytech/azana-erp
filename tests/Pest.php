@@ -94,6 +94,8 @@ use App\Enums\ServiceMethod;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
@@ -329,7 +331,7 @@ function purchaseOrder(?array $lines = null, ?Supplier $supplier = null, bool $a
 
     if ($approve) {
         app(DecidePurchaseOrder::class)->submit($order);
-        app(DecidePurchaseOrder::class)->approve($order, userWithRole('Farm Manager'));
+        app(DecidePurchaseOrder::class)->approve($order, userWithRole(FARM_MANAGER));
     }
 
     return $order->refresh();
@@ -438,7 +440,7 @@ function processedSemen(?Animal $boar = null): SemenBatch
 /** A processed batch released into the SEMEN store by a farm manager. */
 function releasedSemen(?Animal $boar = null): SemenBatch
 {
-    return app(ReleaseSemenBatch::class)(processedSemen($boar), userWithRole('Farm Manager'), store('SEMEN'));
+    return app(ReleaseSemenBatch::class)(processedSemen($boar), userWithRole(FARM_MANAGER), store('SEMEN'));
 }
 
 /** A customer (cash terms until credit is approved). */
@@ -450,7 +452,7 @@ function customer(array $over = []): Customer
 /** A customer with approved credit (default limit 10,000,000.00, 30-day terms). */
 function creditCustomer(int $limitMinor = 1000000000, int $terms = 30, array $over = []): Customer
 {
-    return app(SetCustomerCredit::class)(customer($over), CreditStatus::Approved, $limitMinor, $terms, userWithRole('Farm Manager'));
+    return app(SetCustomerCredit::class)(customer($over), CreditStatus::Approved, $limitMinor, $terms, userWithRole(FARM_MANAGER));
 }
 
 /** A draft order of semen doses from the batch at 15,000.00 a dose (unless a price is given). */
@@ -464,7 +466,7 @@ function semenOrder(Customer $customer, SemenBatch $batch, int $doses = 10, arra
 /** A confirmed order of the draft, confirmed by a farm manager. */
 function confirmed(SalesOrder $order): SalesOrder
 {
-    return app(ConfirmSalesOrder::class)($order, userWithRole('Farm Manager'));
+    return app(ConfirmSalesOrder::class)($order, userWithRole(FARM_MANAGER));
 }
 
 /** Confirms and dispatches an order (today unless $daysAgo); returns its invoice. */
@@ -596,4 +598,74 @@ function finOverhead(int $minor): void
 function newTask(array $over = []): Task
 {
     return app(CreateTask::class)(...($over + ['title' => 'Check the water lines', 'dueOn' => now()->addDay()]));
+}
+
+const MOBILE_DEVICE = 'device-a1';
+
+const MOBILE_PASSWORD = 'field-pass-123';
+
+const FARM_MANAGER = 'Farm Manager';
+
+const API_ME = '/api/v1/me';
+
+const API_LOGIN = '/api/v1/auth/login';
+
+const API_SCAN = '/api/v1/scan/';
+
+const API_QUICK_WEIGHT = '/api/v1/quick/record_weight';
+
+/** The path of the first result in a sync response. */
+const FIRST_RESULT = 'results.0';
+
+/** Each request is a fresh one for the server: the guard must not remember the user an earlier request in this test signed in. */
+function apiGet(string $uri, array $headers = [])
+{
+    app('auth')->forgetGuards();
+    $response = test()->getJson($uri, $headers);
+    auth()->shouldUse('web');   // the token guard made itself the default for the request; later web sign-ins in the same test use the web guard
+
+    return $response;
+}
+
+function apiPost(string $uri, array $data = [], array $headers = [])
+{
+    app('auth')->forgetGuards();
+    $response = test()->postJson($uri, $data, $headers);
+    auth()->shouldUse('web');
+
+    return $response;
+}
+
+/** The header a signed-in device sends. */
+function bearer(string $token): array
+{
+    return ['Authorization' => 'Bearer '.$token];
+}
+
+/** A worker with a password the API knows. */
+function mobileWorker(string $role = 'Farm Worker', array $attrs = []): User
+{
+    return userWithRole($role, $attrs + ['password' => Hash::make(MOBILE_PASSWORD)]);
+}
+
+function mobileLogin(User $user, string $device = MOBILE_DEVICE, string $password = MOBILE_PASSWORD)
+{
+    return test()->postJson(API_LOGIN, ['email' => $user->email, 'password' => $password, 'device_id' => $device]);
+}
+
+/** Signs a worker in on a device and returns the headers to use. */
+function mobileHeaders(User $user, string $device = MOBILE_DEVICE): array
+{
+    return bearer(mobileLogin($user, $device)->assertOk()->json('token'));
+}
+
+/** A mutation as a device would build it. */
+function mutation(string $type, array $payload, array $over = []): array
+{
+    return $over + ['client_id' => (string) Str::uuid(), 'type' => $type, 'occurred_at' => now()->subMinutes(5)->toIso8601String(), 'payload' => $payload];
+}
+
+function push(array $mutations, array $headers, string $device = MOBILE_DEVICE)
+{
+    return apiPost('/api/v1/sync/push', ['device_id' => $device, 'mutations' => $mutations], $headers);
 }

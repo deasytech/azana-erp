@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 17 - Mobile API, Offline Sync and Worker Quick Entry (not started)
+Phase 18 - Public Website and Customer-Facing Surface (not started)
 
 ## Completed
 
@@ -361,6 +361,27 @@ Phase 17 - Mobile API, Offline Sync and Worker Quick Entry (not started)
   - Money targets are typed in minor units (kobo).
   - The panel has its own Tailwind theme (`resources/css/filament/admin/theme.css`, registered with `viteTheme`) so the classes used in our custom Blade pages are compiled; run `npm run build` on every deploy (tests skip Vite).
   - Global search covers records with a title and a view or edit page; supplier invoices, inventory batches and feed batches have no page of their own to link to yet.
+
+### Phase 17 - Mobile API, Offline Sync and Worker Quick Entry (2026-10-13)
+- Delivery: one PR, one commit (37 files, under 100).
+- Tests: `vendor/bin/pest` - 686 passed (added `tests/Feature/Mobile/MobileApiTest.php`, `QuickActionsTest.php`, `SyncLogUiTest.php`; helpers `mobileWorker`, `mobileLogin`, `mobileHeaders`, `apiGet`, `apiPost`, `mutation`, `push` in `tests/Pest.php`). Verified end to end on MySQL (sign-in, reference, push, status through the HTTP kernel).
+- Package changes: `laravel/sanctum` ^4.3 (personal access tokens).
+- What was done:
+  - Schema (2 migrations, MySQL up/down/up and `migrate:fresh --seed` verified): `personal_access_tokens` (Sanctum) and `sync_mutations` (client_id unique, device, user, type, occurred_at, payload, status, error, server record, attempts, synced/reviewed). No new settings.
+  - **API v1** (`routes/api.php`, documented in `docs/API.md`): `POST /auth/login` (one token per device, 5 attempts a minute, 30-day expiry), `POST /auth/logout`, `GET /me`, `GET /reference` (offline lists with a version), `GET /scan/{code}` and `GET /animals/{code}` (QR/barcode/tag lookup), `GET /tasks`, `POST /sync/push`, `POST /quick/{type}`, `GET /sync/status`, `GET /sync/mutations/{id}`.
+  - **Mobile permissions**: new module `mobile` (view = may use the app, checked on every request; edit = review the sync log). Granted to field and manager roles; roles that need two-factor sign-in (accountant, owner) stay on the web. What a person may do through the API is their ordinary permissions.
+  - **The twelve quick actions** (add birth, weight, feed, treatment, vaccination, mortality, move pigs, service, farrowing, weaning, stock count, complete task) are translated by `QuickEntry` into calls of the existing domain actions - no business rule lives in the API layer. The device's `client_id` is passed on as the action's idempotency key where the action has one.
+  - **Idempotency and sync log** (`ProcessMutation`): every mutation is stored by client_id. Sending it again returns the stored answer and does nothing (also for a double tap racing itself); only a `failed` one (server error) is run again. Outcomes: `accepted`, `rejected` (wrong request or a business rule), `conflict` (the server moved on: animal already dead, litter already weaned, duplicate farrowing/vaccination/weigh-in, stock count on stale numbers...), `failed`. The domain event is recorded with the time it happened on the device. A client_id belongs to its user and device.
+  - **Conflicts are surfaced, never overwritten**: nothing is applied; the stock count is one all-or-nothing mutation that compares the quantity the device saw with the system's. Supervisors (`mobile.edit`) see them under *Tasks & alerts > Mobile sync log* (default tab: needs attention) and mark them reviewed with a note.
+  - **API reference page** at `/docs` (public, no sign-in): getting-started guides (authentication, offline and idempotency, mutation outcomes, rate limits, errors) and every endpoint and quick action with parameters, cURL and example responses. It is generated from `ApiReference` (one data file), and `tests/Feature/Mobile/ApiDocsTest.php` checks that the documented endpoints are exactly the API's routes, that every quick-action payload field and permission is listed, and that every example response has the fields the API really returns. Styles and script are `public/css/api-docs.css` and `public/js/api-docs.js`.
+  - **Worker task interface**: `GET /tasks` and the `complete_task` action (a worker completes their own; a supervisor anyone's), and the existing responsive web task list.
+- Migration notes: 2 new reversible migrations.
+- Known issues / notes:
+  - The mobile app itself is not part of this repository; the API, sync contract and tests are. The `reference` payload is small today (no paging); large farms should add `since` deltas.
+  - A mutation that is `rejected` or `conflict` is final: the app must send a corrected *new* mutation; there is no server-side "resolve and apply" for a conflict yet (a supervisor re-enters the data on the web and marks the conflict reviewed).
+  - Quick actions that need server numbers not on the device (e.g. a new litter's number for `add_birth`) rely on the `farrowing` result being synced first; mutations are processed in the order sent.
+  - Only `record_*` actions that already had idempotency keys are idempotent in the domain; the rest (mortality, weaning, add birth, stock count) rely on the sync log's idempotency.
+  - Push notifications and photo upload for task evidence from the app are not included.
 
 ## In Progress
 None
