@@ -63,6 +63,7 @@ class RoleSeeder extends Seeder
             'semen' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'sales' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'slaughter' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            'finance' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Farm Manager' => [
             self::FARM => [A::View, A::Create, A::Edit, A::Export, A::Print],
@@ -78,6 +79,7 @@ class RoleSeeder extends Seeder
             'semen' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'sales' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
             'slaughter' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+            'finance' => [A::View, A::Export, A::Print],
         ],
         'Breeding Manager' => [
             self::FARM => [A::View], self::MASTER => [A::View], 'settings' => [A::View],
@@ -112,6 +114,7 @@ class RoleSeeder extends Seeder
             'semen' => [A::View, A::Export],
             'sales' => [A::View, A::Create, A::Edit, A::Export, A::Print],
             'slaughter' => [A::View, A::Export],
+            'finance' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
         ],
         'Farm Worker' => [self::FARM => [A::View], self::MASTER => [A::View], 'animals' => [A::View, A::Create], 'breeding' => [A::View, A::Create], 'health' => [A::View, A::Create], 'biosecurity' => [A::View, A::Create], 'production' => [A::View, A::Create], 'inventory' => [A::View, A::Create], 'semen' => [A::View, A::Create]],
     ];

@@ -31,6 +31,8 @@ final class SettingDefinitions
 
     private const SLAUGHTER = 'Slaughter & meat';
 
+    private const FINANCE = 'Finance';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -77,6 +79,8 @@ final class SettingDefinitions
             new SettingDefinition('sales.require_separate_approver', self::SALES, 'Credit approver must differ from who set up the customer', 'bool', '1'),
             new SettingDefinition('slaughter.require_separate_approver', self::SLAUGHTER, 'Carcass weight corrections need a different approver', 'bool', '1', 'A corrected carcass weight must be approved by someone other than who recorded the slaughter.'),
             new SettingDefinition('slaughter.min_dressing_percent_alert', self::SLAUGHTER, 'Flag a carcass below this dressing (%)', 'decimal', '65', 'Shown on the yield report when a carcass dresses out below this.'),
+            new SettingDefinition('finance.require_separate_approver', self::FINANCE, 'Manual journals need a different approver', 'bool', '1', 'A manual journal must be approved by someone other than the person who entered it.'),
+            new SettingDefinition('finance.books_closed_through', self::FINANCE, 'Books closed through (date)', 'string', '', 'Nothing can be posted on or before this date (YYYY-MM-DD). Leave empty to keep the books open.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
     }

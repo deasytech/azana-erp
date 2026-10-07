@@ -7,6 +7,7 @@ use App\Domain\Biosecurity\Models as S;
 use App\Domain\Breeding\Models as B;
 use App\Domain\Farm\Models as M;
 use App\Domain\Feed\Models as FD;
+use App\Domain\Finance\Models as FI;
 use App\Domain\Health\Models as H;
 use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
@@ -27,6 +28,7 @@ use App\Policies\BreedingPolicy;
 use App\Policies\FarmStructurePolicy;
 use App\Policies\FeedMillMasterPolicy;
 use App\Policies\FeedMillPolicy;
+use App\Policies\FinancePolicy;
 use App\Policies\HealthMasterPolicy;
 use App\Policies\HealthPolicy;
 use App\Policies\InventoryMasterPolicy;
@@ -98,6 +100,9 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, SlaughterPolicy::class);
         }
         Gate::policy(MT\MeatProduct::class, SlaughterMasterPolicy::class);
+        foreach ([FI\Account::class, FI\CostCentre::class, FI\JournalEntry::class, FI\JournalLine::class, FI\ExpenseRecord::class, FI\CashTransaction::class, FI\Budget::class, FI\BudgetLine::class] as $model) {
+            Gate::policy($model, FinancePolicy::class);
+        }
         foreach ([SM\SemenBoar::class, SM\SemenCollection::class, SM\SemenBatch::class, SM\SemenQcRecord::class] as $model) {
             Gate::policy($model, SemenPolicy::class);
         }

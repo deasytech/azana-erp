@@ -27,6 +27,7 @@ enum Module: string
     case Semen = 'semen';
     case Sales = 'sales';
     case Slaughter = 'slaughter';
+    case Finance = 'finance';
 
     public function label(): string
     {
@@ -50,6 +51,7 @@ enum Module: string
             self::Semen => 'Semen & laboratory',
             self::Sales => 'Customers & sales',
             self::Slaughter => 'Slaughter & meat',
+            self::Finance => 'Finance & costing',
         };
     }
 

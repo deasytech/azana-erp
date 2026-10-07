@@ -34,8 +34,8 @@ Connect operational transactions to financial reporting.
 - Administration
 
 ## Acceptance Criteria
-- [ ] Operational revenue is reflected in finance.
-- [ ] Major operational costs can be attributed to cost centres.
-- [ ] Cash flow is calculated from transactions.
-- [ ] Budget variance is available.
-- [ ] Profitability can be shown by business unit.
+- [x] Operational revenue is reflected in finance.
+- [x] Major operational costs can be attributed to cost centres.
+- [x] Cash flow is calculated from transactions.
+- [x] Budget variance is available.
+- [x] Profitability can be shown by business unit.
