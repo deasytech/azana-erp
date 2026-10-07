@@ -211,9 +211,8 @@ it('reports yield and survives a tampered period', function () {
 
     Livewire::test(SlaughterYield::class)->assertSee('1 carcasses')->assertSee('76.00%')->assertSee('SB-000001')
         ->set('from', 'garbage')->assertSee('format')->assertDontSee('SB-000001')
-        ->set('from', now()->toDateString())->set('to', now()->subDays(3)->toDateString())->assertSee('on or after the start date')
-        ->set('from', now()->subDays(367)->toDateString())->set('to', now()->toDateString())->assertSee('no more than 366 days')->assertDontSee('SB-000001')
-        ->set('from', now()->subDays(366)->toDateString())->assertDontSee('no more than 366 days')->assertSee('SB-000001');
+        ->set('from', now()->toDateString())->set('to', now()->subDays(3)->toDateString())->assertSee('on or after the start date');
+    expectPeriodLimit(Livewire::test(SlaughterYield::class), 'SB-000001');
 });
 
 it('keeps the slaughter screens away from people without slaughter rights', function () {

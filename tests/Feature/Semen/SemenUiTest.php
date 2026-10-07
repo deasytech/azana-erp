@@ -173,6 +173,7 @@ it('shows the production report and survives a tampered period', function () {
     Livewire::test(SemenProduction::class)->assertSee($boar->animal_number)->assertSee('1 collections')
         ->set('from', 'garbage')->assertSee('format')->assertDontSee($boar->animal_number)
         ->set('from', now()->toDateString())->set('to', now()->subDays(3)->toDateString())->assertSee('on or after the start date');
+    expectPeriodLimit(Livewire::test(SemenProduction::class), $boar->animal_number);
 });
 
 it('links a price to the breed\'s semen item', function () {
