@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Reporting\Actions\GetTargetVsActual;
 use App\Domain\Reporting\KpiRegistry;
 use App\Filament\Concerns\SelectsReportMonth;
+use App\Filament\Widgets\TargetAttainmentChartWidget;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -65,5 +66,30 @@ class ManagementDashboard extends Page
     public function periodLabel(): string
     {
         return date('F', mktime(0, 0, 0, $this->chosenMonth(), 1)).' '.$this->chosenYear();
+    }
+
+    /** The chosen dashboard drawn against target, below the indicator cards. */
+    protected function getFooterWidgets(): array
+    {
+        return [TargetAttainmentChartWidget::class];
+    }
+
+    public function getFooterWidgetsColumns(): int
+    {
+        return 1;
+    }
+
+    /** @return array<string, mixed> */
+    public function getWidgetData(): array
+    {
+        return ['year' => $this->chosenYear(), 'month' => $this->chosenMonth(), 'area' => $this->chosenArea()];
+    }
+
+    /** Tell the chart when the month, year or dashboard changes while it is open. */
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['year', 'month', 'area'], true)) {
+            $this->dispatch('report-filter-changed', year: $this->chosenYear(), month: $this->chosenMonth(), area: $this->chosenArea());
+        }
     }
 }

@@ -32,6 +32,7 @@ use App\Filament\Resources\StockCounts\Pages\CreateStockCount;
 use App\Filament\Resources\StockCounts\Pages\ViewStockCount;
 use App\Filament\Resources\StockCounts\RelationManagers\LinesRelationManager;
 use App\Filament\Resources\StockCounts\StockCountResource;
+use App\Filament\Widgets\StockByStoreChartWidget;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -315,4 +316,17 @@ it('keeps stock screens away from people without stock rights', function () {
     $this->get(StockOverview::getUrl())->assertOk();
     Livewire::test(StockOverview::class)->assertActionVisible('receive');
     $this->get(StockAdjustmentResource::getUrl('index'))->assertOk();
+});
+
+it('draws the value of stock by store and keeps the chart with the filters', function () {
+    $this->actingAs(owner());
+    receiveStock(stockItem('MAIZE'), '100', 35000);
+    receiveStock(stockItem('SOYA'), '10', 90000, store('SILO'));
+
+    $this->get(StockOverview::getUrl())->assertOk()->assertSee('Stock value by store');
+    Livewire::test(StockByStoreChartWidget::class)->assertSee('Stock value by store')->assertSee(store('SILO')->name);
+    Livewire::test(StockByStoreChartWidget::class, ['location' => store('SILO')->id])->assertSee('Stock value by item in this store');
+
+    Livewire::test(StockOverview::class)->set('locationId', (string) store('SILO')->id)
+        ->assertDispatched('stock-overview-filter-changed', item: null, location: store('SILO')->id);
 });

@@ -33,6 +33,9 @@ use App\Filament\Resources\SupplierPayments\Pages\ListSupplierPayments;
 use App\Filament\Resources\SupplierPayments\SupplierPaymentResource;
 use App\Filament\Resources\Suppliers\Pages\CreateSupplier;
 use App\Filament\Resources\Suppliers\SupplierResource;
+use App\Filament\Widgets\PurchaseOrderProgressChartWidget;
+use App\Filament\Widgets\PurchaseOrderStatusChartWidget;
+use App\Filament\Widgets\SupplierBalancesChartWidget;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -245,4 +248,19 @@ it('keeps purchasing screens away from people without purchasing rights', functi
     foreach ([PurchaseOrderResource::getUrl('index'), PurchaseRequestResource::getUrl('index'), SupplierInvoiceResource::getUrl('index'), SupplierBalances::getUrl()] as $url) {
         $this->get($url)->assertForbidden();
     }
+});
+
+it('draws the orders by status, an order along the road to payment and what suppliers are owed', function () {
+    $this->actingAs(owner());
+    $order = purchaseOrder();
+    receiveGoods($order, ['40']);
+    app(RecordSupplierInvoice::class)($order, 'INV-1', now(), 1000000);
+
+    $this->get(PurchaseOrderResource::getUrl('index'))->assertOk()->assertSee('Orders by status');
+    $this->get(PurchaseOrderResource::getUrl('view', ['record' => $order]))->assertOk()->assertSee('Progress to payment');
+    $this->get(SupplierBalances::getUrl())->assertOk()->assertSee('Outstanding by supplier');
+
+    Livewire::test(PurchaseOrderStatusChartWidget::class)->assertSee('Orders by status')->assertSee('Approved');
+    Livewire::test(PurchaseOrderProgressChartWidget::class, ['record' => $order])->assertSee('Progress to payment')->assertSee($order->number);
+    Livewire::test(SupplierBalancesChartWidget::class)->assertSee('Outstanding by supplier')->assertSee('Supplier SUP1');
 });

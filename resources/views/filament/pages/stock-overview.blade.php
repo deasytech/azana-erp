@@ -1,20 +1,24 @@
 <x-filament-panels::page>
     <div class="flex flex-wrap items-end gap-4 text-sm">
         <label class="flex flex-col gap-1">Item
-            <select wire:model.live="itemId" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
-                <option value="">All items</option>
-                @foreach ($this->itemOptions() as $id => $name)
-                    <option value="{{ $id }}">{{ $name }}</option>
-                @endforeach
-            </select>
+            <x-filament::input.wrapper>
+                <x-filament::input.select wire:model.live="itemId">
+                    <option value="">All items</option>
+                    @foreach ($this->itemOptions() as $id => $name)
+                        <option value="{{ $id }}">{{ $name }}</option>
+                    @endforeach
+                </x-filament::input.select>
+            </x-filament::input.wrapper>
         </label>
         <label class="flex flex-col gap-1">Store
-            <select wire:model.live="locationId" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
-                <option value="">All stores</option>
-                @foreach ($this->storeOptions() as $id => $name)
-                    <option value="{{ $id }}">{{ $name }}</option>
-                @endforeach
-            </select>
+            <x-filament::input.wrapper>
+                <x-filament::input.select wire:model.live="locationId">
+                    <option value="">All stores</option>
+                    @foreach ($this->storeOptions() as $id => $name)
+                        <option value="{{ $id }}">{{ $name }}</option>
+                    @endforeach
+                </x-filament::input.select>
+            </x-filament::input.wrapper>
         </label>
         <p class="ml-auto font-medium">Total value: {{ $this->totalValue }}</p>
     </div>

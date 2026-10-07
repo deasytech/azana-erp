@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Health\Actions\GetMortalityAnalysis;
 use App\Domain\Health\Models\MortalityRecord;
 use App\Filament\Concerns\ValidatesReportPeriod;
+use App\Filament\Widgets\MortalityBreakdownChartWidget;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -61,5 +62,30 @@ class MortalityAnalysis extends Page
         }
 
         return app(GetMortalityAnalysis::class)($this->periodStart()->startOfDay(), $this->periodEnd()->endOfDay(), $this->dimension);
+    }
+
+    /** The same grouping drawn as bars, filtered with the screen above it. */
+    protected function getFooterWidgets(): array
+    {
+        return [MortalityBreakdownChartWidget::class];
+    }
+
+    public function getFooterWidgetsColumns(): int
+    {
+        return 1;
+    }
+
+    /** @return array<string, mixed> */
+    public function getWidgetData(): array
+    {
+        return ['dimension' => $this->dimension, 'from' => $this->from, 'to' => $this->to];
+    }
+
+    /** Tell the chart when the grouping or period changes while it is open. `periodFrom` / `periodTo` because `to` would target a component. */
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['dimension', 'from', 'to'], true)) {
+            $this->dispatch('mortality-analysis-filter-changed', dimension: $this->dimension, periodFrom: $this->from, periodTo: $this->to);
+        }
     }
 }
