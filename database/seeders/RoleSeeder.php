@@ -38,6 +38,13 @@ class RoleSeeder extends Seeder
         'Accountant' => [A::View, A::Create, A::Edit, A::Export],
     ];
 
+    /** Who sees the management dashboards and report, and who exports and sets targets (nobody else has the module). */
+    private const REPORT_GRANTS = [
+        'General Manager' => [A::View, A::Create, A::Edit, A::Export, A::Print],
+        'Farm Manager' => [A::View, A::Export, A::Print],
+        'Accountant' => [A::View, A::Export, A::Print],
+    ];
+
     private const FARM = 'farm-structure';
 
     private const MASTER = 'master-data';
@@ -153,6 +160,7 @@ class RoleSeeder extends Seeder
 
         return collect(self::GRANTS[$role] ?? [])
             ->put('tasks', self::TASK_GRANTS[$role] ?? [A::View, A::Create, A::Edit])
+            ->when(isset(self::REPORT_GRANTS[$role]), fn ($grants) => $grants->put('reports', self::REPORT_GRANTS[$role]))
             ->flatMap(fn (array $actions, string $module) => array_map(fn (A $a) => "{$module}.{$a->value}", $actions))
             ->values()
             ->all();

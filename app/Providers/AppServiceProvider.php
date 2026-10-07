@@ -14,6 +14,7 @@ use App\Domain\Litter\Models as L;
 use App\Domain\Meat\Models as MT;
 use App\Domain\Procurement\Models as PC;
 use App\Domain\Production\Models as PR;
+use App\Domain\Reporting\Models\KpiTarget;
 use App\Domain\Sales\Models as SA;
 use App\Domain\Semen\Models as SM;
 use App\Domain\Slaughter\Models as SL;
@@ -42,6 +43,7 @@ use App\Policies\ProcurementMasterPolicy;
 use App\Policies\ProcurementPolicy;
 use App\Policies\ProductionMasterPolicy;
 use App\Policies\ProductionPolicy;
+use App\Policies\ReportsPolicy;
 use App\Policies\SalesMasterPolicy;
 use App\Policies\SalesPolicy;
 use App\Policies\SemenPolicy;
@@ -107,6 +109,7 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, SlaughterPolicy::class);
         }
         Gate::policy(MT\MeatProduct::class, SlaughterMasterPolicy::class);
+        Gate::policy(KpiTarget::class, ReportsPolicy::class);
         foreach ([TK\Task::class, TK\TaskAssignment::class, TK\TaskEvidence::class] as $model) {
             Gate::policy($model, TaskPolicy::class);
         }

@@ -29,6 +29,7 @@ enum Module: string
     case Slaughter = 'slaughter';
     case Finance = 'finance';
     case Tasks = 'tasks';
+    case Reports = 'reports';
 
     public function label(): string
     {
@@ -54,6 +55,7 @@ enum Module: string
             self::Slaughter => 'Slaughter & meat',
             self::Finance => 'Finance & costing',
             self::Tasks => 'Tasks & alerts',
+            self::Reports => 'Dashboards & reports',
         };
     }
 

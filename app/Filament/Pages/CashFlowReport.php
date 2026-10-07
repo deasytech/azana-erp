@@ -4,7 +4,10 @@ namespace App\Filament\Pages;
 
 use App\Domain\Finance\Actions\GetCashFlow;
 use App\Domain\Finance\Models\Account;
+use App\Domain\Reporting\Exports\ReportDocument;
+use App\Domain\Reporting\Exports\ReportDocuments;
 use App\Filament\Concerns\IsPeriodReport;
+use App\Filament\Concerns\OffersReportExport;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -14,6 +17,7 @@ use UnitEnum;
 class CashFlowReport extends Page
 {
     use IsPeriodReport;
+    use OffersReportExport;
 
     protected string $view = 'filament.pages.cash-flow-report';
 
@@ -33,5 +37,15 @@ class CashFlowReport extends Page
     protected function reportAction(): string
     {
         return GetCashFlow::class;
+    }
+
+    protected function exportPermission(): string
+    {
+        return 'finance.export';
+    }
+
+    protected function reportDocument(): ?ReportDocument
+    {
+        return ($report = $this->report) ? app(ReportDocuments::class)->cashFlow($report, $this->periodStart(), $this->periodEnd()) : null;
     }
 }
