@@ -19,7 +19,7 @@ Turn operational data into actionable work.
 - Sales/credit alerts.
 
 ## Acceptance Criteria
-- [ ] Daily tasks can be generated.
-- [ ] Tasks have responsible person, deadline, status and completion.
-- [ ] Approval limits are configurable.
-- [ ] Critical alerts are generated from actual system data.
+- [x] Daily tasks can be generated.
+- [x] Tasks have responsible person, deadline, status and completion.
+- [x] Approval limits are configurable.
+- [x] Critical alerts are generated from actual system data.

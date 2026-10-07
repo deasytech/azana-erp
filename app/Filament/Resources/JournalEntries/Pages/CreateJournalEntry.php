@@ -2,9 +2,8 @@
 
 namespace App\Filament\Resources\JournalEntries\Pages;
 
-use App\Domain\Finance\Actions\PostJournal;
+use App\Domain\Finance\Actions\PostManualJournal;
 use App\Domain\System\Exceptions\DomainException;
-use App\Enums\JournalStatus;
 use App\Filament\Concerns\HandlesDomainExceptions;
 use App\Filament\Resources\JournalEntries\JournalEntryResource;
 use Carbon\Carbon;
@@ -24,7 +23,7 @@ class CreateJournalEntry extends CreateRecord
         try {
             $lines = array_map(fn (array $l) => ['account_id' => (int) $l['account_id'], 'cost_centre_id' => $l['cost_centre_id'] ?: null, 'debit_minor' => (int) ($l['debit_minor'] ?? 0), 'credit_minor' => (int) ($l['credit_minor'] ?? 0)], $data['lines']);
 
-            return app(PostJournal::class)(Carbon::parse($data['entry_date']), $data['description'], $lines, JournalStatus::Pending);
+            return app(PostManualJournal::class)(Carbon::parse($data['entry_date']), $data['description'], $lines);
         } catch (DomainException $e) {
             $this->failWith($e);
         }
