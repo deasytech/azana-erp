@@ -30,6 +30,8 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->profile()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
             // Our relation managers carry permission-checked actions (add identifier, record weight...).
             ->readOnlyRelationManagersOnResourceViewPagesByDefault(false)
             ->multiFactorAuthentication(

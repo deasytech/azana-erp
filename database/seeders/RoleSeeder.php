@@ -31,6 +31,13 @@ class RoleSeeder extends Seeder
         'Farm Worker' => ['2fa' => false, 'desc' => 'Quick-entry of daily farm activity.'],
     ];
 
+    /** Everybody sees and works their tasks; managers also supervise (approve) other people's and export. */
+    private const TASK_GRANTS = [
+        'General Manager' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+        'Farm Manager' => [A::View, A::Create, A::Edit, A::Approve, A::Export, A::Print],
+        'Accountant' => [A::View, A::Create, A::Edit, A::Export],
+    ];
+
     private const FARM = 'farm-structure';
 
     private const MASTER = 'master-data';
@@ -145,6 +152,7 @@ class RoleSeeder extends Seeder
         }
 
         return collect(self::GRANTS[$role] ?? [])
+            ->put('tasks', self::TASK_GRANTS[$role] ?? [A::View, A::Create, A::Edit])
             ->flatMap(fn (array $actions, string $module) => array_map(fn (A $a) => "{$module}.{$a->value}", $actions))
             ->values()
             ->all();

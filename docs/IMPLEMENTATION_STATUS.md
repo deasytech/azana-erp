@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 15 - Tasks, Alerts, Notifications and Approvals (not started)
+Phase 16 - Dashboards, Reporting and Management Intelligence (not started)
 
 ## Completed
 
@@ -319,6 +319,27 @@ Phase 15 - Tasks, Alerts, Notifications and Approvals (not started)
   - A customer payment is posted against receivables in full, so a payment on deposit leaves receivables in credit; there is no separate customer-deposit account. Supplier invoices are charged to purchases without a cost centre.
   - Credit notes, depreciation, tax returns and multi-currency are not part of this phase; money is in the first farm's currency.
   - Approval *thresholds* and notifications for finance arrive with Phase 15; manual journals and budgets use the approve permission and the separate-approver rule.
+
+### Phase 15 - Tasks, Alerts, Notifications and Approvals (2026-10-11)
+- Delivery: one PR, one commit (46 files, under 100).
+- Tests: `vendor/bin/pest` - 624 passed (added `tests/Feature/Tasks/TasksDomainTest.php` and `TasksUiTest.php`; helper `newTask` in `tests/Pest.php`; the settings count in `FarmMasterDataTest` is now 52).
+- Package changes: none.
+- What was done:
+  - Schema (1 migration, MySQL up/down/up and `migrate:fresh --seed` verified): `tasks`, `task_assignments`, `task_evidence`, Laravel's `notifications` table, and a nullable `phone` on `users`.
+  - **Tasks** (`CreateTask`): number, title, category, priority, deadline, optional assignee, optional responsible role, "needs a photo" flag. A `source_key` makes generation idempotent. **Assignment** (`AssignTask`) keeps a history and notifies the new assignee (not when assigning to oneself). **Working a task** (`AdvanceTask`): start, complete (notes; refused until a photo is attached when the task requires one) or cancel (reason). A task given to a person is worked by that person or a supervisor (`tasks.approve`); an unassigned one by anyone with `tasks.edit` who holds its responsible role, or a supervisor. **Evidence** (`AddTaskEvidence`): photos stored on the `public` disk under `task-evidence/` (run `php artisan storage:link`), permanent once added.
+  - **Daily generation** (`GenerateDailyTasks`, scheduled 05:00 and a button on the task list): the daily rounds from setting `tasks.daily_rounds`, vaccinations due, breeding events of the day, items at or below their reorder level and stock expiring or expired, batches not weighed for `tasks.weigh_in_overdue_days`, and customers with overdue invoices (once a week each). Running it again the same day adds nothing.
+  - **Alerts** (`GetAlerts`): raised from real data - health (existing alerts), stock out/low/expiring, breeding events due or coming in three days, batch mortality over `production.batch_mortality_alert_percent` and unweighed batches, customers over their credit limit or with overdue invoices, receivables or payables over 60 days, an unbalanced ledger, overdue tasks. Each has a stable key, a severity (danger/warning/info) and the module whose view permission is needed to see it.
+  - **Notifications**: in-app (Filament bell, polling 60 s), email, and an SMS/WhatsApp abstraction (`MessageGateway` interface, default `LogMessageGateway` that only logs; `MESSAGING_DRIVER`; `MessagingChannel`). `SendAlertNotifications` (hourly, and a button on the Alerts page for supervisors) sends each person one digest of the *critical* alerts in the areas they may view, and never repeats an alert to the same person on the same day. Email, SMS and WhatsApp are switched by settings (`notifications.email_enabled` on, `sms_enabled` and `whatsapp_enabled` off); a person needs an email or `phone`. A failed send is reported, never thrown.
+  - **Approvals**: an **inbox** (`GetPendingApprovals`) lists, across modules, everything waiting for the user to approve: manual journals, supplier payments held for approval, purchase requests and orders, stock adjustments and counts, semen batches awaiting release, draft budgets - each with a link to review it, and a mark for what the user raised. **Approval limits are configurable**: the existing thresholds (purchase orders, supplier payments, sales discount, separate approver per module) plus the new `finance.journal_approval_threshold_minor` (`PostManualJournal`: a manual journal above the limit waits for approval, at or below it posts at once; default 0 = every journal waits).
+  - Admin UI (Tasks & alerts group): Tasks (tabs My tasks / All open / Overdue / Everything; create, view with assignment history and photos; start, complete, cancel, assign, add photo), Alerts, Approvals; the notification bell in the panel.
+  - Permissions: new module `tasks`. Every role can view, create and edit (work their own) tasks; General Manager, Farm Manager and Owner also supervise (`approve`); the Accountant exports. `TaskPolicy`: tasks are cancelled or completed, never deleted.
+- Migration notes: 1 new reversible migration; 7 new settings (`finance.journal_approval_threshold_minor`, `tasks.daily_rounds`, `tasks.weigh_in_overdue_days`, `notifications.email_enabled`, `notifications.sms_enabled`, `notifications.whatsapp_enabled`, `production.batch_mortality_alert_percent`).
+- Known issues / notes:
+  - There is no separate `approvals` table: each module keeps its own approval state (and its own approve action); the inbox reads them, so nothing can drift. Approving still happens on the item's own page. Animal disposal, mortality correction, customer credit and slaughter adjustment approvals are not in the inbox because those flows do not hold a pending state yet.
+  - There is no `employees` table yet; tasks are assigned to users (or to a role).
+  - SMS/WhatsApp need a provider: implement `MessageGateway`, bind it in `AppServiceProvider` and set `MESSAGING_DRIVER`. Until then they are written to the log.
+  - Mail is sent synchronously and the `log` mailer is the default; set the real mailer in `.env`. The scheduler (`php artisan schedule:run` every minute) must be running for daily tasks, hourly postings and alert notifications.
+  - The Alerts page and the notifications run the whole alert set each time; for a very large farm this should move to a stored/cached alert list.
 
 ## In Progress
 None

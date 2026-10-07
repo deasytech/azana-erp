@@ -33,6 +33,8 @@ final class SettingDefinitions
 
     private const FINANCE = 'Finance';
 
+    private const TASKS = 'Tasks & notifications';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -47,6 +49,7 @@ final class SettingDefinitions
             new SettingDefinition('production.target_market_weight_kg', self::TARGETS, 'Target market weight (kg)', 'decimal', '100', 'Used to predict when a batch reaches market weight; a batch may override it.'),
             new SettingDefinition('production.target_weaning_percent', self::TARGETS, 'Target weaning percentage', 'decimal', '90'),
             new SettingDefinition('production.target_dressing_percent', self::TARGETS, 'Target dressing percentage', 'decimal', '75', 'Carcass weight / live weight x 100.'),
+            new SettingDefinition('production.batch_mortality_alert_percent', self::TARGETS, 'Alert when a batch mortality passes (%)', 'decimal', '5', 'Deaths as a share of pigs placed, for active growing batches.'),
             new SettingDefinition('production.target_preweaning_mortality_percent', self::TARGETS, 'Maximum pre-weaning mortality (%)', 'decimal', '10'),
             new SettingDefinition('animals.number_prefix', self::ANIMALS, 'Animal number prefix', 'string', 'IPA', 'Permanent numbers look like PREFIX-SOW-0001.'),
             new SettingDefinition('animals.max_weight_kg', self::ANIMALS, 'Maximum plausible weight (kg)', 'decimal', '500', 'Weights above this are rejected as data-entry errors.'),
@@ -80,6 +83,12 @@ final class SettingDefinitions
             new SettingDefinition('slaughter.require_separate_approver', self::SLAUGHTER, 'Carcass weight corrections need a different approver', 'bool', '1', 'A corrected carcass weight must be approved by someone other than who recorded the slaughter.'),
             new SettingDefinition('slaughter.min_dressing_percent_alert', self::SLAUGHTER, 'Flag a carcass below this dressing (%)', 'decimal', '65', 'Shown on the yield report when a carcass dresses out below this.'),
             new SettingDefinition('finance.require_separate_approver', self::FINANCE, 'Manual journals need a different approver', 'bool', '1', 'A manual journal must be approved by someone other than the person who entered it.'),
+            new SettingDefinition('finance.journal_approval_threshold_minor', self::FINANCE, 'Manual journals above this need approval (minor units)', 'int', '0', '0 means every manual journal needs approval; a journal at or below the limit posts at once.'),
+            new SettingDefinition('tasks.daily_rounds', self::TASKS, 'Daily rounds (one task each, separated by ;)', 'string', 'Morning feeding round;Water and pen check;Evening headcount', 'Created for every day by the daily task generator. Leave empty for none.'),
+            new SettingDefinition('tasks.weigh_in_overdue_days', self::TASKS, 'Weigh a batch at least every (days)', 'int', '14', 'A task is raised for an active batch not weighed for longer than this.'),
+            new SettingDefinition('notifications.email_enabled', self::TASKS, 'Send alerts and task assignments by email', 'bool', '1'),
+            new SettingDefinition('notifications.sms_enabled', self::TASKS, 'Send critical alerts by SMS', 'bool', '0', 'Needs a messaging gateway (MESSAGING_DRIVER) and a phone number on the user.'),
+            new SettingDefinition('notifications.whatsapp_enabled', self::TASKS, 'Send critical alerts by WhatsApp', 'bool', '0', 'Needs a messaging gateway (MESSAGING_DRIVER) and a phone number on the user.'),
             new SettingDefinition('finance.books_closed_through', self::FINANCE, 'Books closed through (date)', 'string', '', 'Nothing can be posted on or before this date (YYYY-MM-DD). Leave empty to keep the books open.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();

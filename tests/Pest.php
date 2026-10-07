@@ -79,6 +79,8 @@ use App\Domain\Slaughter\Models\Carcass;
 use App\Domain\Slaughter\Models\SlaughterBatch;
 use App\Domain\Slaughter\Models\SlaughterRecord;
 use App\Domain\Supplier\Models\Supplier;
+use App\Domain\Tasks\Actions\CreateTask;
+use App\Domain\Tasks\Models\Task;
 use App\Enums\AnteMortemResult;
 use App\Enums\CreditStatus;
 use App\Enums\InventoryCategory;
@@ -589,4 +591,9 @@ function finBalance(string $key): int
 function finOverhead(int $minor): void
 {
     app(RecordExpense::class)(now(), Account::firstWhere('code', '5300'), finCentre('ADM'), $minor, finId('cash'));
+}
+
+function newTask(array $over = []): Task
+{
+    return app(CreateTask::class)(...($over + ['title' => 'Check the water lines', 'dueOn' => now()->addDay()]));
 }

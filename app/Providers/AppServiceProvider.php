@@ -18,6 +18,9 @@ use App\Domain\Sales\Models as SA;
 use App\Domain\Semen\Models as SM;
 use App\Domain\Slaughter\Models as SL;
 use App\Domain\Supplier\Models as SP;
+use App\Domain\Tasks\Messaging\LogMessageGateway;
+use App\Domain\Tasks\Messaging\MessageGateway;
+use App\Domain\Tasks\Models as TK;
 use App\Enums\Module;
 use App\Models\User;
 use App\Policies\AnimalPhotoPolicy;
@@ -45,6 +48,7 @@ use App\Policies\SemenPolicy;
 use App\Policies\SettingsPolicy;
 use App\Policies\SlaughterMasterPolicy;
 use App\Policies\SlaughterPolicy;
+use App\Policies\TaskPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -56,7 +60,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // SMS and WhatsApp go through this gateway; "log" only records them. Bind a provider's implementation to send for real.
+        $this->app->bind(MessageGateway::class, fn () => match (config('messaging.driver')) {
+            default => new LogMessageGateway,
+        });
     }
 
     /**
@@ -100,6 +107,9 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, SlaughterPolicy::class);
         }
         Gate::policy(MT\MeatProduct::class, SlaughterMasterPolicy::class);
+        foreach ([TK\Task::class, TK\TaskAssignment::class, TK\TaskEvidence::class] as $model) {
+            Gate::policy($model, TaskPolicy::class);
+        }
         foreach ([FI\Account::class, FI\CostCentre::class, FI\JournalEntry::class, FI\JournalLine::class, FI\ExpenseRecord::class, FI\CashTransaction::class, FI\Budget::class, FI\BudgetLine::class] as $model) {
             Gate::policy($model, FinancePolicy::class);
         }
