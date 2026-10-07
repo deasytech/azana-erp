@@ -1,5 +1,7 @@
 # Mobile API (v1)
 
+> The browsable reference for app developers is served by the application at **`/docs`** (sidebar, search, copyable cURL and JSON examples, light and dark). It is built from `app/Support/ApiDocs/ApiReference.php`, and tests fail if it drifts from the real routes, payloads or responses. This file is the plain-text companion.
+
 Base URL: `https://<host>/api/v1`. JSON in, JSON out. Every endpoint except sign-in needs `Authorization: Bearer <token>`.
 The mobile API calls the same domain actions as the web app; it contains no business rules of its own.
 
@@ -7,7 +9,7 @@ The mobile API calls the same domain actions as the web app; it contains no busi
 
 | Method and path | What it does |
 |---|---|
-| `POST /auth/login` | Body: `email`, `password`, `device_id` (a stable id the app makes once and keeps), optional `device_name`. Returns `token`, `expires_at`, `user` (name, roles, permissions). One token per device: signing in again on a device replaces its token. 5 attempts a minute per email and address. |
+| `POST /auth/login` | Body: `email`, `password`, `device_id` (a stable id the app makes once and keeps), optional `device_name`. Returns `token`, `expires_at`, `user` (name, roles, permissions). One token per device: signing in again on a device replaces its token. 20 attempts a minute per address and 5 a minute per email, whatever the address. |
 | `POST /auth/logout` | Revokes this device's token. |
 | `GET /me` | The signed-in user, roles and the view/create/edit permissions the app can use to decide what to offer. |
 

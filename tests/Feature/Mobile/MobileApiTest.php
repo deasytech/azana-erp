@@ -90,6 +90,26 @@ it('limits sign-in attempts', function () {
     mobileLogin($worker, password: 'wrong')->assertStatus(429);
 });
 
+it('limits sign-in per account whatever the address, and per address whatever the account', function () {
+    $worker = mobileWorker();
+    $from = fn (string $ip) => test()->withServerVariables(['REMOTE_ADDR' => $ip]);
+
+    // One account, a new address each time: the account's own limit still runs out.
+    foreach (range(1, 5) as $i) {
+        $from("10.0.0.{$i}")->postJson('/api/v1/auth/login', ['email' => $worker->email, 'password' => 'wrong', 'device_id' => 'd'])->assertStatus(401);
+    }
+
+    $from('10.0.0.99')->postJson('/api/v1/auth/login', ['email' => strtoupper($worker->email), 'password' => 'field-pass-123', 'device_id' => 'd'])->assertStatus(429);
+
+    // One address trying many accounts: the address's limit runs out (20), though no account has had more than one attempt.
+    foreach (range(1, 20) as $i) {
+        $from('10.9.9.9')->postJson('/api/v1/auth/login', ['email' => "person{$i}@azana.test", 'password' => 'x', 'device_id' => 'd'])->assertStatus(401);
+    }
+
+    $from('10.9.9.9')->postJson('/api/v1/auth/login', ['email' => 'person21@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(429);
+    $from('10.8.8.8')->postJson('/api/v1/auth/login', ['email' => 'person21@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(401);   // another address is fine
+});
+
 it('says what a scanned code is, only to people who may see it', function () {
     $animal = register();
     $pen = newPen('PEN-9');

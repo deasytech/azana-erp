@@ -5,6 +5,7 @@ use App\Domain\Breeding\Models\Farrowing;
 use App\Domain\Inventory\Actions\RejectStockCount;
 use App\Domain\Inventory\Models\StockCount;
 use App\Domain\Litter\Models\Litter;
+use App\Domain\Mobile\Actions\ProcessMutation;
 use App\Domain\Mobile\Models\SyncMutation;
 use App\Enums\InventoryCategory;
 use App\Enums\LookupCategory;
@@ -238,4 +239,21 @@ it('gives every quick action a permission, so a field worker cannot reach what t
     }
 
     expect(Str::of(SyncMutation::count())->toString())->toBe('5');
+});
+
+it('stores a mutation once even when the same client id arrives together in two requests', function () {
+    $pig = register();
+    $worker = $this->worker;
+    $m = mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 77]);
+    $process = app(ProcessMutation::class);
+
+    // Another request stores the same client id between this one's validation and its claim.
+    SyncMutation::query()->insert([
+        'client_id' => $m['client_id'], 'device_id' => MOBILE_DEVICE, 'user_id' => $worker->id, 'type' => 'record_weight', 'occurred_at' => now()->subMinutes(5), 'payload' => json_encode($m['payload']),
+        'status' => 'accepted', 'server_type' => 'weight_record', 'server_id' => 5, 'attempted_at' => now(), 'synced_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $result = $process($worker, MOBILE_DEVICE, $m);
+
+    expect($result)->toMatchArray(['status' => 'accepted', 'replayed' => true, 'server_id' => 5])->and($pig->weights()->count())->toBe(0)->and(SyncMutation::count())->toBe(1);
 });

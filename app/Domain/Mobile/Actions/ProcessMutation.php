@@ -8,7 +8,6 @@ use App\Domain\Mobile\Services\QuickEntry;
 use App\Domain\System\Exceptions\DomainException;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
@@ -66,27 +65,24 @@ class ProcessMutation
     }
 
     /**
-     * Finds the stored mutation (locked), or stores a new one.
+     * Stores the mutation if its client_id is new, and returns its row, locked.
+     *
+     * The insert ignores a client_id that already exists, in one atomic statement, so two requests with the same client_id (a double tap, a
+     * retry on a bad connection) cannot fail on each other: whichever got there first stored it, and the other finds the row and waits for the
+     * first to finish (the row lock) before it looks.
      *
      * @return array{0: SyncMutation, 1: bool} the row, and whether the device had sent it before
      */
     private function claim(User $user, string $deviceId, array $m, Carbon $at): array
     {
-        $existing = SyncMutation::where('client_id', $m['client_id'])->lockForUpdate()->first();
+        $now = now();
+        $stored = SyncMutation::query()->insertOrIgnore([
+            'client_id' => $m['client_id'], 'device_id' => $deviceId, 'user_id' => $user->id, 'type' => $m['type'], 'occurred_at' => $at->toDateTimeString(),
+            'payload' => json_encode($m['payload']), 'status' => SyncMutation::FAILED, 'attempted_at' => $now->toDateTimeString(),
+            'created_at' => $now->toDateTimeString(), 'updated_at' => $now->toDateTimeString(),
+        ]);
 
-        if ($existing) {
-            return [$existing, true];
-        }
-
-        try {
-            return [SyncMutation::create([
-                'client_id' => $m['client_id'], 'device_id' => $deviceId, 'user_id' => $user->id, 'type' => $m['type'], 'occurred_at' => $at,
-                'payload' => $m['payload'], 'status' => SyncMutation::FAILED, 'attempted_at' => now(),
-            ]), false];
-        } catch (UniqueConstraintViolationException) {
-            // Another request with this client_id got in first (a double tap, a retry on a bad connection): use its row, once it finishes.
-            return [SyncMutation::where('client_id', $m['client_id'])->lockForUpdate()->firstOrFail(), true];
-        }
+        return [SyncMutation::where('client_id', $m['client_id'])->lockForUpdate()->firstOrFail(), $stored === 0];
     }
 
     private function attempt(SyncMutation $row, User $user, bool $retry): SyncMutation

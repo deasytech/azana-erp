@@ -78,8 +78,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Few sign-in attempts per person and address; plenty of room for a device to sync a day's queue.
-        RateLimiter::for('mobile-login', fn (Request $request) => Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
+        // Sign-in is limited twice: per address (one place trying many accounts) and per account (many places trying one account). The account's
+        // limit does not depend on the address, so changing address does not give an attacker a fresh budget. Plenty of room to sync a day's queue.
+        RateLimiter::for('mobile-login', fn (Request $request) => [
+            Limit::perMinute(20)->by('ip:'.$request->ip()),
+            Limit::perMinute(5)->by('email:'.sha1(strtolower(trim((string) $request->input('email'))))),
+        ]);
         RateLimiter::for('mobile', fn (Request $request) => Limit::perMinute(240)->by($request->user()?->id ?: $request->ip()));
 
         // Owner/Director implicitly holds every "{module}.{action}" permission. Only permission
