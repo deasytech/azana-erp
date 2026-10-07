@@ -20,6 +20,8 @@ use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 
+const DRESSING_LABEL = 'Dressing percentage';
+
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class, FinanceSeeder::class]);
     Filament::setCurrentPanel('admin');
@@ -61,8 +63,8 @@ it('opens a dashboard for each area and ignores an area or month it should not t
     slaughterPig();
 
     Livewire::test(ManagementDashboard::class)->assertSee('Executive')->assertSee('Pigs slaughtered')
-        ->set('area', 'slaughter')->assertSee('Dressing percentage')->assertSee('76')
-        ->set('area', 'not-an-area')->assertSee('Pigs slaughtered')->assertDontSee('Dressing percentage')
+        ->set('area', 'slaughter')->assertSee(DRESSING_LABEL)->assertSee('76')
+        ->set('area', 'not-an-area')->assertSee('Pigs slaughtered')->assertDontSee(DRESSING_LABEL)
         ->set('month', 99)->set('year', 1)->assertSee('December 2000');
 
     // A dashboard is offered only for the areas the user may view.
@@ -75,7 +77,7 @@ it('shows each indicator against its target on the target-vs-actual screen', fun
     slaughterPig();
     KpiTarget::create(['kpi_key' => 'slaughter.dressing_percent', 'year' => now()->year, 'month' => null, 'target_value' => '80']);
 
-    Livewire::test(TargetVsActual::class)->assertSee('Dressing percentage')->assertSee('76%')->assertSee('80%')->assertSee('Missed')->assertSee('95');
+    Livewire::test(TargetVsActual::class)->assertSee(DRESSING_LABEL)->assertSee('76%')->assertSee('80%')->assertSee('Missed')->assertSee('95');
 });
 
 it('lets someone with edit rights set, change and reject duplicate targets', function () {
@@ -127,7 +129,7 @@ it('exports the finance reports for people with finance export rights only', fun
 it('searches across the farm from one box: animals, customers, tasks, orders and batches', function () {
     $this->actingAs(owner());
     $animal = register();
-    $customer = customer(['name' => 'Zebra Meats']);
+    customer(['name' => 'Zebra Meats']);
     $task = newTask(['title' => 'Check zebra fence']);
     $order = semenOrder(creditCustomer(), releasedSemen(), 1);
 
@@ -135,4 +137,12 @@ it('searches across the farm from one box: animals, customers, tasks, orders and
 
     expect($search($animal->animal_number))->toContain($animal->animal_number)->and($search('Zebra'))->toContain('Zebra Meats')
         ->and($search($task->number))->toContain($task->number)->and($search($order->number))->toContain($order->number);
+});
+
+it('hides the export buttons while the chosen period is not valid, without building the report', function () {
+    $this->actingAs(owner());
+
+    Livewire::test(ProfitabilityReport::class)->assertActionVisible('csv')->set('from', 'not a date')->assertActionHidden('csv')
+        ->set('from', now()->toDateString())->assertActionVisible('csv');
+    Livewire::test(CashFlowReport::class)->set('to', now()->subYears(2)->toDateString())->assertActionHidden('xlsx');
 });

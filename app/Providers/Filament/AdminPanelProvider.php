@@ -39,6 +39,7 @@ class AdminPanelProvider extends PanelProvider
                 [AppAuthentication::make()->recoverable()],
                 isRequired: fn (): bool => (bool) auth()->user()?->requiresTwoFactor(),
             )
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -39,6 +39,11 @@ class ProfitabilityReport extends Page
         return GetProfitability::class;
     }
 
+    protected function canExport(): bool
+    {
+        return $this->inputErrors() === [];
+    }
+
     protected function exportPermission(): string
     {
         return 'finance.export';

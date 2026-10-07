@@ -359,6 +359,7 @@ Phase 17 - Mobile API, Offline Sync and Worker Quick Entry (not started)
   - The dashboards recompute on every view; for a much larger farm cache them (they read the live data by design). Livestock "now" figures are as at the moment, whatever month is chosen; only flows (sales, doses, slaughter, feed made, profit, cash movement) follow the month.
   - Monthly report is generated on demand (no stored copies) and is not yet e-mailed on a schedule. Charts are not included; indicators are cards and tables.
   - Money targets are typed in minor units (kobo).
+  - The panel has its own Tailwind theme (`resources/css/filament/admin/theme.css`, registered with `viteTheme`) so the classes used in our custom Blade pages are compiled; run `npm run build` on every deploy (tests skip Vite).
   - Global search covers records with a title and a view or edit page; supplier invoices, inventory batches and feed batches have no page of their own to link to yet.
 
 ## In Progress

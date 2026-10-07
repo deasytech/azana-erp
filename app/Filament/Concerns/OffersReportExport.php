@@ -17,13 +17,19 @@ trait OffersReportExport
     /** @return string the permission that allows exporting, e.g. finance.export */
     abstract protected function exportPermission(): string;
 
+    /** Cheap check that there is something to export (no document is built): pages with inputs override it to refuse invalid ones. */
+    protected function canExport(): bool
+    {
+        return true;
+    }
+
     protected function getHeaderActions(): array
     {
         $button = fn (string $format, string $label) => Action::make($format)->label($label)->action(fn () => $this->download($format));
 
         return [
             ActionGroup::make([$button('csv', 'CSV'), $button('xlsx', 'Excel'), $button('pdf', 'PDF')])->label('Export')->icon('heroicon-o-arrow-down-tray')->button()
-                ->visible(fn () => auth()->user()->can($this->exportPermission()) && $this->reportDocument() !== null),
+                ->visible(fn () => auth()->user()->can($this->exportPermission()) && $this->canExport()),
         ];
     }
 
@@ -40,6 +46,8 @@ trait OffersReportExport
 
         $contents = app(ExportReport::class)->{$format}($document);
 
-        return response()->streamDownload(fn () => print ($contents), $document->filename($format), ['Content-Type' => ['csv' => 'text/csv; charset=UTF-8', 'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'pdf' => 'application/pdf'][$format]]);
+        return response()->streamDownload(function () use ($contents) {
+            echo $contents;
+        }, $document->filename($format), ['Content-Type' => ['csv' => 'text/csv; charset=UTF-8', 'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'pdf' => 'application/pdf'][$format]]);
     }
 }

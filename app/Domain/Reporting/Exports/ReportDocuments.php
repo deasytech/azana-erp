@@ -11,6 +11,8 @@ use Carbon\CarbonInterface;
 /** Builds ReportDocuments (and so CSV / Excel / PDF files) from the reports' own figures, in the same words the screens use. */
 class ReportDocuments
 {
+    private const DATE = 'd M Y';
+
     private function money(?int $minor): string
     {
         return $minor === null ? '-' : Money::ofMinor($minor, Farm::defaultCurrency())->format();
@@ -31,7 +33,7 @@ class ReportDocuments
     public function monthly(array $r): ReportDocument
     {
         $doc = new ReportDocument('Monthly management report', $r['label']);
-        $doc = $doc->with('About this report', ['Generated', 'By'], [[$r['generated_at']->format('d M Y H:i'), $r['generated_by']]]);
+        $doc = $doc->with('About this report', ['Generated', 'By'], [[$r['generated_at']->format(self::DATE.' H:i'), $r['generated_by']]]);
         $doc = $this->kpiSections($doc, $r['kpis']);
 
         if ($p = $r['profitability']) {
@@ -61,25 +63,25 @@ class ReportDocuments
     /** @param array<string, mixed> $p from GetProfitability */
     public function profitability(array $p, CarbonInterface $from, CarbonInterface $to): ReportDocument
     {
-        return $this->profitabilitySection(new ReportDocument('Profitability by business unit', $from->format('d M Y').' to '.$to->format('d M Y')), $p);
+        return $this->profitabilitySection(new ReportDocument('Profitability by business unit', $from->format(self::DATE).' to '.$to->format(self::DATE)), $p);
     }
 
     /** @param array<string, mixed> $c from GetCashFlow */
     public function cashFlow(array $c, CarbonInterface $from, CarbonInterface $to): ReportDocument
     {
-        return $this->cashFlowSections(new ReportDocument('Cash flow', $from->format('d M Y').' to '.$to->format('d M Y')), $c);
+        return $this->cashFlowSections(new ReportDocument('Cash flow', $from->format(self::DATE).' to '.$to->format(self::DATE)), $c);
     }
 
     /** @param array<string, mixed> $a from GetReceivablesPayables */
     public function ageing(array $a, CarbonInterface $asOf): ReportDocument
     {
-        return $this->ageingSections(new ReportDocument('Receivables and payables', 'As at '.$asOf->format('d M Y')), $a);
+        return $this->ageingSections(new ReportDocument('Receivables and payables', 'As at '.$asOf->format(self::DATE)), $a);
     }
 
     /** @param array<string, mixed> $t from GetTrialBalance */
     public function trialBalance(array $t): ReportDocument
     {
-        return (new ReportDocument('Trial balance', 'As at '.now()->format('d M Y')))->with('Accounts', ['Account', 'Type', 'Debits', 'Credits', 'Balance'],
+        return (new ReportDocument('Trial balance', 'As at '.now()->format(self::DATE)))->with('Accounts', ['Account', 'Type', 'Debits', 'Credits', 'Balance'],
             array_map(fn ($r) => [$r['account']->label(), $r['account']->type->label(), $this->money($r['debit_minor']), $this->money($r['credit_minor']), $this->money($r['balance_minor'])], $t['rows']))
             ->with('Totals', ['Debits', 'Credits', 'Balanced'], [[$this->money($t['debit_minor']), $this->money($t['credit_minor']), $t['balanced'] ? 'Yes' : 'NO']]);
     }

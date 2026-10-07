@@ -19,6 +19,7 @@ use App\Models\User;
 use Database\Seeders\FinanceSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class, FinanceSeeder::class]);
@@ -30,7 +31,7 @@ function kpiValues(?User $for = null, int $daysBack = 40): array
 }
 
 it('registers every indicator against a real dashboard and a real module', function () {
-    foreach (KpiRegistry::all() as $key => $k) {
+    foreach (KpiRegistry::all() as $k) {
         expect(KpiRegistry::AREAS)->toHaveKey($k['area'])->and(Module::tryFrom($k['module']))->not->toBeNull()
             ->and($k['unit'])->toBeIn(['count', 'kg', 'doses', 'percent', 'money'])->and($k['better'])->toBeIn(['higher', 'lower', 'none']);
     }
@@ -40,7 +41,7 @@ it('registers every indicator against a real dashboard and a real module', funct
 });
 
 it('works the indicators out from the farm\'s own records', function () {
-    $batch = scenario();                                                     // 100 placed, 2 died, 98 left; cost 235,750,000
+    scenario();                                                              // 100 placed, 2 died, 98 left; cost 235,750,000
     $run = completedFeedRun(millFixture());                                  // 990 kg made
     $semen = releasedSemen();
     $invoice = dispatched(semenOrder(creditCustomer(), $semen, 10));         // 15,000,000
@@ -203,4 +204,21 @@ it('builds the monthly report document with every figure the screen shows', func
 
     expect($doc->title)->toBe('Monthly management report')->and($titles)->toContain('Finance', 'Sales', 'Business units', 'Summary', 'Alerts standing now', 'Tasks')
         ->and(collect($doc->sections)->firstWhere('title', 'Business units')['rows'][0][1])->toContain('150,000.00');
+});
+
+it('lets the database refuse a second whole-year target, which a unique index on a nullable month could not', function () {
+    $row = ['kpi_key' => 'finance.cash_minor', 'year' => 2026, 'month' => null, 'target_value' => '1'];
+    KpiTarget::create($row);
+
+    expect(fn () => KpiTarget::create($row))->toThrow(UniqueConstraintViolationException::class)
+        ->and(KpiTarget::create(['month' => 1] + $row)->month)->toBe(1)                   // a month beside the year's row is fine
+        ->and(KpiTarget::count())->toBe(2);
+});
+
+it('keeps a cell that starts with a tab or a carriage return as text too', function () {
+    $doc = (new ReportDocument('Test', 'x'))->with('Names', ['Name'], [["\t=1+1"], ["\r=1+1"], ['plain']]);
+
+    $csv = app(ExportReport::class)->csv($doc);
+
+    expect($csv)->toContain("'\t=1+1")->toContain("'\r=1+1")->and($csv)->not->toContain("'plain");
 });

@@ -64,10 +64,10 @@ class ExportReport
         return (string) $pdf->output();
     }
 
-    /** Text that starts like a spreadsheet formula (= + @, or - not followed by a number or an amount) is kept as text by a leading apostrophe. */
+    /** Text that starts like a spreadsheet formula (= + @, a leading tab or carriage return, or - not followed by a number or an amount) is kept as text by a leading apostrophe. */
     private function safe(string $cell): string
     {
-        $formula = preg_match('/^[=+@]/', $cell) || (str_starts_with($cell, '-') && ! preg_match('/^-\s?([A-Z]{3}\s?)?[\d.,]+%?$/', $cell));
+        $formula = preg_match('/^[=+@\t\r]/', $cell) || (str_starts_with($cell, '-') && ! preg_match('/^-\s?([A-Z]{3}\s?)?[\d.,]+%?$/', $cell));
 
         return $formula ? "'".$cell : $cell;
     }

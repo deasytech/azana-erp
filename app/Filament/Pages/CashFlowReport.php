@@ -39,6 +39,11 @@ class CashFlowReport extends Page
         return GetCashFlow::class;
     }
 
+    protected function canExport(): bool
+    {
+        return $this->inputErrors() === [];
+    }
+
     protected function exportPermission(): string
     {
         return 'finance.export';
