@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Animal\Actions\RecordAnimalMovement;
 use App\Domain\Animal\Actions\RegisterAnimal;
 use App\Domain\Animal\Models\Animal;
 use App\Domain\Breeding\Actions\RecordFarrowing;
@@ -30,6 +31,7 @@ use App\Domain\Inventory\Actions\ReceiveStock;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
 use App\Domain\Inventory\Models\InventoryTransaction;
+use App\Domain\Litter\Actions\RegisterLitterPiglets;
 use App\Domain\Litter\Models\Litter;
 use App\Domain\Meat\Actions\ProduceMeat;
 use App\Domain\Meat\Models\MeatProduct;
@@ -41,6 +43,7 @@ use App\Domain\Procurement\Actions\DecidePurchaseRequest;
 use App\Domain\Procurement\Actions\ReceiveGoods;
 use App\Domain\Procurement\Models\GoodsReceipt;
 use App\Domain\Procurement\Models\PurchaseOrder;
+use App\Domain\Production\Actions\AddAnimalToBatch;
 use App\Domain\Production\Actions\OpenProductionBatch;
 use App\Domain\Production\Actions\RecordBatchMortality;
 use App\Domain\Production\Actions\RecordBatchWeighIn;
@@ -496,4 +499,50 @@ function makeMeat(?Carcass $carcass = null): MeatProductionBatch
 {
     return app(ProduceMeat::class)([($carcass ?? slaughterPig())->id], store('COLD1'), now()->startOfDay(),
         meatLines(['LEG' => '20.00', 'LOIN' => '15.00', 'SHOULDER' => '18.00', 'BELLY' => '12.00', 'LIVER' => '2.00']), '6.00', 100000);
+}
+
+/**
+ * One pig's whole life: premix bought from a supplier -> grower feed made -> a released semen batch inseminates a sow ->
+ * her litter's piglet is housed, put in a batch and fed from the finished feed -> slaughtered -> made into meat -> sold,
+ * with some semen sold to another customer.
+ */
+function traceChain(): array
+{
+    $mill = millFixture();
+    $feedRun = completedFeedRun($mill);
+
+    $semen = releasedSemen();
+    $sow = register();
+    app(RecordService::class)($sow, ServiceMethod::ArtificialInsemination, now()->subDays(114)->startOfDay(), semenBatchId: $semen->id, semenLocationId: store('SEMEN')->id);
+    $litter = farrow($sow);
+    $pig = app(RegisterLitterPiglets::class)($litter, [['sex' => 'male', 'birth_weight_kg' => '1.50']])->first();
+
+    $pen = newPen('TRC1');
+    app(RecordAnimalMovement::class)($pig, $pen->id, null, now()->startOfDay());
+    $batch = openBatch(['count' => 5]);
+    app(AddAnimalToBatch::class)($batch, $pig, now()->startOfDay());
+    feed($batch, '20', extra: ['inventory_location_id' => $mill['out']->id]);
+    app(RecordFeedConsumption::class)($pig, growerFeed(), now()->startOfDay(), '10', ['inventory_location_id' => $mill['out']->id]);
+
+    $day = slaughterDay();
+    $carcass = app(RecordSlaughter::class)(app(RecordSlaughterIntake::class)($day, $pig, '100.00', AnteMortemResult::Passed, null, 1, 2000000), '76.00', PostMortemResult::Passed);
+    $meat = app(ProduceMeat::class)([$carcass->id], store('COLD1'), now()->startOfDay(), [['meat_product_id' => MeatProduct::firstWhere('code', 'LEG')->id, 'weight_kg' => '40.00']], '4.00');
+
+    $buyer = creditCustomer(over: ['name' => 'City Meats']);
+    $meatInvoice = dispatched(app(CreateSalesOrder::class)($buyer, [['kind' => 'meat', 'meat_product_id' => MeatProduct::firstWhere('code', 'LEG')->id, 'inventory_location_id' => store('COLD1')->id, 'quantity' => '12', 'unit_price_minor' => 250000]], now()));
+    $breeder = creditCustomer(over: ['name' => 'Stud Farm']);
+    $semenInvoice = dispatched(app(CreateSalesOrder::class)($breeder, [['kind' => 'semen', 'semen_batch_id' => $semen->id, 'inventory_location_id' => store('SEMEN')->id, 'quantity' => 5, 'unit_price_minor' => 1500000]], now()));
+
+    return compact('mill', 'feedRun', 'semen', 'sow', 'litter', 'pig', 'batch', 'pen', 'day', 'carcass', 'meat', 'buyer', 'meatInvoice', 'breeder', 'semenInvoice');
+}
+
+/** Two lots of leg, 20 kg each: lot A made two days ago (use-by in 3 days), lot B today (use-by in 5 days). */
+function twoLotsOfLeg(): array
+{
+    test()->travelTo(now()->subDays(2));
+    $a = makeMeat();
+    test()->travelBack();
+    $b = makeMeat();
+
+    return [$a, $b];
 }

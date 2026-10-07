@@ -7,14 +7,15 @@ use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Health\Actions\AssertAnimalCanEnterFoodChain;
 use App\Domain\Inventory\Models\InventoryBatch;
 use App\Domain\Inventory\Models\InventoryItem;
-use App\Domain\Inventory\Services\StockValuation;
 use App\Domain\Production\Models\ProductionBatch;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesOrder;
 use App\Domain\Sales\Models\SalesOrderLine;
 use App\Domain\Sales\Models\StockReservation;
+use App\Domain\Sales\Services\StockAvailability;
 use App\Domain\Semen\Actions\AssertSemenBatchSellable;
 use App\Domain\System\Exceptions\DomainException;
+use App\Enums\MeatProductionStatus;
 use App\Enums\ReservationStatus;
 use App\Enums\SalesLineKind;
 use App\Enums\SalesOrderStatus;
@@ -32,14 +33,14 @@ class ConfirmSalesOrder
         private readonly CheckCustomerCredit $credit,
         private readonly AssertSemenBatchSellable $sellable,
         private readonly AssertAnimalCanEnterFoodChain $foodChain,
-        private readonly StockValuation $stock,
+        private readonly StockAvailability $availability,
         private readonly ResolveSettings $settings,
     ) {}
 
     public function __invoke(SalesOrder $order, User $confirmer): SalesOrder
     {
         return DB::transaction(function () use ($order, $confirmer) {
-            $order = SalesOrder::lockForUpdate()->with(['lines.semenBatch', 'lines.animal', 'lines.productionBatch'])->findOrFail($order->id);
+            $order = SalesOrder::lockForUpdate()->with(['lines.semenBatch', 'lines.animal', 'lines.productionBatch', 'lines.meatLine.product', 'lines.meatLine.batch'])->findOrFail($order->id);
             $customer = Customer::lockForUpdate()->findOrFail($order->customer_id);
 
             $order->status === SalesOrderStatus::Draft || throw new DomainException("{$order->number} is {$order->status->label()}: only a draft order can be confirmed.", 'order_not_draft');
@@ -70,6 +71,7 @@ class ConfirmSalesOrder
             SalesLineKind::Semen => [0, $l->semenBatch->inventory_batch_id ?? 0, $l->id],
             SalesLineKind::PigAnimal => [1, $l->animal_id, $l->id],
             SalesLineKind::PigBatch => [2, $l->production_batch_id, $l->id],
+            SalesLineKind::Meat => [3, $l->meatLine->inventory_batch_id ?? 0, $l->id],
         })->values();
     }
 
@@ -89,6 +91,7 @@ class ConfirmSalesOrder
             SalesLineKind::Semen => $this->reserveSemen($line),
             SalesLineKind::PigAnimal => $this->reserveAnimal($order, $line),
             SalesLineKind::PigBatch => $this->reserveBatchPigs($line),
+            SalesLineKind::Meat => $this->reserveMeat($line),
         };
     }
 
@@ -100,9 +103,7 @@ class ConfirmSalesOrder
         // Hold the batch's row while its reservations are counted and added, so a second order cannot count the same doses as free.
         InventoryBatch::lockForUpdate()->findOrFail($batch->inventory_batch_id);
 
-        $held = (string) StockReservation::where('inventory_batch_id', $batch->inventory_batch_id)->where('inventory_location_id', $line->inventory_location_id)
-            ->where('status', ReservationStatus::Active)->sum('quantity');
-        $free = bcsub($this->stock->onHand($item->id, $line->inventory_location_id, $batch->inventory_batch_id), $held, 3);
+        $free = $this->availability->free($item->id, $line->inventory_location_id, $batch->inventory_batch_id);
 
         if (bccomp($free, (string) $line->quantity, 3) < 0) {
             throw new DomainException("{$batch->number}: only ".(int) $free.' doses are free in that store (the rest are on hand but reserved for other orders), '.(int) $line->quantity.' needed.', 'insufficient_stock');
@@ -110,6 +111,32 @@ class ConfirmSalesOrder
 
         StockReservation::create([
             'sales_order_line_id' => $line->id, 'inventory_batch_id' => $batch->inventory_batch_id,
+            'inventory_location_id' => $line->inventory_location_id, 'quantity' => $line->quantity,
+        ]);
+    }
+
+    private function reserveMeat(SalesOrderLine $line): void
+    {
+        $lot = $line->meatLine;
+
+        $lot->batch->status === MeatProductionStatus::Produced || throw new DomainException("{$lot->batch->number} was reversed and its meat is not in stock.", 'meat_lot');
+
+        if ($lot->use_by->lt(now()->startOfDay())) {
+            throw new DomainException("{$lot->product->name} from {$lot->batch->number} passed its use-by date on {$lot->use_by->format('d M Y')}.", 'meat_expired');
+        }
+
+        // Hold the lot's stock row while its reservations are counted and added, as for semen.
+        $inventoryBatch = InventoryBatch::lockForUpdate()->findOrFail($lot->inventory_batch_id);
+        $inventoryBatch->is_active || throw new DomainException("{$lot->batch->number} is blocked.", 'meat_blocked');
+
+        $free = $this->availability->free($lot->product->inventory_item_id, $line->inventory_location_id, $lot->inventory_batch_id);
+
+        if (bccomp($free, (string) $line->quantity, 3) < 0) {
+            throw new DomainException("{$lot->product->name} from {$lot->batch->number}: only {$free} kg is free in that cold room (the rest is reserved for other orders), {$line->quantity} kg needed.", 'insufficient_stock');
+        }
+
+        StockReservation::create([
+            'sales_order_line_id' => $line->id, 'inventory_batch_id' => $lot->inventory_batch_id,
             'inventory_location_id' => $line->inventory_location_id, 'quantity' => $line->quantity,
         ]);
     }

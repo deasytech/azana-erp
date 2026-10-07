@@ -15,6 +15,7 @@ use App\Domain\Production\Models\ProductionBatchAnimal;
 use App\Enums\AnimalStatus;
 use App\Enums\LookupCategory;
 use App\Filament\Concerns\NotifiesDomainErrors;
+use App\Filament\Pages\TraceExplorer;
 use App\Filament\Resources\Animals\AnimalResource;
 use App\Filament\Resources\Animals\Pages\Concerns\HasHealthActions;
 use App\Filament\Support\LookupSelect;
@@ -97,6 +98,9 @@ class ViewAnimal extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('trace')->label('Trace this animal')->icon('heroicon-o-magnifying-glass')->color('gray')
+                ->visible(fn () => TraceExplorer::canAccess())
+                ->url(fn () => TraceExplorer::urlFor('animal', $this->record->animal_number)),
             $this->moveAction(),
             $this->weightAction(),
             $this->statusAction(),

@@ -14,6 +14,7 @@ use App\Filament\Resources\Customers\Pages\ViewCustomer;
 use App\Filament\Resources\Customers\RelationManagers\InvoicesRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\OrdersRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\Customers\RelationManagers\PurchasesRelationManager;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -93,7 +94,7 @@ class CustomerResource extends Resource
 
     public static function getRelations(): array
     {
-        return [OrdersRelationManager::class, InvoicesRelationManager::class, PaymentsRelationManager::class];
+        return [OrdersRelationManager::class, InvoicesRelationManager::class, PurchasesRelationManager::class, PaymentsRelationManager::class];
     }
 
     public static function getPages(): array

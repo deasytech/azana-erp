@@ -6,8 +6,10 @@ use App\Domain\Meat\Actions\ReverseMeatProduction;
 use App\Domain\Meat\Models\MeatProductionBatch;
 use App\Enums\MeatProductionStatus;
 use App\Filament\Concerns\HasWorkflowSteps;
+use App\Filament\Pages\TraceExplorer;
 use App\Filament\Resources\MeatProductionBatches\MeatProductionBatchResource;
 use App\Filament\Support\MoneyColumn;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
@@ -53,6 +55,9 @@ class ViewMeatProductionBatch extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('trace')->label('Trace this product')->icon('heroicon-o-magnifying-glass')->color('gray')
+                ->visible(fn () => TraceExplorer::canAccess())
+                ->url(fn () => TraceExplorer::urlFor('meat_batch', $this->batch()->number)),
             $this->step('reverse', 'Reverse', 'heroicon-o-arrow-uturn-left', 'Meat production reversed',
                 fn (array $d) => app(ReverseMeatProduction::class)($this->batch(), $d['reason']),
                 fn () => $this->batch()->status === MeatProductionStatus::Produced && auth()->user()->can('approve', $this->batch()),

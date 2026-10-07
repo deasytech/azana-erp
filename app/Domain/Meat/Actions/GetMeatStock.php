@@ -13,7 +13,7 @@ class GetMeatStock
 {
     public function __construct(private readonly GetStockLevels $levels) {}
 
-    /** @return Collection<int, array{product: string, batch: string, use_by: CarbonInterface, kg: string, value_minor: int, store: string, expired: bool, production_batch_id: int}> */
+    /** @return Collection<int, array{line_id: int, product_id: int, location_id: int, product: string, batch: string, use_by: CarbonInterface, kg: string, value_minor: int, store: string, expired: bool, production_batch_id: int}> */
     public function __invoke(): Collection
     {
         $rows = ($this->levels)()->filter(fn ($row) => $row->item->category === InventoryCategory::Meat && $row->inventory_batch_id !== null);
@@ -23,6 +23,9 @@ class GetMeatStock
             $line = $lines->first(fn (MeatProductionLine $l) => $l->inventory_batch_id === $row->inventory_batch_id);
 
             return $line ? [
+                'line_id' => $line->id,
+                'product_id' => $line->meat_product_id,
+                'location_id' => $row->inventory_location_id,
                 'product' => $line->product->name,
                 'batch' => $row->batch->batch_number,
                 'use_by' => $line->use_by,

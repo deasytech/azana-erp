@@ -14,8 +14,8 @@ Complete meat sales and the TRACE THIS PRODUCT capability.
 - Customer history.
 
 ## Acceptance Criteria
-- [ ] A meat batch can be traced to slaughter.
-- [ ] Slaughter traces to pig.
-- [ ] Pig traces to finisher batch, feed and raw materials.
-- [ ] Pig traces to litter, sow, boar/semen where available.
-- [ ] Sale/customer is visible from the traceability record.
+- [x] A meat batch can be traced to slaughter.
+- [x] Slaughter traces to pig.
+- [x] Pig traces to finisher batch, feed and raw materials.
+- [x] Pig traces to litter, sow, boar/semen where available.
+- [x] Sale/customer is visible from the traceability record.

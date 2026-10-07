@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 13 - Meat Sales and End-to-End Traceability (not started)
+Phase 14 - Finance, Costing, Cash Flow, Budgets and Profitability (not started)
 
 ## Completed
 
@@ -278,6 +278,25 @@ Phase 13 - Meat Sales and End-to-End Traceability (not started)
   - By-products (head, trotters, fat) are stocked and costed like any product; waste has no cost or stock. A condemned carcass's cost is a loss, not carried onto meat.
   - Carcass chilling shrink is not modelled (the hot weight is used throughout).
   - Phase 13 sells meat from these cold-room batches using the Phase 11 order, invoice and payment documents with a new line kind.
+
+### Phase 13 - Meat Sales and End-to-End Traceability (2026-10-09)
+- Delivery: one PR, one commit (under 100 files).
+- Tests: `vendor/bin/pest` - 562 passed (added `tests/Feature/Traceability/MeatSalesTest.php`, `TraceProductTest.php` and `TraceUiTest.php`; helpers `traceChain` and `twoLotsOfLeg` in `tests/Pest.php`).
+- Package changes: none.
+- What was done:
+  - Schema (1 migration): `meat_production_line_id` on `sales_order_lines` and `invoice_lines` - a meat line points at the lot it takes meat from (one product within one meat production batch).
+  - **Meat sales** reuse the Phase 11 order, invoice and payment documents with a new line kind, "Meat", sold by weight from a cold room. A line names a product and the system **picks the lots** (`PickMeat`): earliest use-by first, across as many lots as it takes, counting only what is free (on hand less what other orders hold) and not past its use-by date - or it names one lot. One entered line can become several order lines, one per lot. The price defaults to the product's price-list price (`GetItemPrice`, now shared with semen).
+  - **Reservation and dispatch:** confirming reserves the kilograms against the lot (the stock row is locked while counting, in the same fixed order as semen and pigs); meat past its use-by date, from a reversed batch or from a blocked lot is refused at confirmation and again at dispatch. Dispatch takes the meat out of the cold room through the inventory ledger (`Sale`, source: the order, in the lot's batch) and the invoice line keeps the lot.
+  - **Picking list** (`GetPickingList`): for every line of a confirmed order - item, where to take it from, batch, use-by date and quantity (semen doses, meat lots, pigs with their pen, batch pigs).
+  - **Trace this product** (`TraceProduct`): for a meat batch, a pig or a semen batch, everything that led to it and everything that came of it. Meat batch -> carcass -> slaughter day -> pig -> its pens, production batch, feed (feed type, the finished feed batch it came from, the raw material batches that went into it and their suppliers) and its litter, sow, boar and semen batch; downstream, the invoice and customer. A pig traces to the meat made from it and the customers who bought it (or the customer it was sold to alive); a semen batch traces to its boar, the sows it served and their litters, and the customers who bought it. Slaughtered groups trace through their production batch. The result is stages (suppliers -> raw materials -> feed -> genetics -> litter -> pig -> housing -> slaughter -> meat -> sales -> customers), links between nodes, and which nodes are before and after the subject.
+  - Admin UI: **Trace a product** page (choose meat batch / animal / semen batch, enter the number; every node links to its page; people without sales rights see the trace without invoices and customers), "Trace this product" buttons on meat batches, animals and semen batches, meat in the order form, a Picking list on confirmed orders, the meat lot on invoice lines, and an **Items bought** tab on a customer (customer history, line by line with the batch it came from).
+  - Permissions: no new module. The explorer needs view rights on animals and slaughter; sales stages additionally need sales view.
+- Migration notes: 1 new reversible migration; no new settings.
+- Known issues / notes:
+  - The trace reaches the feed a pig ate only where feed was taken from a store (the record then knows its finished feed batch and so its raw materials); feed recorded without a store shows only its feed type.
+  - Pigs slaughtered as an untracked group trace to their production batch, not to individual parents.
+  - A pig's treatments and vaccinations are not part of the trace graph yet.
+  - Auto-picking happens when the order is drafted; if the stock changes before confirmation, confirmation refuses and the order must be redrafted.
 
 ## In Progress
 None
