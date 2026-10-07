@@ -26,7 +26,10 @@ class ApprovalInbox extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('tasks.view') ?? false;
+        $user = auth()->user();
+
+        // Anyone who can approve in a module that feeds the inbox, or who can see tasks.
+        return $user && collect(['tasks.view', 'finance.approve', 'procurement.approve', 'inventory.approve', 'semen.approve'])->contains(fn ($permission) => $user->can($permission));
     }
 
     /** @return Collection<int, array<string, mixed>> */

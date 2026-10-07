@@ -9,6 +9,7 @@ use App\Enums\TaskCategory;
 use App\Enums\TaskPriority;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
@@ -35,7 +36,19 @@ class CreateTask
             throw new DomainException("There is no role called {$role}.", 'task_role');
         }
 
-        $task = DB::transaction(function () use ($title, $dueOn, $category, $priority, $description, $role, $sourceKey, $requiresEvidence, $actor) {
+        try {
+            $task = $this->write($title, $dueOn, $category, $priority, $description, $role, $sourceKey, $requiresEvidence, $actor);
+        } catch (UniqueConstraintViolationException $e) {
+            // Only a clash on source_key (another process made this very task first) is a repeat; any other unique failure is a real error.
+            $task = ($sourceKey ? Task::firstWhere('source_key', $sourceKey) : null) ?? throw $e;
+        }
+
+        return $task->wasRecentlyCreated && $assignee ? ($this->assign)($task, $assignee, $actor) : $task;
+    }
+
+    private function write(string $title, CarbonInterface $dueOn, TaskCategory $category, TaskPriority $priority, ?string $description, ?string $role, ?string $sourceKey, bool $requiresEvidence, ?User $actor): Task
+    {
+        return DB::transaction(function () use ($title, $dueOn, $category, $priority, $description, $role, $sourceKey, $requiresEvidence, $actor) {
             if ($sourceKey && ($existing = Task::firstWhere('source_key', $sourceKey))) {
                 return $existing;
             }
@@ -46,7 +59,5 @@ class CreateTask
                 'source_key' => $sourceKey, 'requires_evidence' => $requiresEvidence, 'created_by' => ($actor ?? Auth::user())?->getKey(),
             ]);
         });
-
-        return $task->wasRecentlyCreated && $assignee ? ($this->assign)($task, $assignee, $actor) : $task;
     }
 }

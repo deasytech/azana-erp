@@ -19,6 +19,8 @@ class AssignTask
     {
         $user = User::findOrFail($user instanceof User ? $user->id : $user);
         $actor ??= Auth::user();
+        // A named actor must be allowed to edit tasks; a call with nobody signed in is the system itself (generators, jobs).
+        ! $actor || $actor->can('update', $task) || throw new DomainException('You may not assign tasks.', 'task_forbidden');
         $user->is_active || throw new DomainException("{$user->name} is not an active user.", 'task_assignee');
 
         $task = DB::transaction(function () use ($task, $user, $actor, $note) {

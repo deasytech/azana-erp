@@ -40,17 +40,26 @@ class GetPendingApprovals
     /** @return Collection<int, array{type: string, module: string, reference: string, detail: string, raised_by: ?string, raised_at: mixed, mine: bool, url: string}> */
     public function __invoke(User $user): Collection
     {
-        $items = collect()
-            ->concat(JournalEntry::with('createdBy')->where('status', JournalStatus::Pending)->get()->map(fn ($j) => $this->item('Manual journal', 'finance', $j->number, $j->description, $j->createdBy, $j->created_at, $j->created_by, $user, JournalEntryResource::getUrl('view', ['record' => $j]))))
-            ->concat(SupplierPayment::with(['invoice', 'createdBy'])->where('status', PaymentStatus::PendingApproval)->get()->map(fn ($p) => $this->item('Supplier payment', 'procurement', $p->number, "Invoice {$p->invoice->number}", $p->createdBy, $p->created_at, $p->created_by, $user, SupplierPaymentResource::getUrl('index'))))
-            ->concat(PurchaseRequest::with('requestedBy')->where('status', PurchaseRequestStatus::Submitted)->get()->map(fn ($r) => $this->item('Purchase request', 'procurement', $r->number, (string) $r->notes, $r->requestedBy, $r->submitted_at ?? $r->created_at, $r->requested_by, $user, PurchaseRequestResource::getUrl('view', ['record' => $r]))))
-            ->concat(PurchaseOrder::with(['supplier', 'createdBy'])->where('status', PurchaseOrderStatus::PendingApproval)->get()->map(fn ($o) => $this->item('Purchase order', 'procurement', $o->number, $o->supplier->name, $o->createdBy, $o->created_at, $o->created_by, $user, PurchaseOrderResource::getUrl('view', ['record' => $o]))))
-            ->concat(StockAdjustment::with(['item', 'requestedBy'])->where('status', ApprovalStatus::Pending)->get()->map(fn ($a) => $this->item('Stock adjustment', 'inventory', $a->number, "{$a->item->name}: {$a->quantity}", $a->requestedBy, $a->created_at, $a->requested_by, $user, StockAdjustmentResource::getUrl('index'))))
-            ->concat(StockCount::with('submittedBy')->where('status', StockCountStatus::Submitted)->get()->map(fn ($c) => $this->item('Stock count', 'inventory', $c->number, "Counted {$c->counted_on->format('d M Y')}", $c->submittedBy, $c->submitted_at ?? $c->created_at, $c->submitted_by, $user, StockCountResource::getUrl('view', ['record' => $c]))))
-            ->concat(SemenBatch::with('boar')->where('status', SemenBatchStatus::Passed)->get()->map(fn ($b) => $this->item('Semen batch release', 'semen', $b->number, "Boar {$b->boar->animal_number}", null, $b->processed_at ?? $b->created_at, null, $user, SemenBatchResource::getUrl('view', ['record' => $b]))))
-            ->concat(Budget::with('createdBy')->where('status', BudgetStatus::Draft)->whereHas('lines')->get()->map(fn ($b) => $this->item('Budget', 'finance', "{$b->name} ({$b->fiscal_year})", '', null, $b->created_at, $b->created_by, $user, BudgetResource::getUrl('index'))));
+        if (! $user->is_active) {
+            return collect();
+        }
 
-        return $items->filter(fn ($i) => $user->is_active && $user->can("{$i['module']}.approve"))->sortBy('raised_at')->values();
+        // Each group is only read when the user may approve in its module.
+        $groups = [
+            'finance' => fn () => collect()
+                ->concat(JournalEntry::with('createdBy')->where('status', JournalStatus::Pending)->get()->map(fn ($j) => $this->item('Manual journal', 'finance', $j->number, $j->description, $j->createdBy, $j->created_at, $j->created_by, $user, JournalEntryResource::getUrl('view', ['record' => $j]))))
+                ->concat(Budget::with('createdBy')->where('status', BudgetStatus::Draft)->whereHas('lines')->get()->map(fn ($b) => $this->item('Budget', 'finance', "{$b->name} ({$b->fiscal_year})", '', $b->createdBy, $b->created_at, $b->created_by, $user, BudgetResource::getUrl('index')))),
+            'procurement' => fn () => collect()
+                ->concat(SupplierPayment::with(['invoice', 'createdBy'])->where('status', PaymentStatus::PendingApproval)->get()->map(fn ($p) => $this->item('Supplier payment', 'procurement', $p->number, "Invoice {$p->invoice->number}", $p->createdBy, $p->created_at, $p->created_by, $user, SupplierPaymentResource::getUrl('index'))))
+                ->concat(PurchaseRequest::with('requestedBy')->where('status', PurchaseRequestStatus::Submitted)->get()->map(fn ($r) => $this->item('Purchase request', 'procurement', $r->number, (string) $r->notes, $r->requestedBy, $r->submitted_at ?? $r->created_at, $r->requested_by, $user, PurchaseRequestResource::getUrl('view', ['record' => $r]))))
+                ->concat(PurchaseOrder::with(['supplier', 'createdBy'])->where('status', PurchaseOrderStatus::PendingApproval)->get()->map(fn ($o) => $this->item('Purchase order', 'procurement', $o->number, $o->supplier->name, $o->createdBy, $o->created_at, $o->created_by, $user, PurchaseOrderResource::getUrl('view', ['record' => $o])))),
+            'inventory' => fn () => collect()
+                ->concat(StockAdjustment::with(['item', 'requestedBy'])->where('status', ApprovalStatus::Pending)->get()->map(fn ($a) => $this->item('Stock adjustment', 'inventory', $a->number, "{$a->item->name}: {$a->quantity}", $a->requestedBy, $a->created_at, $a->requested_by, $user, StockAdjustmentResource::getUrl('index'))))
+                ->concat(StockCount::with('submittedBy')->where('status', StockCountStatus::Submitted)->get()->map(fn ($c) => $this->item('Stock count', 'inventory', $c->number, "Counted {$c->counted_on->format('d M Y')}", $c->submittedBy, $c->submitted_at ?? $c->created_at, $c->submitted_by, $user, StockCountResource::getUrl('view', ['record' => $c])))),
+            'semen' => fn () => SemenBatch::with('boar')->where('status', SemenBatchStatus::Passed)->get()->map(fn ($b) => $this->item('Semen batch release', 'semen', $b->number, "Boar {$b->boar->animal_number}", null, $b->processed_at ?? $b->created_at, null, $user, SemenBatchResource::getUrl('view', ['record' => $b]))),
+        ];
+
+        return collect($groups)->filter(fn ($load, $module) => $user->can("{$module}.approve"))->flatMap(fn ($load) => $load())->sortBy('raised_at')->values();
     }
 
     /** @return array<string, mixed> */

@@ -18,6 +18,8 @@ class AddTaskEvidence
             throw new DomainException('That file was not uploaded for a task.', 'evidence_path');
         }
 
+        $task = Task::findOrFail($task->id);   // the state now, not as the caller last loaded it
+        $task->isOpen() || throw new DomainException("{$task->number} is {$task->status->value}: evidence can only be added while it is open.", 'task_state');
         $this->advance->mayWork($task, $actor) || throw new DomainException("You may not add evidence to {$task->number}: it is not yours.", 'task_forbidden');
 
         return $task->evidence()->create(['path' => $path, 'caption' => filled($caption) ? trim($caption) : null, 'uploaded_by' => $actor->id]);

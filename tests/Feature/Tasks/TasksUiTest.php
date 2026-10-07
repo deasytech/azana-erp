@@ -19,6 +19,7 @@ use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class, FinanceSeeder::class]);
@@ -142,4 +143,13 @@ it('sends the critical alerts to people from the alerts page, for supervisors on
     Livewire::test(Alerts::class)->callAction('notify')->assertNotified();
 
     expect($store->notifications)->toHaveCount(1);
+});
+
+it('opens the approval inbox for someone who can approve in a module even without task rights', function () {
+    $approver = User::factory()->create();
+    $approver->assignRole(Role::create(['name' => 'Finance approver', 'guard_name' => 'web'])->givePermissionTo('finance.approve'));
+
+    $this->actingAs($approver);
+    $this->get(ApprovalInbox::getUrl())->assertSuccessful();
+    $this->get(TaskResource::getUrl('index'))->assertForbidden();
 });

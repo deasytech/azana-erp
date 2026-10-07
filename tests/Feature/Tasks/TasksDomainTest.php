@@ -2,6 +2,7 @@
 
 use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Finance\Actions\PostManualJournal;
+use App\Domain\Finance\Actions\SaveBudget;
 use App\Domain\Production\Actions\RecordBatchMortality;
 use App\Domain\Production\Models\ProductionBatch;
 use App\Domain\Sales\Actions\SetCustomerCredit;
@@ -248,4 +249,30 @@ it('posts a manual journal at once at or below the approval limit and holds one 
     expect(app(PostManualJournal::class)(now(), 'Small', $lines(100000))->status)->toBe(JournalStatus::Posted)
         ->and(app(PostManualJournal::class)(now(), 'Large', $lines(100001))->status)->toBe(JournalStatus::Pending)
         ->and(finBalance('bank'))->toBe(100000);
+});
+
+it('takes no evidence for a closed task, and only a person allowed to edit tasks may assign one', function () {
+    $worker = farmWorker();
+    $task = newTask(['assignee' => $worker]);
+
+    expect(fn () => app(AssignTask::class)($task, $worker, User::factory()->create()))->toThrow(DomainException::class, 'may not assign');
+
+    app(AdvanceTask::class)->complete($task, $worker);
+
+    expect(fn () => app(AddTaskEvidence::class)($task, 'task-evidence/late.jpg', null, $worker))->toThrow(DomainException::class, 'only be added while it is open');
+});
+
+it('lists no approvals for an inactive user, and only the modules the user may approve', function () {
+    $clerk = userWithRole('Accountant');
+    app(PostManualJournal::class)(now(), 'Capital', [['account_id' => finId('bank'), 'debit_minor' => 5000], ['account_id' => finId('sales_pigs'), 'credit_minor' => 5000]], $clerk);
+    $budget = app(SaveBudget::class)('Plan', 2026, [['account_id' => finId('sales_pigs'), 'month' => 1, 'amount_minor' => 100]], null, null, $clerk);
+    $boss = owner();
+
+    $items = app(GetPendingApprovals::class)($boss);
+
+    expect($items->pluck('type')->sort()->values()->all())->toBe(['Budget', 'Manual journal'])->and($items->firstWhere('type', 'Budget')['raised_by'])->toBe($clerk->name);
+
+    $boss->update(['is_active' => false]);
+
+    expect(app(GetPendingApprovals::class)($boss))->toHaveCount(0)->and(app(GetPendingApprovals::class)(farmWorker()))->toHaveCount(0);
 });
