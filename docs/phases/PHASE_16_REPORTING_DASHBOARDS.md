@@ -21,8 +21,8 @@ Build the management cockpit and reporting engine.
 - Traceability entry point.
 
 ## Acceptance Criteria
-- [ ] Owner can see the required daily snapshot.
-- [ ] Reports match transactional data.
-- [ ] KPI calculations are consistent across screens.
-- [ ] Exports work.
-- [ ] Monthly management report is generated.
+- [x] Owner can see the required daily snapshot.
+- [x] Reports match transactional data.
+- [x] KPI calculations are consistent across screens.
+- [x] Exports work.
+- [x] Monthly management report is generated.

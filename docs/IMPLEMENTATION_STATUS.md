@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 16 - Dashboards, Reporting and Management Intelligence (not started)
+Phase 17 - Mobile API, Offline Sync and Worker Quick Entry (not started)
 
 ## Completed
 
@@ -340,6 +340,27 @@ Phase 16 - Dashboards, Reporting and Management Intelligence (not started)
   - SMS/WhatsApp need a provider: implement `MessageGateway`, bind it in `AppServiceProvider` and set `MESSAGING_DRIVER`. Until then they are written to the log.
   - Mail is sent synchronously and the `log` mailer is the default; set the real mailer in `.env`. The scheduler (`php artisan schedule:run` every minute) must be running for daily tasks, hourly postings and alert notifications.
   - The Alerts page and the notifications run the whole alert set each time; for a very large farm this should move to a stored/cached alert list.
+
+### Phase 16 - Dashboards, Reporting and Management Intelligence (2026-10-12)
+- Delivery: one PR, one commit (42 files, under 100).
+- Tests: `vendor/bin/pest` - 649 passed (added `tests/Feature/Reporting/ReportingDomainTest.php` and `ReportingUiTest.php`).
+- Package changes: `dompdf/dompdf` ^3.1 (PDF export). CSV and Excel use `openspout`, already installed with Filament.
+- What was done:
+  - Schema (1 migration, MySQL up/down/up and `migrate:fresh --seed` verified): `kpi_targets` (indicator, year, optional month, target). No reporting tables: reports read the transactional data (ARCHITECTURE: no shadow data).
+  - **One definition of every indicator** (`KpiRegistry`: 33 indicators with label, dashboard, module, unit, which direction is good, executive flag, and the farm setting that backs its default target) and **one calculation** (`GetKpis`: flows are totals for the period, levels are as at its end). The dashboards, target-vs-actual, the monthly report and the home screen all read it, so a figure is the same everywhere; a test checks the screens against the underlying reports (slaughter yield, profitability). Each person gets only the indicators of modules they may view.
+  - **Targets** (`SetKpiTarget`, resource *KPI targets*): per indicator for a whole year or one month. `GetTargetVsActual` uses the month's target, else the year's, else the existing farm setting (weaning, pre-weaning mortality, dressing, batch mortality), else none; status is met / missed by the direction that is good for the indicator, with attainment %. The one-target-per-period rule is enforced in the action, since a unique index cannot cover the whole-year row (month is empty).
+  - **Home screen** (`GetOwnerSnapshot`, replaces the default dashboard): needs attention (critical alerts, overdue tasks, my open tasks, approvals waiting), today (sales invoiced, receipts, doses, pigs slaughtered, feed made), the farm now (animals, growing pigs, cash and bank, owed by customers and overdue, owed to suppliers, doses, meat and feed stock), this month's headline indicators against target, and quick links (trace a product, alerts, approvals, dashboards, monthly report, tasks). Everyone gets it, limited to what they may view.
+  - **Management dashboards** (executive, herd, production, feed, semen, slaughter & meat, sales, finance), each with a month picker, indicator cards and target status; an area is offered only where the user may view its module. **Target vs actual** page (every indicator for a month). **Monthly management report** (`GetMonthlyReport`): indicators against target, profit by business unit, cash flow, owed and owing, budget vs actual (approved budget of the year), tasks of the month, alerts standing now - only the sections the reader may see.
+  - **Exports** (`ReportDocument` -> `ExportReport`): CSV (UTF-8 with byte-order mark), Excel (xlsx) and PDF, on the monthly report, target vs actual, profitability, cash flow, receivables and payables, and trial balance (buttons for people holding the page's export permission). Cell text that starts like a spreadsheet formula is kept as text.
+  - **Global search** (Filament, Ctrl/Cmd+K): animals, customers, suppliers, items, tasks, orders, batches, journals and other records that have a title and a page, limited by each user's permissions. **Traceability entry point**: "Trace a product" on the home screen.
+  - Permissions: new module `reports` (view dashboards and report, export, set targets). General Manager: view, create, edit, export, print; Farm Manager and Accountant: view, export, print; Owner everything. The existing finance report pages are exported with `finance.export`.
+- Migration notes: 1 new reversible migration; no new settings.
+- Known issues / notes:
+  - The dashboards recompute on every view; for a much larger farm cache them (they read the live data by design). Livestock "now" figures are as at the moment, whatever month is chosen; only flows (sales, doses, slaughter, feed made, profit, cash movement) follow the month.
+  - Monthly report is generated on demand (no stored copies) and is not yet e-mailed on a schedule. Charts are not included; indicators are cards and tables.
+  - Money targets are typed in minor units (kobo).
+  - The panel has its own Tailwind theme (`resources/css/filament/admin/theme.css`, registered with `viteTheme`) so the classes used in our custom Blade pages are compiled; run `npm run build` on every deploy (tests skip Vite).
+  - Global search covers records with a title and a view or edit page; supplier invoices, inventory batches and feed batches have no page of their own to link to yet.
 
 ## In Progress
 None

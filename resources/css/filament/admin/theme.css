@@ -1,0 +1,5 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+/* Tailwind builds only the classes it finds: our own Blade views and Filament pages live here, so it must look at them. */
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/**/*';
