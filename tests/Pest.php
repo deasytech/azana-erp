@@ -23,6 +23,12 @@ use App\Domain\Feed\Models\FeedFormula;
 use App\Domain\Feed\Models\FeedProductionBatch;
 use App\Domain\Feed\Models\FeedProductionOrder;
 use App\Domain\Feed\Models\FeedType;
+use App\Domain\Finance\Actions\GetTrialBalance;
+use App\Domain\Finance\Actions\PostJournal;
+use App\Domain\Finance\Actions\RecordExpense;
+use App\Domain\Finance\Models\Account;
+use App\Domain\Finance\Models\CostCentre;
+use App\Domain\Finance\Models\JournalEntry;
 use App\Domain\Health\Actions\RecordTreatment;
 use App\Domain\Health\Models\Medicine;
 use App\Domain\Health\Models\MedicineBatch;
@@ -77,6 +83,7 @@ use App\Enums\AnteMortemResult;
 use App\Enums\CreditStatus;
 use App\Enums\InventoryCategory;
 use App\Enums\InventoryTransactionType;
+use App\Enums\JournalStatus;
 use App\Enums\LookupCategory;
 use App\Enums\PostMortemResult;
 use App\Enums\ProductionCostCategory;
@@ -553,4 +560,33 @@ function expectPeriodLimit(Testable $page, string $shown): void
 {
     $page->set('from', now()->subDays(367)->toDateString())->set('to', now()->toDateString())->assertSee('no more than 366 days')->assertDontSee($shown)
         ->set('from', now()->subDays(366)->toDateString())->assertDontSee('no more than 366 days')->assertSee($shown);
+}
+
+function finId(string $key): int
+{
+    return Account::system($key)->id;
+}
+
+function finCentre(string $code): int
+{
+    return CostCentre::firstWhere('code', $code)->id;
+}
+
+/** Debit one account and credit another by the same amount. */
+function finPost(string $debit, string $credit, int $minor, ?string $date = null, JournalStatus $status = JournalStatus::Posted): JournalEntry
+{
+    return app(PostJournal::class)($date ? now()->parse($date) : now(), 'Test entry', [
+        ['account_id' => finId($debit), 'debit_minor' => $minor], ['account_id' => finId($credit), 'credit_minor' => $minor],
+    ], $status);
+}
+
+function finBalance(string $key): int
+{
+    return collect(app(GetTrialBalance::class)()['rows'])->first(fn ($r) => $r['account']->system_key === $key)['balance_minor'] ?? 0;
+}
+
+/** An overhead (labour, account 5300) paid in cash, charged to administration. */
+function finOverhead(int $minor): void
+{
+    app(RecordExpense::class)(now(), Account::firstWhere('code', '5300'), finCentre('ADM'), $minor, finId('cash'));
 }

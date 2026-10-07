@@ -66,6 +66,10 @@ class ResolveSettings
             default => true,
         };
 
+        if ($ok && $definition->key === 'finance.books_closed_through') {
+            $ok = (string) $value === '' || (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $value) && checkdate((int) substr((string) $value, 5, 2), (int) substr((string) $value, 8, 2), (int) substr((string) $value, 0, 4));
+        }
+
         if ($ok && isset(self::CHOICE_SETTINGS[$definition->key])) {
             $ok = self::CHOICE_SETTINGS[$definition->key]::tryFrom((string) $value) !== null;
         }

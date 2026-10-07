@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 14 - Finance, Costing, Cash Flow, Budgets and Profitability (not started)
+Phase 15 - Tasks, Alerts, Notifications and Approvals (not started)
 
 ## Completed
 
@@ -297,6 +297,28 @@ Phase 14 - Finance, Costing, Cash Flow, Budgets and Profitability (not started)
   - Pigs slaughtered as an untracked group trace to their production batch, not to individual parents.
   - A pig's treatments and vaccinations are not part of the trace graph yet.
   - Auto-picking happens when the order is drafted; if the stock changes before confirmation, confirmation refuses and the order must be redrafted.
+
+### Phase 14 - Finance, Costing, Cash Flow and Profitability (2026-10-10)
+- Delivery: one PR, one commit (under 100 files).
+- Tests: `vendor/bin/pest` - 600 passed (added `tests/Feature/Finance/FinanceDomainTest.php` and `FinanceUiTest.php`; helpers `finId`, `finCentre`, `finPost`, `finBalance`, `finOverhead` in `tests/Pest.php`; the settings count in `FarmMasterDataTest` is now 45).
+- Package changes: none.
+- What was done:
+  - Schema (1 migration, MySQL up/down/up and `migrate:fresh --seed` verified): `cost_centres`, `accounts`, `journal_entries`, `journal_lines`, `expense_records`, `cash_transactions`, `budgets`, `budget_lines`. `FinanceSeeder` (also run by `DatabaseSeeder`) creates the **ten cost centres** (BRD, PIG, GRW, FIN, SEM, FDM, SLA, MEA, SAL, ADM) and a starting chart of accounts; accounts the system posts to carry a `system_key` (cash, bank, receivables, payables, sales_pigs, sales_semen, sales_meat, purchases).
+  - **Double-entry ledger** (`PostJournal`): every entry balances (debits = credits, each line one-sided, whole minor units), is never edited or deleted (`ImmutableRecord`), and is undone by a reversing entry (`ReverseJournal`; once, and a reversal cannot be reversed). New setting `finance.books_closed_through` refuses anything dated on or before the closing date. A `source_key` makes posting from a document idempotent.
+  - **Manual journals** are entered as *pending*, are kept out of every report, and take effect when somebody with `finance.approve` approves them (`DecideJournal`; new setting `finance.require_separate_approver`, default on, so the author cannot approve). Rejection needs a reason.
+  - **Operational revenue and costs reach the ledger** (`SyncOperationalPostings`, run hourly by the scheduler and from the Journal page): a sales invoice debits receivables and credits pig/semen/meat sales by cost centre (FIN / SEM / MEA); a customer receipt debits cash or bank and credits receivables; a supplier invoice debits purchases and credits payables; a paid supplier payment debits payables and credits cash or bank. A voided receipt, supplier invoice or payment that was posted gets a reversing entry. A document dated in a closed period is skipped and reported, never half-posted.
+  - **Expenses** (`RecordExpense`: expense account + cost centre; paid from cash/bank, or owed to payables) and **cash transactions** (`RecordCashTransaction`: money in or out of a cash/bank account against another account) post their own entries and are voided (`VoidFinanceRecord`) by reversal, keeping the record.
+  - **Budgets** (`SaveBudget`): a year of revenue/expense lines by account, optional cost centre and month; a draft can be rewritten, approval (by someone other than the author, `finance.approve`) locks it. **Budget vs actual** (`GetBudgetVsActual`) compares plan with posted actuals up to a month; variance is actual less budget and is marked favourable (revenue above plan, cost below).
+  - **Reports**: trial balance (`GetTrialBalance`, with a balanced check); **cash flow** (`GetCashFlow`: opening, money in and out grouped by purpose, closing - from posted cash and bank lines); **receivables and payables** (`GetReceivablesPayables`: unpaid sales and supplier invoices aged not-due / 1-30 / 31-60 / over 60 days, read from the documents so always current); **unit costs** (`GetUnitCosts`: cost per pig and per kg live weight for each batch, feed cost per kg, semen cost per dose, meat cost per kg); **profitability** (`GetProfitability`: revenue, direct cost, gross margin, overheads and net margin by cost centre).
+  - Admin UI (Finance group): Journal (view, approve, reject, reverse, "post sales, receipts and purchases"), Expenses, Cash transactions, Budgets, Chart of accounts, Cost centres, and report pages Profitability, Cash flow, Budget vs actual, Unit costs, Receivables & payables, Trial balance. Period reports are limited to 366 days like the earlier ones.
+  - Permissions: new module `finance` (`FinancePolicy`: records are reversed or voided, never deleted). Accountant has all of it; the General Manager the full set; the Farm Manager view/export/print; the Owner everything.
+- Migration notes: 1 new reversible migration; 2 new settings (`finance.require_separate_approver`, `finance.books_closed_through`).
+- Known issues / notes:
+  - **Where costs are charged:** the profitability report charges each unit what it spends where it is consumed, so nothing is counted twice: feed eaten and other costs of grower/finisher/piglet batches (by the batch's stage), feed-mill and meat-processing conversion costs (`other_cost_minor`), semen at the farm's cost per dose when released. Supplier purchases are *not* an overhead (what they bought arrives as the feed, semen and meat costs); overheads are the expense accounts charged to a cost centre. Pig purchase/entry cost and slaughter-day cost are not charged to a centre yet.
+  - Revenue is read from the ledger, so a sale appears once synced (hourly, or from the Journal page). There is no separate `revenue_records` table: the ledger's revenue lines are the revenue record.
+  - A customer payment is posted against receivables in full, so a payment on deposit leaves receivables in credit; there is no separate customer-deposit account. Supplier invoices are charged to purchases without a cost centre.
+  - Credit notes, depreciation, tax returns and multi-currency are not part of this phase; money is in the first farm's currency.
+  - Approval *thresholds* and notifications for finance arrive with Phase 15; manual journals and budgets use the approve permission and the separate-approver rule.
 
 ## In Progress
 None
