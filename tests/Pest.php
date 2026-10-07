@@ -85,6 +85,7 @@ use App\Enums\ServiceMethod;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
 /*
@@ -545,4 +546,11 @@ function twoLotsOfLeg(): array
     $b = makeMeat();
 
     return [$a, $b];
+}
+
+/** A report page that takes a period refuses one over a year (showing nothing) and accepts exactly a year (showing $shown). */
+function expectPeriodLimit(Testable $page, string $shown): void
+{
+    $page->set('from', now()->subDays(367)->toDateString())->set('to', now()->toDateString())->assertSee('no more than 366 days')->assertDontSee($shown)
+        ->set('from', now()->subDays(366)->toDateString())->assertDontSee('no more than 366 days')->assertSee($shown);
 }
