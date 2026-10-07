@@ -6,6 +6,7 @@ use App\Domain\System\Exceptions\DomainException;
 use App\Domain\Tasks\Models\Task;
 use App\Domain\Tasks\Models\TaskEvidence;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 /** Attaches a stored photo or file to a task. The path must be one the upload form stored under task-evidence/. */
 class AddTaskEvidence
@@ -18,10 +19,13 @@ class AddTaskEvidence
             throw new DomainException('That file was not uploaded for a task.', 'evidence_path');
         }
 
-        $task = Task::findOrFail($task->id);   // the state now, not as the caller last loaded it
-        $task->isOpen() || throw new DomainException("{$task->number} is {$task->status->value}: evidence can only be added while it is open.", 'task_state');
-        $this->advance->mayWork($task, $actor) || throw new DomainException("You may not add evidence to {$task->number}: it is not yours.", 'task_forbidden');
+        // Under the task's row lock, so a task being completed or cancelled at the same moment cannot also receive evidence.
+        return DB::transaction(function () use ($task, $path, $caption, $actor) {
+            $task = Task::lockForUpdate()->findOrFail($task->id);
+            $task->isOpen() || throw new DomainException("{$task->number} is {$task->status->value}: evidence can only be added while it is open.", 'task_state');
+            $this->advance->mayWork($task, $actor) || throw new DomainException("You may not add evidence to {$task->number}: it is not yours.", 'task_forbidden');
 
-        return $task->evidence()->create(['path' => $path, 'caption' => filled($caption) ? trim($caption) : null, 'uploaded_by' => $actor->id]);
+            return $task->evidence()->create(['path' => $path, 'caption' => filled($caption) ? trim($caption) : null, 'uploaded_by' => $actor->id]);
+        });
     }
 }

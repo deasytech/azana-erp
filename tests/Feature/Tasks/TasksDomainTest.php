@@ -276,3 +276,10 @@ it('lists no approvals for an inactive user, and only the modules the user may a
 
     expect(app(GetPendingApprovals::class)($boss))->toHaveCount(0)->and(app(GetPendingApprovals::class)(farmWorker()))->toHaveCount(0);
 });
+
+it('leaves no task behind when its first assignment is refused', function () {
+    $inactive = farmWorker();
+    $inactive->update(['is_active' => false]);
+
+    expect(fn () => newTask(['assignee' => $inactive]))->toThrow(DomainException::class, 'not an active user')->and(Task::count())->toBe(0);
+});

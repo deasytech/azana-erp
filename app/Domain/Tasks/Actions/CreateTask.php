@@ -37,27 +37,28 @@ class CreateTask
         }
 
         try {
-            $task = $this->write($title, $dueOn, $category, $priority, $description, $role, $sourceKey, $requiresEvidence, $actor);
+            return $this->write($title, $dueOn, $category, $priority, $description, $assignee, $role, $sourceKey, $requiresEvidence, $actor);
         } catch (UniqueConstraintViolationException $e) {
             // Only a clash on source_key (another process made this very task first) is a repeat; any other unique failure is a real error.
-            $task = ($sourceKey ? Task::firstWhere('source_key', $sourceKey) : null) ?? throw $e;
+            return ($sourceKey ? Task::firstWhere('source_key', $sourceKey) : null) ?? throw $e;
         }
-
-        return $task->wasRecentlyCreated && $assignee ? ($this->assign)($task, $assignee, $actor) : $task;
     }
 
-    private function write(string $title, CarbonInterface $dueOn, TaskCategory $category, TaskPriority $priority, ?string $description, ?string $role, ?string $sourceKey, bool $requiresEvidence, ?User $actor): Task
+    private function write(string $title, CarbonInterface $dueOn, TaskCategory $category, TaskPriority $priority, ?string $description, User|int|null $assignee, ?string $role, ?string $sourceKey, bool $requiresEvidence, ?User $actor): Task
     {
-        return DB::transaction(function () use ($title, $dueOn, $category, $priority, $description, $role, $sourceKey, $requiresEvidence, $actor) {
+        // Creating the task and handing it over are one step: if the hand-over is refused, no task is left behind.
+        return DB::transaction(function () use ($title, $dueOn, $category, $priority, $description, $assignee, $role, $sourceKey, $requiresEvidence, $actor) {
             if ($sourceKey && ($existing = Task::firstWhere('source_key', $sourceKey))) {
                 return $existing;
             }
 
-            return Task::create([
+            $task = Task::create([
                 'number' => sprintf('TK-%06d', ($this->nextNumber)('task')), 'title' => trim($title), 'description' => $description,
                 'category' => $category, 'priority' => $priority, 'due_on' => $dueOn, 'responsible_role' => $role ?: null,
                 'source_key' => $sourceKey, 'requires_evidence' => $requiresEvidence, 'created_by' => ($actor ?? Auth::user())?->getKey(),
             ]);
+
+            return $assignee ? ($this->assign)($task, $assignee, $actor) : $task;
         });
     }
 }
