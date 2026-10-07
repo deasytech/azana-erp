@@ -16,6 +16,8 @@ use App\Enums\PaymentStatus;
 use App\Enums\ReceiptMethod;
 use App\Enums\SalesLineKind;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Carries the operational documents into the ledger, once each (the source key stops a repeat):
@@ -34,6 +36,17 @@ class SyncOperationalPostings
 
     /** @return array{posted: int, reversed: int, skipped: list<string>} */
     public function __invoke(): array
+    {
+        // One run at a time across the scheduler and the Journal page (the cache store must support locks: database, redis...).
+        try {
+            return Cache::lock('finance:sync-operational-postings', 300)->block(30, fn () => $this->sync());
+        } catch (LockTimeoutException) {
+            throw new DomainException('Another posting run is in progress; try again in a moment.', 'sync_busy');
+        }
+    }
+
+    /** @return array{posted: int, reversed: int, skipped: list<string>} */
+    private function sync(): array
     {
         $result = ['posted' => 0, 'reversed' => 0, 'skipped' => []];
 

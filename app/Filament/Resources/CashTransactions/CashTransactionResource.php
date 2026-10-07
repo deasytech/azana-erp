@@ -45,7 +45,7 @@ class CashTransactionResource extends Resource
         return $schema->columns(2)->components([
             DatePicker::make('transaction_date')->label('Date')->default(now())->maxDate(now())->required(),
             Select::make('direction')->options(AnimalResource::enumOptions(CashDirection::cases()))->required(),
-            Select::make('cash_account_id')->label('Cash or bank account')->required()->options(fn () => Account::whereIn('system_key', ['cash', 'bank'])->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
+            Select::make('cash_account_id')->label('Cash or bank account')->required()->options(fn () => Account::where('is_active', true)->whereIn('system_key', ['cash', 'bank'])->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
             Select::make('counter_account_id')->label('Other account')->required()->searchable()->options(fn () => Account::where('is_active', true)->where(fn ($q) => $q->whereNull('system_key')->orWhereNotIn('system_key', ['cash', 'bank']))->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
             MoneyInput::make('amount_minor', 'Amount')->required(),
             Select::make('cost_centre_id')->label('Cost centre')->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),

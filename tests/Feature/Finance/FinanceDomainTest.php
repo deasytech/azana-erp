@@ -247,6 +247,17 @@ it('compares an approved budget with posted actuals and marks the variance favou
         ->and($report['totals'])->toBe(['revenue_budget_minor' => 10000000, 'revenue_actual_minor' => 15000000, 'expense_budget_minor' => 500000, 'expense_actual_minor' => 650000]);
 });
 
+it('shows spending nobody budgeted against a plan of zero', function () {
+    $budget = app(SaveBudget::class)('Plan', (int) now()->year, [['account_id' => finId('sales_pigs'), 'month' => (int) now()->month, 'amount_minor' => 100]]);
+    finOverhead(40000);   // labour: not in the plan
+
+    $report = app(GetBudgetVsActual::class)($budget);
+    $labour = collect($report['rows'])->first(fn ($r) => $r['account']->code === '5300');
+
+    expect($labour)->toMatchArray(['budget_minor' => 0, 'actual_minor' => 40000, 'variance_percent' => null, 'favourable' => false])
+        ->and($report['totals']['expense_actual_minor'])->toBe(40000);
+});
+
 it('validates budget lines', function () {
     $save = fn (array $line, string $name = 'Plan', int $year = 2026) => app(SaveBudget::class)($name, $year, [$line]);
 

@@ -2,7 +2,9 @@
 
 namespace App\Domain\Finance\Actions;
 
+use App\Domain\Finance\Models\Account;
 use App\Domain\Finance\Models\Budget;
+use App\Domain\Finance\Models\CostCentre;
 use App\Domain\Finance\Services\Ledger;
 use App\Enums\AccountType;
 use Carbon\Carbon;
@@ -25,25 +27,20 @@ class GetBudgetVsActual
         $budget->load('lines.account', 'lines.costCentre');
 
         $actuals = $this->ledger->lines(Carbon::create($year, 1, 1), Carbon::create($year, $month, 1)->endOfMonth())
-            ->selectRaw('journal_lines.account_id, journal_lines.cost_centre_id, sum(journal_lines.debit_minor) as debit, sum(journal_lines.credit_minor) as credit')
+            ->select([])->selectRaw('journal_lines.account_id, journal_lines.cost_centre_id, sum(journal_lines.debit_minor) as debit, sum(journal_lines.credit_minor) as credit')
             ->groupBy('journal_lines.account_id', 'journal_lines.cost_centre_id')->reorder()->get()
-            ->keyBy(fn ($r) => $r->account_id.'|'.($r->cost_centre_id ?? ''));
+            ->keyBy(fn ($r) => $this->key($r->account_id, $r->cost_centre_id));
 
-        $rows = $budget->lines->where('month', '<=', $month)->groupBy(fn ($l) => $l->account_id.'|'.($l->cost_centre_id ?? ''))->map(function ($lines, $key) use ($actuals) {
-            $first = $lines->first();
-            $revenue = $first->account->type === AccountType::Revenue;
-            $planned = (int) $lines->sum('amount_minor');
-            $a = $actuals[$key] ?? null;
-            $actual = $revenue ? (int) ($a->credit ?? 0) - (int) ($a->debit ?? 0) : (int) ($a->debit ?? 0) - (int) ($a->credit ?? 0);
-            $variance = $actual - $planned;
+        $planned = $budget->lines->where('month', '<=', $month)->groupBy(fn ($l) => $this->key($l->account_id, $l->cost_centre_id));
 
-            return [
-                'account' => $first->account, 'cost_centre' => $first->costCentre, 'type' => $first->account->type,
-                'budget_minor' => $planned, 'actual_minor' => $actual, 'variance_minor' => $variance,
-                'variance_percent' => $planned > 0 ? bcmul(bcdiv((string) $variance, (string) $planned, 4), '100', 1) : null,
-                'favourable' => $revenue ? $variance >= 0 : $variance <= 0,
-            ];
-        })->sortBy(fn ($r) => $r['account']->code.($r['cost_centre']->code ?? ''))->values()->all();
+        // Spending or income nobody budgeted still shows, against a plan of zero.
+        $accounts = Account::whereIn('id', $actuals->pluck('account_id')->all())->get()->keyBy('id');
+        $unplanned = $actuals->keys()->diff($planned->keys())->filter(fn ($key) => in_array($accounts[$actuals[$key]->account_id]->type, [AccountType::Revenue, AccountType::Expense], true));
+        $centres = CostCentre::whereIn('id', $unplanned->map(fn ($key) => $actuals[$key]->cost_centre_id)->filter()->all())->get()->keyBy('id');
+
+        $rows = $planned->map(fn ($lines, $key) => $this->row($lines->first()->account, $lines->first()->costCentre, (int) $lines->sum('amount_minor'), $actuals[$key] ?? null))
+            ->concat($unplanned->map(fn ($key) => $this->row($accounts[$actuals[$key]->account_id], $centres[$actuals[$key]->cost_centre_id] ?? null, 0, $actuals[$key])))
+            ->sortBy(fn ($r) => $r['account']->code.($r['cost_centre']->code ?? ''))->values()->all();
 
         $sum = fn (AccountType $type, string $field) => (int) collect($rows)->where('type', $type)->sum($field);
 
@@ -51,5 +48,25 @@ class GetBudgetVsActual
             'revenue_budget_minor' => $sum(AccountType::Revenue, 'budget_minor'), 'revenue_actual_minor' => $sum(AccountType::Revenue, 'actual_minor'),
             'expense_budget_minor' => $sum(AccountType::Expense, 'budget_minor'), 'expense_actual_minor' => $sum(AccountType::Expense, 'actual_minor'),
         ]];
+    }
+
+    private function key(int $accountId, ?int $costCentreId): string
+    {
+        return $accountId.'|'.($costCentreId ?? '');
+    }
+
+    /** @return array<string, mixed> */
+    private function row(Account $account, ?CostCentre $centre, int $planned, ?object $sums): array
+    {
+        $revenue = $account->type === AccountType::Revenue;
+        $actual = $revenue ? (int) ($sums->credit ?? 0) - (int) ($sums->debit ?? 0) : (int) ($sums->debit ?? 0) - (int) ($sums->credit ?? 0);
+        $variance = $actual - $planned;
+
+        return [
+            'account' => $account, 'cost_centre' => $centre, 'type' => $account->type,
+            'budget_minor' => $planned, 'actual_minor' => $actual, 'variance_minor' => $variance,
+            'variance_percent' => $planned > 0 ? bcmul(bcdiv((string) $variance, (string) $planned, 4), '100', 1) : null,
+            'favourable' => $revenue ? $variance >= 0 : $variance <= 0,
+        ];
     }
 }

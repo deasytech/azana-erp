@@ -17,7 +17,7 @@ class GetTrialBalance
     /** @return array{rows: list<array<string, mixed>>, debit_minor: int, credit_minor: int, balanced: bool} */
     public function __invoke(?CarbonInterface $asOf = null): array
     {
-        $sums = $this->ledger->lines(null, $asOf)->selectRaw('journal_lines.account_id, sum(journal_lines.debit_minor) as debit, sum(journal_lines.credit_minor) as credit')
+        $sums = $this->ledger->lines(null, $asOf)->select([])->selectRaw('journal_lines.account_id, sum(journal_lines.debit_minor) as debit, sum(journal_lines.credit_minor) as credit')
             ->groupBy('journal_lines.account_id')->reorder()->get()->keyBy('account_id');
 
         $rows = Account::orderBy('code')->get()->map(function (Account $a) use ($sums) {

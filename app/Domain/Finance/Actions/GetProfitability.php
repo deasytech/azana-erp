@@ -62,7 +62,7 @@ class GetProfitability
     {
         $amount = $creditNormal ? 'journal_lines.credit_minor - journal_lines.debit_minor' : 'journal_lines.debit_minor - journal_lines.credit_minor';
 
-        return $query->reorder()->selectRaw("coalesce(journal_lines.cost_centre_id, 0) as centre, sum({$amount}) as amount")
+        return $query->reorder()->select([])->selectRaw("coalesce(journal_lines.cost_centre_id, 0) as centre, sum({$amount}) as amount")
             ->groupBy('centre')->pluck('amount', 'centre')->map(fn ($v) => (int) $v)->all();
     }
 

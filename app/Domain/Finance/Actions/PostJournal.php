@@ -11,6 +11,7 @@ use App\Domain\System\Exceptions\DomainException;
 use App\Enums\JournalStatus;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -43,6 +44,17 @@ class PostJournal
             throw new DomainException('The entry does not balance: total debits must equal total credits.', 'journal_unbalanced');
         }
 
+        try {
+            return $this->write($date, $description, $rows, $total, $status, $sourceKey, $actor, $reversesId);
+        } catch (UniqueConstraintViolationException $e) {
+            // Another process posted the same document between our check and our insert: its entry is the one.
+            return ($sourceKey ? JournalEntry::firstWhere('source_key', $sourceKey) : null) ?? throw $e;
+        }
+    }
+
+    /** @param list<array<string, mixed>> $rows */
+    private function write(CarbonInterface $date, string $description, array $rows, int $total, JournalStatus $status, ?string $sourceKey, ?User $actor, ?int $reversesId): JournalEntry
+    {
         return DB::transaction(function () use ($date, $description, $rows, $total, $status, $sourceKey, $actor, $reversesId) {
             if ($sourceKey && ($existing = JournalEntry::firstWhere('source_key', $sourceKey))) {
                 return $existing;

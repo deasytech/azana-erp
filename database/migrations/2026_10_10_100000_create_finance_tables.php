@@ -67,14 +67,7 @@ return new class extends Migration
             $table->unsignedBigInteger('amount_minor');
             $table->foreignId('paid_from_account_id')->nullable()->constrained('accounts')->restrictOnDelete(); // null = not paid yet (accrued)
             $table->string('payee')->nullable();
-            $table->string('reference', 60)->nullable();
-            $table->text('description')->nullable();
-            $table->foreignId('journal_entry_id')->constrained()->restrictOnDelete();
-            $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete();
-            $table->timestamp('voided_at')->nullable();
-            $table->foreignId('voided_by')->nullable()->constrained('users')->restrictOnDelete();
-            $table->text('void_reason')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $this->recordColumns($table);
         });
 
         Schema::create('cash_transactions', function (Blueprint $table) {
@@ -86,14 +79,7 @@ return new class extends Migration
             $table->foreignId('counter_account_id')->constrained('accounts')->restrictOnDelete();
             $table->foreignId('cost_centre_id')->nullable()->constrained()->restrictOnDelete();
             $table->unsignedBigInteger('amount_minor');
-            $table->string('reference', 60)->nullable();
-            $table->text('description')->nullable();
-            $table->foreignId('journal_entry_id')->constrained()->restrictOnDelete();
-            $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete();
-            $table->timestamp('voided_at')->nullable();
-            $table->foreignId('voided_by')->nullable()->constrained('users')->restrictOnDelete();
-            $table->text('void_reason')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $this->recordColumns($table);
         });
 
         Schema::create('budgets', function (Blueprint $table) {
@@ -121,6 +107,19 @@ return new class extends Migration
 
             $table->index(['budget_id', 'account_id']);
         });
+    }
+
+    /** What an expense and a cash transaction share: reference, link to their journal entry, and voiding. */
+    private function recordColumns(Blueprint $table): void
+    {
+        $table->string('reference', 60)->nullable();
+        $table->text('description')->nullable();
+        $table->foreignId('journal_entry_id')->constrained()->restrictOnDelete();
+        $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete();
+        $table->timestamp('voided_at')->nullable();
+        $table->foreignId('voided_by')->nullable()->constrained('users')->restrictOnDelete();
+        $table->text('void_reason')->nullable();
+        $table->timestamp('created_at')->useCurrent();
     }
 
     public function down(): void
