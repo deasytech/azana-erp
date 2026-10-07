@@ -12,6 +12,7 @@ use App\Domain\Health\Models as H;
 use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
 use App\Domain\Meat\Models as MT;
+use App\Domain\Mobile\Models\SyncMutation;
 use App\Domain\Procurement\Models as PC;
 use App\Domain\Production\Models as PR;
 use App\Domain\Reporting\Models\KpiTarget;
@@ -50,8 +51,12 @@ use App\Policies\SemenPolicy;
 use App\Policies\SettingsPolicy;
 use App\Policies\SlaughterMasterPolicy;
 use App\Policies\SlaughterPolicy;
+use App\Policies\SyncMutationPolicy;
 use App\Policies\TaskPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -73,6 +78,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Few sign-in attempts per person and address; plenty of room for a device to sync a day's queue.
+        RateLimiter::for('mobile-login', fn (Request $request) => Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
+        RateLimiter::for('mobile', fn (Request $request) => Limit::perMinute(240)->by($request->user()?->id ?: $request->ip()));
+
         // Owner/Director implicitly holds every "{module}.{action}" permission. Only permission
         // checks are bypassed: policy rules (no user deletion, read-only audit trails) still apply.
         foreach ([M\Farm::class, M\ProductionUnit::class, M\Building::class, M\Room::class, M\Pen::class, M\Location::class] as $model) {
@@ -110,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
         }
         Gate::policy(MT\MeatProduct::class, SlaughterMasterPolicy::class);
         Gate::policy(KpiTarget::class, ReportsPolicy::class);
+        Gate::policy(SyncMutation::class, SyncMutationPolicy::class);
         foreach ([TK\Task::class, TK\TaskAssignment::class, TK\TaskEvidence::class] as $model) {
             Gate::policy($model, TaskPolicy::class);
         }

@@ -89,3 +89,14 @@ Primary actions:
 Mobile endpoints must call the same application/domain actions used by web interfaces.
 
 Do not create a second business logic implementation for mobile.
+
+## Implemented contract (Phase 17)
+
+The endpoints, mutation format, statuses and the twelve quick actions are specified in [API.md](API.md). In short:
+
+- Every mutation carries a device-made UUID `client_id` (the idempotency key), the device's `occurred_at`, and a payload.
+- The server stores each one in `sync_mutations` (client id, device id, user, attempted/synced times, status, error, server record) and answers with `accepted`, `rejected`, `conflict` or `failed`. A final answer is returned unchanged if the same `client_id` is sent again; only `failed` is run again.
+- Conflicts are never applied over newer data. They wait in the web app (*Tasks & alerts > Mobile sync log*) for a supervisor with `mobile.edit`, who marks them reviewed with a note.
+- Reference lists are fetched with a version so the device can work offline between syncs.
+- The sync layer calls the same domain actions as the web screens; the rules (and their conflict/rejection codes) live there.
+

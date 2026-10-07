@@ -94,6 +94,8 @@ use App\Enums\ServiceMethod;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
@@ -596,4 +598,53 @@ function finOverhead(int $minor): void
 function newTask(array $over = []): Task
 {
     return app(CreateTask::class)(...($over + ['title' => 'Check the water lines', 'dueOn' => now()->addDay()]));
+}
+
+const MOBILE_DEVICE = 'device-a1';
+
+/** Each request is a fresh one for the server: the guard must not remember the user an earlier request in this test signed in. */
+function apiGet(string $uri, array $headers = [])
+{
+    app('auth')->forgetGuards();
+    $response = test()->getJson($uri, $headers);
+    auth()->shouldUse('web');   // the token guard made itself the default for the request; later web sign-ins in the same test use the web guard
+
+    return $response;
+}
+
+function apiPost(string $uri, array $data = [], array $headers = [])
+{
+    app('auth')->forgetGuards();
+    $response = test()->postJson($uri, $data, $headers);
+    auth()->shouldUse('web');
+
+    return $response;
+}
+
+/** A worker with a password the API knows. */
+function mobileWorker(string $role = 'Farm Worker', array $attrs = []): User
+{
+    return userWithRole($role, $attrs + ['password' => Hash::make('field-pass-123')]);
+}
+
+function mobileLogin(User $user, string $device = MOBILE_DEVICE, string $password = 'field-pass-123')
+{
+    return test()->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => $password, 'device_id' => $device]);
+}
+
+/** Signs a worker in on a device and returns the headers to use. */
+function mobileHeaders(User $user, string $device = MOBILE_DEVICE): array
+{
+    return ['Authorization' => 'Bearer '.mobileLogin($user, $device)->assertOk()->json('token')];
+}
+
+/** A mutation as a device would build it. */
+function mutation(string $type, array $payload, array $over = []): array
+{
+    return $over + ['client_id' => (string) Str::uuid(), 'type' => $type, 'occurred_at' => now()->subMinutes(5)->toIso8601String(), 'payload' => $payload];
+}
+
+function push(array $mutations, array $headers, string $device = MOBILE_DEVICE)
+{
+    return apiPost('/api/v1/sync/push', ['device_id' => $device, 'mutations' => $mutations], $headers);
 }
