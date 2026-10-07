@@ -13,10 +13,12 @@ class SyncController extends Controller
 {
     private const MAX_BATCH = 100;
 
+    private const DEVICE_RULE = 'required|string|max:64';
+
     /** Pushes a queue of mutations. They are processed in the order sent; each gets its own outcome, so one failure never blocks the rest. */
     public function push(Request $request, ProcessMutation $process): JsonResponse
     {
-        $data = $request->validate(['device_id' => 'required|string|max:64', 'mutations' => 'required|array|min:1|max:'.self::MAX_BATCH, 'mutations.*' => 'array']);
+        $data = $request->validate(['device_id' => self::DEVICE_RULE, 'mutations' => 'required|array|min:1|max:'.self::MAX_BATCH, 'mutations.*' => 'array']);
 
         return response()->json([
             'server_time' => now()->toIso8601String(),
@@ -27,7 +29,7 @@ class SyncController extends Controller
     /** One quick action, sent on its own (same contract and same outcomes as one entry of a push). */
     public function quick(Request $request, ProcessMutation $process, string $type): JsonResponse
     {
-        $data = $request->validate(['device_id' => 'required|string|max:64', 'client_id' => 'required|uuid', 'occurred_at' => 'required|date', 'payload' => 'required|array']);
+        $data = $request->validate(['device_id' => self::DEVICE_RULE, 'client_id' => 'required|uuid', 'occurred_at' => 'required|date', 'payload' => 'required|array']);
         $result = $process($request->user(), $data['device_id'], ['type' => $type] + $data);
 
         return response()->json($result, match ($result['status']) {
@@ -38,7 +40,7 @@ class SyncController extends Controller
     /** How this device's mutations stand: counts, the last successful sync, and what needs attention. */
     public function status(Request $request): JsonResponse
     {
-        $device = $request->validate(['device_id' => 'required|string|max:64'])['device_id'];
+        $device = $request->validate(['device_id' => self::DEVICE_RULE])['device_id'];
         $mine = SyncMutation::where('user_id', $request->user()->id)->where('device_id', $device);
 
         return response()->json([

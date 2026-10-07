@@ -1,7 +1,7 @@
 <?php
 
 use App\Domain\Health\Actions\RecordMortality;
-use App\Domain\Mobile\Services\QuickEntry;
+use App\Domain\Mobile\Services\QuickCatalogue;
 use App\Enums\LookupCategory;
 use App\Support\ApiDocs\ApiReference;
 use Database\Seeders\FinanceSeeder;
@@ -38,19 +38,16 @@ function shapeOf(mixed $value): mixed
 /** Both have the same keys, all the way down (a list that is empty on one side is not compared deeper). */
 function sameShape(mixed $documented, mixed $actual): bool
 {
-    if (! is_array($documented) || ! is_array($actual)) {
-        return ! is_array($documented) === ! is_array($actual) || $documented === null || $actual === null;
-    }
+    $bothLists = isset($documented['[]']) || isset($actual['[]']);
 
-    if ($documented === [] || $actual === []) {
-        return true;
-    }
+    $same = match (true) {
+        ! is_array($documented) || ! is_array($actual) => ! is_array($documented) === ! is_array($actual) || $documented === null || $actual === null,
+        $documented === [] || $actual === [] => true,
+        $bothLists => isset($documented['[]'], $actual['[]']) && sameShape($documented['[]'], $actual['[]']),
+        default => array_keys($documented) === array_keys($actual) && collect($documented)->every(fn ($shape, $key) => sameShape($shape, $actual[$key])),
+    };
 
-    if (isset($documented['[]']) || isset($actual['[]'])) {
-        return isset($documented['[]'], $actual['[]']) && sameShape($documented['[]'], $actual['[]']);
-    }
-
-    return array_keys($documented) === array_keys($actual) && collect($documented)->every(fn ($shape, $key) => sameShape($shape, $actual[$key]));
+    return $same;
 }
 
 /** The documented example response with that label of an endpoint. */
@@ -69,7 +66,7 @@ it('serves the reference to anyone, with every endpoint and quick action listed'
         $page->assertSee($path, false)->assertSee(">{$method}<", false);
     }
 
-    foreach (app(QuickEntry::class)->types() as $type) {
+    foreach (app(QuickCatalogue::class)->types() as $type) {
         $page->assertSee('/quick/'.$type, false);
     }
 
@@ -85,7 +82,7 @@ it('documents exactly the endpoints the API has', function () {
 });
 
 it('documents exactly the twelve quick actions, with every payload field and permission they use', function () {
-    $quick = app(QuickEntry::class);
+    $quick = app(QuickCatalogue::class);
     $docs = collect(ApiReference::groups())->pluck('endpoints')->flatten(1)->filter(fn ($e) => isset($e['quick']))->keyBy('quick');
 
     expect($docs->keys()->sort()->values()->all())->toBe(collect($quick->types())->sort()->values()->all())->and($docs)->toHaveCount(12);
@@ -104,16 +101,16 @@ it('documents exactly the twelve quick actions, with every payload field and per
 });
 
 it('shows example responses with the same fields the API really returns', function () {
-    $worker = mobileWorker('Farm Manager');
+    $worker = mobileWorker(FARM_MANAGER);
     $login = mobileLogin($worker)->assertOk();
-    $headers = ['Authorization' => 'Bearer '.$login->json('token')];
+    $headers = bearer($login->json('token'));
     $pig = register();
     newPen('PEN-1');
     newTask(['title' => 'Check', 'assignee' => $worker]);
 
     expect(sameShape(documented('POST', '/auth/login'), shapeOf($login->json())))->toBeTrue('login')
-        ->and(sameShape(documented('GET', '/me'), shapeOf(apiGet('/api/v1/me', $headers)->json())))->toBeTrue('me')
-        ->and(sameShape(documented('GET', '/scan/{code}'), shapeOf(apiGet('/api/v1/scan/'.$pig->animal_number, $headers)->json())))->toBeTrue('scan')
+        ->and(sameShape(documented('GET', '/me'), shapeOf(apiGet(API_ME, $headers)->json())))->toBeTrue('me')
+        ->and(sameShape(documented('GET', '/scan/{code}'), shapeOf(apiGet(API_SCAN.$pig->animal_number, $headers)->json())))->toBeTrue('scan')
         ->and(sameShape(documented('GET', '/animals/{code}'), shapeOf(apiGet('/api/v1/animals/'.$pig->animal_number, $headers)->json())))->toBeTrue('animal')
         ->and(sameShape(documented('GET', '/tasks'), shapeOf(apiGet('/api/v1/tasks', $headers)->json())))->toBeTrue('tasks');
 
@@ -123,7 +120,7 @@ it('shows example responses with the same fields the API really returns', functi
 });
 
 it('shows example sync responses with the same fields the API really returns', function () {
-    $worker = mobileWorker('Farm Manager');
+    $worker = mobileWorker(FARM_MANAGER);
     $headers = mobileHeaders($worker);
     $pig = register();
     $dead = register();
@@ -132,8 +129,8 @@ it('shows example sync responses with the same fields the API really returns', f
     $bad = mutation('record_weight', ['animal' => $dead->animal_number, 'weight_kg' => 50]);
 
     $push = push([$ok, $bad], $headers)->assertOk()->json();
-    $single = apiPost('/api/v1/quick/record_weight', ['device_id' => MOBILE_DEVICE] + Arr::only(mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 51]), ['client_id', 'occurred_at', 'payload']), $headers);
-    $conflict = apiPost('/api/v1/quick/record_weight', ['device_id' => MOBILE_DEVICE] + Arr::only(mutation('record_weight', ['animal' => $dead->animal_number, 'weight_kg' => 51]), ['client_id', 'occurred_at', 'payload']), $headers);
+    $single = apiPost(API_QUICK_WEIGHT, ['device_id' => MOBILE_DEVICE] + Arr::only(mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 51]), ['client_id', 'occurred_at', 'payload']), $headers);
+    $conflict = apiPost(API_QUICK_WEIGHT, ['device_id' => MOBILE_DEVICE] + Arr::only(mutation('record_weight', ['animal' => $dead->animal_number, 'weight_kg' => 51]), ['client_id', 'occurred_at', 'payload']), $headers);
     $status = apiGet('/api/v1/sync/status?device_id='.MOBILE_DEVICE, $headers)->json();
     $one = apiGet('/api/v1/sync/mutations/'.$ok['client_id'], $headers)->json();
 
@@ -146,12 +143,12 @@ it('shows example sync responses with the same fields the API really returns', f
 });
 
 it('shows quick action examples that the API really accepts', function () {
-    $headers = mobileHeaders(mobileWorker('Farm Manager'));
+    $headers = mobileHeaders(mobileWorker(FARM_MANAGER));
     // The weight example, exactly as printed (the animal it names must exist for it to be accepted).
     $endpoint = collect(ApiReference::groups())->pluck('endpoints')->flatten(1)->first(fn ($e) => ($e['quick'] ?? null) === 'record_weight');
     $sow = register();
     $payload = ['animal' => $sow->animal_number] + $endpoint['body']['payload'];
-    $result = apiPost('/api/v1/quick/record_weight', ['client_id' => (string) Str::uuid()] + array_merge($endpoint['body'], ['payload' => $payload, 'occurred_at' => now()->subMinute()->toIso8601String()]), $headers);
+    $result = apiPost(API_QUICK_WEIGHT, ['client_id' => (string) Str::uuid()] + array_merge($endpoint['body'], ['payload' => $payload, 'occurred_at' => now()->subMinute()->toIso8601String()]), $headers);
 
     expect($result->status())->toBe(201)->and($sow->weights()->first()->weight_kg)->toBe('82.50');
 });

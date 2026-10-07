@@ -10,7 +10,7 @@ use App\Domain\Health\Models\Medicine;
 use App\Domain\Health\Models\VaccinationSchedule;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLocation;
-use App\Domain\Mobile\Services\QuickEntry;
+use App\Domain\Mobile\Services\QuickCatalogue;
 use App\Enums\LookupCategory;
 use App\Enums\ServiceMethod;
 use App\Models\User;
@@ -21,13 +21,13 @@ use App\Models\User;
  */
 class GetReferenceData
 {
-    public function __construct(private readonly QuickEntry $quickEntry) {}
+    public function __construct(private readonly QuickCatalogue $quickActions) {}
 
     /** @return array{version: string, unchanged?: bool, data?: array<string, mixed>} */
     public function __invoke(User $user, ?string $knownVersion = null): array
     {
         $data = [
-            'quick_actions' => $this->quickEntry->types(),
+            'quick_actions' => $this->quickActions->types(),
             'service_methods' => array_map(fn (ServiceMethod $m) => $m->value, ServiceMethod::cases()),
             'pens' => $this->rows(Pen::where('is_active', true)->orderBy('code'), ['id', 'code']),
             'locations' => $this->rows(Location::where('is_active', true)->orderBy('name'), ['id', 'code', 'name']),

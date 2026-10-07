@@ -4,6 +4,7 @@ namespace App\Domain\Mobile\Actions;
 
 use App\Domain\Mobile\Exceptions\StaleData;
 use App\Domain\Mobile\Models\SyncMutation;
+use App\Domain\Mobile\Services\QuickCatalogue;
 use App\Domain\Mobile\Services\QuickEntry;
 use App\Domain\System\Exceptions\DomainException;
 use App\Models\User;
@@ -30,7 +31,7 @@ class ProcessMutation
         'movement_same_place', 'movement_out_of_order', 'service_out_of_order', 'pen_full', 'idempotency_conflict', 'stale_count', 'count_not_draft', 'insufficient_stock', 'feed_not_stocked',
     ];
 
-    public function __construct(private readonly QuickEntry $quickEntry) {}
+    public function __construct(private readonly QuickEntry $quickEntry, private readonly QuickCatalogue $catalogue) {}
 
     /**
      * @param  array<string, mixed>  $mutation  client_id, type, occurred_at, payload
@@ -87,40 +88,54 @@ class ProcessMutation
 
     private function attempt(SyncMutation $row, User $user, bool $retry): SyncMutation
     {
-        $at = $row->occurred_at;
         $row->fill(['attempts' => $retry ? $row->attempts + 1 : 1, 'attempted_at' => now(), 'error_code' => null, 'error_message' => null, 'errors' => null]);
-        $type = $row->type;
-        $payload = $row->payload;
 
-        if (! $this->quickEntry->knows($type)) {
-            return $this->finish($row, SyncMutation::REJECTED, 'unknown_type', "There is no quick action called {$type}.");
-        }
+        // [status, code, message, fields]: why it was refused, or null when it may be run.
+        $outcome = $this->refusal($row, $user) ?? $this->execute($row, $user);
 
-        if (! $user->is_active || ! $user->can($this->quickEntry->permission($type, $payload))) {
-            return $this->finish($row, SyncMutation::REJECTED, 'forbidden', 'You are not allowed to do this.');
-        }
+        return $this->finish($row, ...$outcome);
+    }
 
-        $fields = Validator::make($payload, $this->quickEntry->rules($type, $payload));
+    /**
+     * Why this mutation cannot be run at all, if it cannot.
+     *
+     * @return ?array{0: string, 1: ?string, 2: ?string, 3: ?array<string, list<string>>}
+     */
+    private function refusal(SyncMutation $row, User $user): ?array
+    {
+        $fields = $this->catalogue->knows($row->type) ? Validator::make($row->payload, $this->catalogue->rules($row->type, $row->payload)) : null;
 
-        if ($fields->fails()) {
-            return $this->finish($row, SyncMutation::REJECTED, 'invalid_payload', 'Some fields are missing or wrong.', $fields->errors()->toArray());
-        }
+        return match (true) {
+            $fields === null => [SyncMutation::REJECTED, 'unknown_type', "There is no quick action called {$row->type}.", null],
+            ! $user->is_active || ! $user->can($this->catalogue->permission($row->type, $row->payload)) => [SyncMutation::REJECTED, 'forbidden', 'You are not allowed to do this.', null],
+            $fields->fails() => [SyncMutation::REJECTED, 'invalid_payload', 'Some fields are missing or wrong.', $fields->errors()->toArray()],
+            default => null,
+        };
+    }
+
+    /**
+     * Runs the quick action and says how it went.
+     *
+     * @return array{0: string, 1: ?string, 2: ?string, 3: null}
+     */
+    private function execute(SyncMutation $row, User $user): array
+    {
+        $payload = Validator::make($row->payload, $this->catalogue->rules($row->type, $row->payload))->validated();
 
         try {
-            [$serverType, $serverId] = $this->quickEntry->run($type, $fields->validated(), $user, $at, $row->client_id);
+            [$serverType, $serverId] = $this->quickEntry->run($row->type, $payload, $user, $row->occurred_at, $row->client_id);
+            $row->fill(['server_type' => $serverType, 'server_id' => $serverId, 'synced_at' => now()]);
+            $outcome = [SyncMutation::ACCEPTED, null, null, null];
         } catch (StaleData $e) {
-            return $this->finish($row, SyncMutation::CONFLICT, $e->errorCode(), $e->getMessage());
+            $outcome = [SyncMutation::CONFLICT, $e->errorCode(), $e->getMessage(), null];
         } catch (DomainException $e) {
-            return $this->finish($row, in_array($e->errorCode(), self::CONFLICT_CODES, true) ? SyncMutation::CONFLICT : SyncMutation::REJECTED, $e->errorCode(), $e->getMessage());
+            $outcome = [in_array($e->errorCode(), self::CONFLICT_CODES, true) ? SyncMutation::CONFLICT : SyncMutation::REJECTED, $e->errorCode(), $e->getMessage(), null];
         } catch (Throwable $e) {
             report($e);
-
-            return $this->finish($row, SyncMutation::FAILED, 'server_error', 'The server could not record this. Nothing was saved; try again.');
+            $outcome = [SyncMutation::FAILED, 'server_error', 'The server could not record this. Nothing was saved; try again.', null];
         }
 
-        $row->fill(['server_type' => $serverType, 'server_id' => $serverId, 'synced_at' => now()]);
-
-        return $this->finish($row, SyncMutation::ACCEPTED);
+        return $outcome;
     }
 
     /** @param array<string, list<string>>|null $errors */

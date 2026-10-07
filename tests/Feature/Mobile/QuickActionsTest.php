@@ -15,16 +15,18 @@ use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Support\Str;
 
+const FIELD_DEVICE = 'device-f1';
+
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class, FinanceSeeder::class]);
-    $this->worker = mobileWorker('Farm Manager');                  // may do all of it
+    $this->worker = mobileWorker(FARM_MANAGER);                  // may do all of it
     $this->headers = mobileHeaders($this->worker);
 });
 
 /** Sends one quick action and returns its outcome. */
 function quick(string $type, array $payload, ?string $clientId = null, ?string $at = null): array
 {
-    return push([mutation($type, $payload, array_filter(['client_id' => $clientId, 'occurred_at' => $at]))], test()->headers)->assertOk()->json('results.0');
+    return push([mutation($type, $payload, array_filter(['client_id' => $clientId, 'occurred_at' => $at]))], test()->headers)->assertOk()->json(FIRST_RESULT);
 }
 
 it('adds the piglets of a birth to their litter', function () {
@@ -139,8 +141,8 @@ it('records a farrowing once even if the device sends it twice', function () {
     serve($sow);
     $m = mutation('record_farrowing', ['sow' => $sow->animal_number, 'total_born' => 12, 'born_alive' => 10, 'stillborn' => 1, 'mummified' => 1, 'assisted' => false], ['occurred_at' => now()->subHour()->toIso8601String()]);
 
-    $first = push([$m], $this->headers)->json('results.0');
-    $second = push([$m], $this->headers)->json('results.0');
+    $first = push([$m], $this->headers)->json(FIRST_RESULT);
+    $second = push([$m], $this->headers)->json(FIRST_RESULT);
 
     expect($first)->toMatchArray(['status' => 'accepted', 'server_type' => 'litter'])->and($second)->toMatchArray(['status' => 'accepted', 'replayed' => true, 'server_id' => $first['server_id']])
         ->and(Litter::count())->toBe(1)->and(Farrowing::where('sow_id', $sow->id)->count())->toBe(1);
@@ -193,9 +195,9 @@ it('completes a task, for the person it was given to', function () {
     expect($done)->toMatchArray(['status' => 'accepted', 'server_type' => 'task'])->and($mine->fresh()->status)->toBe(TaskStatus::Done)->and($mine->fresh()->completion_notes)->toBe('All clear');
 
     // A supervisor may close anyone's task; a field worker only their own.
-    $fieldHeaders = mobileHeaders($field, 'device-f1');
-    $own = push([mutation('complete_task', ['task' => $fieldTask->number])], $fieldHeaders, 'device-f1')->json('results.0');
-    $notOwn = push([mutation('complete_task', ['task' => $theirs->number])], $fieldHeaders, 'device-f1')->json('results.0');
+    $fieldHeaders = mobileHeaders($field, FIELD_DEVICE);
+    $own = push([mutation('complete_task', ['task' => $fieldTask->number])], $fieldHeaders, FIELD_DEVICE)->json(FIRST_RESULT);
+    $notOwn = push([mutation('complete_task', ['task' => $theirs->number])], $fieldHeaders, FIELD_DEVICE)->json(FIRST_RESULT);
     $gone = quick('complete_task', ['task' => 'TK-999999']);
 
     expect($own['status'])->toBe('accepted')->and($notOwn['status'])->toBe('rejected')->and($notOwn['error']['code'])->toBe('task_forbidden')->and($theirs->fresh()->status)->toBe(TaskStatus::Open)
@@ -233,7 +235,7 @@ it('gives every quick action a permission, so a field worker cannot reach what t
     $pig = register();
 
     foreach (['record_treatment', 'record_vaccination', 'record_service', 'record_farrowing', 'record_weaning'] as $type) {
-        $r = push([mutation($type, ['animal' => $pig->animal_number])], $headers, 'device-s1')->json('results.0');
+        $r = push([mutation($type, ['animal' => $pig->animal_number])], $headers, 'device-s1')->json(FIRST_RESULT);
 
         expect($r['status'])->toBe('rejected')->and($r['error']['code'])->toBe('forbidden');
     }

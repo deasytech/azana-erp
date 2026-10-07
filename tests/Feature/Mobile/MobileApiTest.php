@@ -24,7 +24,7 @@ it('signs a worker in with a token for the device, and shows who they are', func
     expect($login->json('user.roles'))->toBe(['Farm Worker'])->and($login->json('user.permissions'))->toContain('animals.create', 'health.create')->not->toContain('finance.view')
         ->and($worker->tokens()->count())->toBe(1)->and($worker->tokens()->first()->name)->toBe('mobile:device-a1');
 
-    apiGet('/api/v1/me', ['Authorization' => 'Bearer '.$login->json('token')])->assertOk()->assertJsonPath('email', $worker->email);
+    apiGet(API_ME, bearer($login->json('token')))->assertOk()->assertJsonPath('email', $worker->email);
 
     mobileLogin($worker)->assertOk();                                          // signing in again on the same device replaces its token
     expect($worker->tokens()->count())->toBe(1);
@@ -37,8 +37,8 @@ it('turns away wrong passwords, unknown people, inactive users and people withou
     $worker = mobileWorker();
 
     mobileLogin($worker, password: 'wrong')->assertStatus(401)->assertJsonPath('code', 'invalid_credentials');
-    $this->postJson('/api/v1/auth/login', ['email' => 'nobody@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(401)->assertJsonPath('code', 'invalid_credentials');
-    $this->postJson('/api/v1/auth/login', ['email' => $worker->email])->assertStatus(422);
+    $this->postJson(API_LOGIN, ['email' => 'nobody@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(401)->assertJsonPath('code', 'invalid_credentials');
+    $this->postJson(API_LOGIN, ['email' => $worker->email])->assertStatus(422);
 
     $worker->update(['is_active' => false]);
     mobileLogin($worker)->assertForbidden()->assertJsonPath('code', 'mobile_forbidden');
@@ -49,7 +49,7 @@ it('turns away wrong passwords, unknown people, inactive users and people withou
 
 it('keeps roles that need two-factor sign-in on the web app', function () {
     $role = Role::create(['name' => 'Supervisor', 'guard_name' => 'web', 'requires_two_factor' => true])->givePermissionTo('mobile.view');
-    $user = User::factory()->create(['password' => Hash::make('field-pass-123')]);
+    $user = User::factory()->create(['password' => Hash::make(MOBILE_PASSWORD)]);
     $user->assignRole($role);
 
     mobileLogin($user)->assertForbidden()->assertJsonPath('code', 'two_factor_required');
@@ -59,16 +59,16 @@ it('locks out a token the moment the mobile permission or the account is withdra
     $worker = mobileWorker();
     $headers = mobileHeaders($worker);
 
-    apiGet('/api/v1/me', $headers)->assertOk();
+    apiGet(API_ME, $headers)->assertOk();
 
     $worker->update(['is_active' => false]);
-    apiGet('/api/v1/me', $headers)->assertForbidden();
+    apiGet(API_ME, $headers)->assertForbidden();
     $worker->update(['is_active' => true]);
-    apiGet('/api/v1/me', $headers)->assertOk();
+    apiGet(API_ME, $headers)->assertOk();
 
     apiPost('/api/v1/auth/logout', [], $headers)->assertOk();
-    apiGet('/api/v1/me', $headers)->assertUnauthorized();
-    apiGet('/api/v1/me')->assertUnauthorized();
+    apiGet(API_ME, $headers)->assertUnauthorized();
+    apiGet(API_ME)->assertUnauthorized();
 });
 
 it('refuses a token that is not for the mobile app and an expired one', function () {
@@ -76,16 +76,14 @@ it('refuses a token that is not for the mobile app and an expired one', function
     $other = $worker->createToken('something-else', ['other'])->plainTextToken;
     $expired = $worker->createToken('mobile:old', ['mobile'], now()->subMinute())->plainTextToken;
 
-    apiGet('/api/v1/me', ['Authorization' => 'Bearer '.$other])->assertForbidden();
-    apiGet('/api/v1/me', ['Authorization' => 'Bearer '.$expired])->assertUnauthorized();
+    apiGet(API_ME, bearer($other))->assertForbidden();
+    apiGet(API_ME, bearer($expired))->assertUnauthorized();
 });
 
 it('limits sign-in attempts', function () {
     $worker = mobileWorker();
 
-    foreach (range(1, 5) as $i) {
-        mobileLogin($worker, password: 'wrong')->assertStatus(401);
-    }
+    collect(range(1, 5))->each(fn () => mobileLogin($worker, password: 'wrong')->assertStatus(401));
 
     mobileLogin($worker, password: 'wrong')->assertStatus(429);
 });
@@ -96,18 +94,18 @@ it('limits sign-in per account whatever the address, and per address whatever th
 
     // One account, a new address each time: the account's own limit still runs out.
     foreach (range(1, 5) as $i) {
-        $from("10.0.0.{$i}")->postJson('/api/v1/auth/login', ['email' => $worker->email, 'password' => 'wrong', 'device_id' => 'd'])->assertStatus(401);
+        $from("10.0.0.{$i}")->postJson(API_LOGIN, ['email' => $worker->email, 'password' => 'wrong', 'device_id' => 'd'])->assertStatus(401);
     }
 
-    $from('10.0.0.99')->postJson('/api/v1/auth/login', ['email' => strtoupper($worker->email), 'password' => 'field-pass-123', 'device_id' => 'd'])->assertStatus(429);
+    $from('10.0.0.99')->postJson(API_LOGIN, ['email' => strtoupper($worker->email), 'password' => MOBILE_PASSWORD, 'device_id' => 'd'])->assertStatus(429);
 
     // One address trying many accounts: the address's limit runs out (20), though no account has had more than one attempt.
-    foreach (range(1, 20) as $i) {
-        $from('10.9.9.9')->postJson('/api/v1/auth/login', ['email' => "person{$i}@azana.test", 'password' => 'x', 'device_id' => 'd'])->assertStatus(401);
+    foreach (range(1, 20) as $n) {
+        $from('10.9.9.9')->postJson(API_LOGIN, ['email' => "person{$n}@azana.test", 'password' => 'x', 'device_id' => 'd'])->assertStatus(401);
     }
 
-    $from('10.9.9.9')->postJson('/api/v1/auth/login', ['email' => 'person21@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(429);
-    $from('10.8.8.8')->postJson('/api/v1/auth/login', ['email' => 'person21@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(401);   // another address is fine
+    $from('10.9.9.9')->postJson(API_LOGIN, ['email' => 'person21@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(429);
+    $from('10.8.8.8')->postJson(API_LOGIN, ['email' => 'person21@azana.test', 'password' => 'x', 'device_id' => 'd'])->assertStatus(401);   // another address is fine
 });
 
 it('says what a scanned code is, only to people who may see it', function () {
@@ -116,12 +114,12 @@ it('says what a scanned code is, only to people who may see it', function () {
     $batch = openBatch(['name' => 'Grower 1']);
     $headers = mobileHeaders(mobileWorker());
 
-    apiGet('/api/v1/scan/'.$animal->animal_number, $headers)->assertOk()->assertJson(['type' => 'animal', 'id' => $animal->id, 'code' => $animal->animal_number]);
-    apiGet('/api/v1/scan/'.$animal->public_id, $headers)->assertOk()->assertJsonPath('type', 'animal');
-    apiGet('/api/v1/scan/'.urlencode(route('animals.lookup', $animal->public_id)), $headers)->assertOk()->assertJsonPath('id', $animal->id);
-    apiGet('/api/v1/scan/PEN-9', $headers)->assertOk()->assertJson(['type' => 'pen', 'id' => $pen->id]);
-    apiGet('/api/v1/scan/'.$batch->code, $headers)->assertOk()->assertJson(['type' => 'production_batch', 'id' => $batch->id]);
-    apiGet('/api/v1/scan/NOPE-1', $headers)->assertNotFound();
+    apiGet(API_SCAN.$animal->animal_number, $headers)->assertOk()->assertJson(['type' => 'animal', 'id' => $animal->id, 'code' => $animal->animal_number]);
+    apiGet(API_SCAN.$animal->public_id, $headers)->assertOk()->assertJsonPath('type', 'animal');
+    apiGet(API_SCAN.urlencode(route('animals.lookup', $animal->public_id)), $headers)->assertOk()->assertJsonPath('id', $animal->id);
+    apiGet(API_SCAN.'PEN-9', $headers)->assertOk()->assertJson(['type' => 'pen', 'id' => $pen->id]);
+    apiGet(API_SCAN.$batch->code, $headers)->assertOk()->assertJson(['type' => 'production_batch', 'id' => $batch->id]);
+    apiGet(API_SCAN.'NOPE-1', $headers)->assertNotFound();
 
     $animalSummary = apiGet('/api/v1/animals/'.$animal->animal_number, $headers)->assertOk();
     expect($animalSummary->json())->toHaveKeys(['animal_number', 'public_id', 'sex', 'category', 'status', 'position', 'latest_weight_kg']);
@@ -129,13 +127,13 @@ it('says what a scanned code is, only to people who may see it', function () {
 
     // A role with no animal permission sees no animals.
     $role = Role::create(['name' => 'Gate keeper', 'guard_name' => 'web'])->givePermissionTo('mobile.view');
-    $keeper = User::factory()->create(['password' => Hash::make('field-pass-123')]);
+    $keeper = User::factory()->create(['password' => Hash::make(MOBILE_PASSWORD)]);
     $keeper->assignRole($role);
-    apiGet('/api/v1/scan/'.$animal->animal_number, mobileHeaders($keeper))->assertNotFound();
+    apiGet(API_SCAN.$animal->animal_number, mobileHeaders($keeper))->assertNotFound();
 });
 
 it('gives the lists to keep offline, with a version that says when nothing changed', function () {
-    $pen = newPen('PEN-1');
+    newPen('PEN-1');
     $headers = mobileHeaders(mobileWorker());
 
     $first = apiGet('/api/v1/reference', $headers)->assertOk();
@@ -165,8 +163,8 @@ it('accepts a quick action once, however many times the device sends it', functi
     $headers = mobileHeaders(mobileWorker());
     $m = mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 82.5]);
 
-    $first = push([$m], $headers)->assertOk()->json('results.0');
-    $again = push([$m], $headers)->assertOk()->json('results.0');
+    $first = push([$m], $headers)->assertOk()->json(FIRST_RESULT);
+    $again = push([$m], $headers)->assertOk()->json(FIRST_RESULT);
     $third = apiPost('/api/v1/quick/record_weight', ['device_id' => MOBILE_DEVICE] + Arr::only($m, ['client_id', 'occurred_at', 'payload']), $headers);
 
     expect($first)->toMatchArray(['status' => 'accepted', 'replayed' => false, 'server_type' => 'weight_record'])->and($first['server_id'])->toBeInt()
@@ -203,7 +201,7 @@ it('rejects a mutation the person is not allowed to make, without doing it', fun
     $pig = register();
     $store = mobileWorker('Store Officer');                                   // may not record animal health
 
-    $result = push([mutation('record_treatment', ['animal' => $pig->animal_number, 'medicine_id' => medicine()->id])], mobileHeaders($store))->assertOk()->json('results.0');
+    $result = push([mutation('record_treatment', ['animal' => $pig->animal_number, 'medicine_id' => medicine()->id])], mobileHeaders($store))->assertOk()->json(FIRST_RESULT);
 
     expect($result['status'])->toBe('rejected')->and($result['error']['code'])->toBe('forbidden')->and($pig->treatments()->count())->toBe(0);
 });
@@ -211,8 +209,8 @@ it('rejects a mutation the person is not allowed to make, without doing it', fun
 it('refuses a mutation with a bad envelope, and one dated in the future', function () {
     $headers = mobileHeaders(mobileWorker());
 
-    $noId = push([['type' => 'record_weight', 'occurred_at' => now()->toIso8601String(), 'payload' => []]], $headers)->json('results.0');
-    $future = push([mutation('record_weight', [], ['occurred_at' => now()->addDay()->toIso8601String()])], $headers)->json('results.0');
+    $noId = push([['type' => 'record_weight', 'occurred_at' => now()->toIso8601String(), 'payload' => []]], $headers)->json(FIRST_RESULT);
+    $future = push([mutation('record_weight', [], ['occurred_at' => now()->addDay()->toIso8601String()])], $headers)->json(FIRST_RESULT);
 
     expect($noId['status'])->toBe('rejected')->and($noId['error']['code'])->toBe('invalid_envelope')->and($future['error']['code'])->toBe('invalid_envelope')->and(SyncMutation::count())->toBe(0);
     push([], $headers)->assertStatus(422);
@@ -224,7 +222,7 @@ it('does not let one device replay another person\'s or device\'s client id', fu
     $m = mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 50]);
     push([$m], mobileHeaders(mobileWorker()))->assertOk();
 
-    $theirs = push([$m], mobileHeaders(mobileWorker(), 'device-c3'), 'device-c3')->json('results.0');
+    $theirs = push([$m], mobileHeaders(mobileWorker(), 'device-c3'), 'device-c3')->json(FIRST_RESULT);
 
     expect($theirs['status'])->toBe('rejected')->and($theirs['error']['code'])->toBe('idempotency_conflict')->and($pig->weights()->count())->toBe(1);
 });
@@ -234,7 +232,7 @@ it('reports a conflict, never silently overwriting, when the server has moved on
     $headers = mobileHeaders(mobileWorker());
     app(RecordMortality::class)($pig, now()->subDay(), lookup(LookupCategory::MortalityCause, 'scours'));   // someone recorded its death at the farm
 
-    $result = push([mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 70])], $headers)->assertOk()->json('results.0');
+    $result = push([mutation('record_weight', ['animal' => $pig->animal_number, 'weight_kg' => 70])], $headers)->assertOk()->json(FIRST_RESULT);
 
     expect($result['status'])->toBe('conflict')->and($result['error']['code'])->toBe('animal_not_active')->and($pig->weights()->count())->toBe(0);
 
@@ -249,7 +247,7 @@ it('gives a conflict the same answer when sent again, and shows it in the sync s
     app(RecordMortality::class)($pig, now()->subDay(), lookup(LookupCategory::MortalityCause, 'scours'));
 
     push([$m], $headers);
-    $again = push([$m], $headers)->json('results.0');
+    $again = push([$m], $headers)->json(FIRST_RESULT);
     push([mutation('record_weight', ['animal' => 'ZZZ-0'])], $headers);
     $ok = register();
     push([mutation('record_weight', ['animal' => $ok->animal_number, 'weight_kg' => 55])], $headers);
@@ -279,7 +277,7 @@ it('lets a mutation that failed on the server be sent again, and runs it then', 
     SyncMutation::create(['client_id' => $m['client_id'], 'device_id' => MOBILE_DEVICE, 'user_id' => $worker->id, 'type' => 'record_weight', 'occurred_at' => now()->subHour(), 'payload' => $m['payload'],
         'status' => 'failed', 'error_code' => 'server_error', 'attempted_at' => now()->subMinutes(30)]);
 
-    $second = push([$m], mobileHeaders($worker))->json('results.0');
+    $second = push([$m], mobileHeaders($worker))->json(FIRST_RESULT);
 
     expect($second)->toMatchArray(['status' => 'accepted', 'replayed' => false])->and($pig->weights()->count())->toBe(1)->and(SyncMutation::sole())->attempts->toBe(2)->error_code->toBeNull();
 });

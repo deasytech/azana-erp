@@ -82,7 +82,7 @@ class AppServiceProvider extends ServiceProvider
         // limit does not depend on the address, so changing address does not give an attacker a fresh budget. Plenty of room to sync a day's queue.
         RateLimiter::for('mobile-login', fn (Request $request) => [
             Limit::perMinute(20)->by('ip:'.$request->ip()),
-            Limit::perMinute(5)->by('email:'.sha1(strtolower(trim((string) $request->input('email'))))),
+            Limit::perMinute(5)->by('email:'.hash('sha256', strtolower(trim((string) $request->input('email'))))),
         ]);
         RateLimiter::for('mobile', fn (Request $request) => Limit::perMinute(240)->by($request->user()?->id ?: $request->ip()));
 
