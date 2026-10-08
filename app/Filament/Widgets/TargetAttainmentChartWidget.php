@@ -11,6 +11,8 @@ use Livewire\Attributes\On;
 class TargetAttainmentChartWidget extends ChartWidget
 {
     /** The month shown. The page hosting the widget supplies it and may change it while the widget is open. */
+    protected int|string|array $columnSpan = 'full';
+
     public int $year = 0;
 
     public int $month = 0;

@@ -1,15 +1,14 @@
 <x-filament-panels::page>
-    <form class="flex flex-wrap items-end gap-4 text-sm" wire:submit.prevent>
-        <label class="flex flex-col gap-1">Trace a
-            <select wire:model.live="subject" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
+    <form wire:submit.prevent>
+    <x-erp.filters heading="Find a record" description="Pick what to trace and enter its reference.">
+        <x-erp.filter-select label="Trace a" wire:model.live="subject">
                 @foreach (\App\Filament\Pages\TraceExplorer::SUBJECTS as $value => $label)
                     <option value="{{ $value }}">{{ str_replace(' number', '', $label) }}</option>
                 @endforeach
-            </select>
-        </label>
-        <label class="flex flex-col gap-1">{{ \App\Filament\Pages\TraceExplorer::SUBJECTS[$subject] ?? 'Reference' }}
-            <input type="text" wire:model.live.debounce.400ms="reference" placeholder="e.g. IPA-MT-20261008-001" class="w-72 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
-        </label>
+            
+        </x-erp.filter-select>
+        <x-erp.filter-text :label="\App\Filament\Pages\TraceExplorer::SUBJECTS[$subject] ?? 'Reference'" wire:model.live.debounce.400ms="reference" placeholder="e.g. IPA-MT-20261008-001" />
+    </x-erp.filters>
     </form>
 
     @php($result = $this->result())

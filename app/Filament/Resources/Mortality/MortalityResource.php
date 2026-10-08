@@ -6,6 +6,7 @@ use App\Domain\Health\Models\MortalityRecord;
 use App\Filament\Resources\Mortality\Pages\CreateMortality;
 use App\Filament\Resources\Mortality\Pages\ListMortalities;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\HealthForms;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -32,8 +33,8 @@ class MortalityResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->required(),
-            ...HealthForms::mortality(),
+            FormSections::make('Animal', 'Which animal this is about.', [AnimalPicker::any()->required()], Heroicon::OutlinedTag),
+            FormSections::make('Death record', 'When, where and why the animal died.', HealthForms::mortality(), Heroicon::OutlinedHeart),
         ]);
     }
 

@@ -1,12 +1,8 @@
 <x-filament-panels::page class="azana-report">
-    <div class="flex flex-wrap items-end gap-4 text-sm">
-        <label class="flex flex-col gap-1">From
-            <input type="date" wire:model.live="from" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
-        </label>
-        <label class="flex flex-col gap-1">To
-            <input type="date" wire:model.live="to" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
-        </label>
-    </div>
+    <x-erp.filters heading="Period" description="Slaughter results between these dates.">
+        <x-erp.filter-date label="From" wire:model.live="from" />
+        <x-erp.filter-date label="To" wire:model.live="to" />
+    </x-erp.filters>
 
     @foreach ($this->inputErrors() as $error)
         <p class="text-sm text-danger-600">{{ $error }}</p>

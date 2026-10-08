@@ -38,10 +38,50 @@ class BreedingCalendar extends Page
         $this->to = now()->addDays(30)->toDateString();
     }
 
+    /** The quick ranges offered beside the dates: from today for this many days. */
+    public function range(int $days): void
+    {
+        $this->from = now()->toDateString();
+        $this->to = now()->addDays(max(1, min($days, 365)))->toDateString();
+    }
+
+    /** What is wrong with the chosen dates, if anything (a cleared date or an end before the start); the list is empty until it is fixed. */
+    public function inputError(): ?string
+    {
+        $from = rescue(fn () => Carbon::parse($this->from), null, false);
+        $to = rescue(fn () => Carbon::parse($this->to), null, false);
+
+        return match (true) {
+            blank($this->from) || blank($this->to) || ! $from || ! $to => 'Choose both a start and an end date.',
+            $to->lt($from) => 'The end date is before the start date.',
+            default => null,
+        };
+    }
+
     /** @return Collection<int, array{date: Carbon, type: string, sow: string, detail: string, sow_id: int}> */
     public function getEntriesProperty(): Collection
     {
+        if ($this->inputError()) {
+            return collect();
+        }
+
         return app(GetBreedingCalendar::class)(Carbon::parse($this->from)->startOfDay(), Carbon::parse($this->to)->endOfDay());
+    }
+
+    /**
+     * How each kind of event is shown: a colour and an icon, so a long list can be scanned by type.
+     *
+     * @return array{color: string, icon: Heroicon}
+     */
+    public static function style(string $type): array
+    {
+        return match ($type) {
+            'Pregnancy check due' => ['color' => 'info', 'icon' => Heroicon::OutlinedMagnifyingGlass],
+            'Watch for return to heat' => ['color' => 'warning', 'icon' => Heroicon::OutlinedEye],
+            'Farrowing expected' => ['color' => 'success', 'icon' => Heroicon::OutlinedSparkles],
+            'Weaning due' => ['color' => 'primary', 'icon' => Heroicon::OutlinedScale],
+            default => ['color' => 'gray', 'icon' => Heroicon::OutlinedArrowPath],
+        };
     }
 
     public function animalUrl(int $id): string

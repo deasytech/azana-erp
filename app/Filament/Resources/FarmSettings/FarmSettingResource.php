@@ -5,6 +5,7 @@ namespace App\Filament\Resources\FarmSettings;
 use App\Domain\Farm\Models\FarmSetting;
 use App\Filament\Resources\FarmSettings\Pages\EditFarmSetting;
 use App\Filament\Resources\FarmSettings\Pages\ListFarmSettings;
+use App\Filament\Support\FormSections;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -40,14 +41,16 @@ class FarmSettingResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('label')
-                ->label('Setting')
-                ->disabled()
-                ->dehydrated(false)
-                ->afterStateHydrated(fn ($component, ?FarmSetting $record) => $component->state($record?->definition()?->label ?? $record?->key)),
-            TextInput::make('value')
-                ->required()
-                ->helperText(fn (?FarmSetting $record) => $record?->definition()?->description),
+            FormSections::make('Setting', 'Changing it takes effect across the farm.', [
+                TextInput::make('label')
+                    ->label('Setting')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->afterStateHydrated(fn ($component, ?FarmSetting $record) => $component->state($record?->definition()?->label ?? $record?->key)),
+                TextInput::make('value')
+                    ->required()
+                    ->helperText(fn (?FarmSetting $record) => $record?->definition()?->description),
+            ], Heroicon::OutlinedCog6Tooth),
         ]);
     }
 

@@ -10,6 +10,7 @@ use App\Filament\Resources\SlaughterBatches\Pages\CreateSlaughterBatch;
 use App\Filament\Resources\SlaughterBatches\Pages\ListSlaughterBatches;
 use App\Filament\Resources\SlaughterBatches\Pages\ViewSlaughterBatch;
 use App\Filament\Resources\SlaughterBatches\RelationManagers\RecordsRelationManager;
+use App\Filament\Support\FormSections;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -41,8 +42,10 @@ class SlaughterBatchResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            DatePicker::make('scheduled_on')->label('Slaughter date')->default(now())->required(),
-            Textarea::make('notes'),
+            FormSections::make('Slaughter batch', 'The day the pigs in this batch are slaughtered.', [
+                DatePicker::make('scheduled_on')->label('Slaughter date')->default(now())->required(),
+                Textarea::make('notes'),
+            ], Heroicon::OutlinedCalendarDays),
         ]);
     }
 

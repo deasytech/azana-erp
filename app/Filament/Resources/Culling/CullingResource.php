@@ -6,6 +6,7 @@ use App\Domain\Health\Models\CullingRecord;
 use App\Filament\Resources\Culling\Pages\CreateCulling;
 use App\Filament\Resources\Culling\Pages\ListCullings;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\HealthForms;
 use App\Support\Money;
 use BackedEnum;
@@ -38,8 +39,8 @@ class CullingResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->required(),
-            ...HealthForms::culling(),
+            FormSections::make('Animal', 'Which animal this is about.', [AnimalPicker::any()->required()], Heroicon::OutlinedTag),
+            FormSections::make('Culling record', 'Why the animal is being removed from the herd.', HealthForms::culling(), Heroicon::OutlinedHeart),
         ]);
     }
 

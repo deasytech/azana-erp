@@ -12,6 +12,7 @@ use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -71,6 +72,7 @@ class AdminPanelProvider extends PanelProvider
             ->font('Inter')
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('17rem')
+            ->maxContentWidth(Width::Full)
             ->navigationGroups($this->navigationGroups())
             // Orange is the brand accent (actions, active states); the neutrals are warm stone, and status colours keep their own meaning.
             ->colors([

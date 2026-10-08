@@ -68,6 +68,14 @@
 .fi-sidebar {
     @apply shadow-none;
 }
+/* The sidebar is its own plane: a deeper cream than the page, with a hairline against it. */
+:root:not(.dark) .fi-sidebar {
+    background-color: color-mix(in srgb, var(--azana-cream) 85%, #e9dfc0);
+    border-inline-end: 1px solid var(--azana-line);
+}
+:root:not(.dark) .fi-sidebar-header {
+    background-color: transparent;
+}
 .fi-sidebar-header {
     @apply shadow-none ring-0;
     border-bottom: 1px solid var(--azana-line);
@@ -213,6 +221,154 @@
     @apply text-xs text-gray-500 dark:text-gray-400;
 }
 
+/* Forms: sections read as titled cards with a tinted header strip; fields have clear labels, a soft border and an orange focus ring. */
+.fi-section:not(.fi-section-not-contained) > .fi-section-header {
+    @apply px-6 py-4;
+    border-bottom: 1px solid var(--azana-line);
+}
+:root:not(.dark) .fi-section:not(.fi-section-not-contained) > .fi-section-header {
+    background-color: color-mix(in srgb, var(--azana-cream) 55%, #ffffff);
+    border-radius: 0.75rem 0.75rem 0 0;
+}
+.dark .fi-section:not(.fi-section-not-contained) > .fi-section-header {
+    border-color: rgb(255 255 255 / 0.08);
+}
+.fi-section-header-icon {
+    color: var(--azana-orange);
+}
+.fi-section-header-description {
+    @apply text-xs;
+}
+.fi-fo-field-label-content {
+    @apply text-sm font-medium;
+    color: var(--azana-brown);
+}
+.dark .fi-fo-field-label-content {
+    @apply text-gray-200;
+}
+.fi-fo-field-wrp-helper-text,
+.fi-fo-field-wrp-hint {
+    @apply text-xs;
+}
+.fi-input-wrp {
+    @apply rounded-lg shadow-none ring-1;
+    --tw-ring-color: var(--azana-line);
+    transition: box-shadow 0.15s ease, --tw-ring-color 0.15s ease;
+}
+.dark .fi-input-wrp {
+    --tw-ring-color: rgb(255 255 255 / 0.12);
+}
+.fi-input-wrp:hover:not(:focus-within) {
+    --tw-ring-color: color-mix(in srgb, var(--azana-orange) 40%, var(--azana-line));
+}
+.fi-input-wrp:focus-within {
+    @apply ring-2;
+    --tw-ring-color: var(--azana-orange);
+}
+.fi-form-actions,
+.fi-ac.fi-form-actions {
+    @apply pt-2;
+}
+
+/* Filter bar on report and calendar pages: one card, labelled controls in a row. */
+.azana-filters {
+    @apply rounded-xl bg-white shadow-xs ring-1;
+    --tw-ring-color: var(--azana-line);
+}
+.dark .azana-filters {
+    @apply bg-gray-900;
+    --tw-ring-color: rgb(255 255 255 / 0.1);
+}
+.azana-filters-head {
+    @apply flex items-center gap-3 px-5 py-3;
+    border-bottom: 1px solid var(--azana-line);
+}
+:root:not(.dark) .azana-filters-head {
+    background-color: color-mix(in srgb, var(--azana-cream) 55%, #ffffff);
+    border-radius: 0.75rem 0.75rem 0 0;
+}
+.dark .azana-filters-head {
+    border-color: rgb(255 255 255 / 0.08);
+}
+.azana-filters-title {
+    @apply text-sm font-semibold;
+    color: var(--azana-brown);
+}
+.dark .azana-filters-title {
+    @apply text-white;
+}
+.azana-filters-description {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.azana-filters-body {
+    @apply flex flex-wrap items-end gap-4 p-5;
+}
+.azana-filter {
+    @apply flex min-w-44 flex-col gap-1.5;
+}
+.azana-filter-label {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400;
+}
+.azana-filters-aside {
+    @apply ml-auto flex flex-wrap items-center gap-2 text-sm;
+}
+
+/* Breeding calendar: one card per day, the date on the left and the events beside it. */
+.azana-day {
+    @apply flex flex-col overflow-hidden rounded-xl bg-white shadow-xs ring-1 sm:flex-row;
+    --tw-ring-color: var(--azana-line);
+}
+.dark .azana-day {
+    @apply bg-gray-900;
+    --tw-ring-color: rgb(255 255 255 / 0.1);
+}
+.azana-day-date {
+    @apply flex shrink-0 flex-row items-baseline gap-2 px-5 py-3 sm:w-40 sm:flex-col sm:items-start sm:gap-0 sm:py-4;
+    border-bottom: 1px solid var(--azana-line);
+}
+:root:not(.dark) .azana-day-date {
+    background-color: color-mix(in srgb, var(--azana-cream) 55%, #ffffff);
+}
+@media (min-width: 640px) {
+    .azana-day-date {
+        border-bottom: 0;
+        border-inline-end: 1px solid var(--azana-line);
+    }
+}
+.dark .azana-day-date {
+    border-color: rgb(255 255 255 / 0.08);
+}
+.azana-day-number {
+    @apply text-3xl font-semibold leading-none tabular-nums;
+    color: var(--azana-brown);
+}
+.dark .azana-day-number {
+    @apply text-white;
+}
+.azana-day-month {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400;
+}
+.azana-day-weekday {
+    @apply text-sm text-gray-600 dark:text-gray-300;
+}
+.azana-day-relative {
+    @apply mt-1 text-xs text-gray-500 dark:text-gray-400;
+}
+.azana-day-today {
+    @apply font-semibold text-primary-600;
+}
+.azana-day-events {
+    @apply flex-1 divide-y;
+    --tw-divide-opacity: 1;
+}
+.azana-day-events > li {
+    @apply flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3;
+    border-color: var(--azana-line);
+}
+.dark .azana-day-events > li {
+    border-color: rgb(255 255 255 / 0.08);
+}
+
 /* Reduced motion: no transitions for people who ask for none. */
 @media (prefers-reduced-motion: reduce) {
     .fi-ta-row {
@@ -250,14 +406,6 @@
 .dark .azana-report .overflow-x-auto tbody tr:hover {
     @apply bg-white/5;
 }
-.azana-report input[type='date'],
-.azana-report label > select {
-    @apply rounded-lg border-gray-300 bg-white py-1.5 text-sm shadow-xs;
-}
-.azana-report input[type='date']:focus {
-    @apply border-primary-500 outline-none ring-2 ring-primary-500/30;
-}
-
 /* Small screens: tighter page gutters and the KPI value a notch smaller. */
 @media (max-width: 40rem) {
     .azana-kpi-value {

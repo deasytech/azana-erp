@@ -6,6 +6,7 @@ use App\Domain\Health\Models\Vaccination;
 use App\Filament\Resources\Vaccinations\Pages\CreateVaccination;
 use App\Filament\Resources\Vaccinations\Pages\ListVaccinations;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\HealthForms;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -32,8 +33,8 @@ class VaccinationResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->required(),
-            ...HealthForms::vaccination(),
+            FormSections::make('Animal', 'Which animal this is about.', [AnimalPicker::any()->required()], Heroicon::OutlinedTag),
+            FormSections::make('Vaccination', 'What was given, from which batch, and when.', HealthForms::vaccination(), Heroicon::OutlinedHeart),
         ]);
     }
 
