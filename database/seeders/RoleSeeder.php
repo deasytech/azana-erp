@@ -45,6 +45,13 @@ class RoleSeeder extends Seeder
         'Accountant' => [A::View, A::Export, A::Print],
     ];
 
+    /** Who runs the public website's listings and follows up its enquiries (nobody else has the module). */
+    private const WEBSITE_GRANTS = [
+        'General Manager' => [A::View, A::Create, A::Edit, A::Delete],
+        'Farm Manager' => [A::View],
+        'Sales Officer' => [A::View, A::Create, A::Edit],
+    ];
+
     /** Roles that sign in to the mobile app. Roles that must use two-factor sign-in (the accountant, the owner) stay on the web app. */
     private const MOBILE_ROLES = ['General Manager', 'Farm Manager', 'Breeding Manager', 'Feed Mill Manager', 'Semen Laboratory Manager', 'Nutritionist', 'Store Officer', 'Sales Officer', 'Slaughter Manager', 'Farm Worker'];
 
@@ -164,6 +171,7 @@ class RoleSeeder extends Seeder
         return collect(self::GRANTS[$role] ?? [])
             ->put('tasks', self::TASK_GRANTS[$role] ?? [A::View, A::Create, A::Edit])
             ->when(in_array($role, self::MOBILE_ROLES, true), fn ($grants) => $grants->put('mobile', in_array($role, ['General Manager', 'Farm Manager'], true) ? [A::View, A::Edit] : [A::View]))
+            ->when(isset(self::WEBSITE_GRANTS[$role]), fn ($grants) => $grants->put('website', self::WEBSITE_GRANTS[$role]))
             ->when(isset(self::REPORT_GRANTS[$role]), fn ($grants) => $grants->put('reports', self::REPORT_GRANTS[$role]))
             ->flatMap(fn (array $actions, string $module) => array_map(fn (A $a) => "{$module}.{$a->value}", $actions))
             ->values()

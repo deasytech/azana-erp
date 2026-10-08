@@ -21,7 +21,7 @@ Public website uses Laravel Blade/Livewire and calls application services/API wh
 Do not expose Filament publicly.
 
 ## Acceptance Criteria
-- [ ] Public website is visually independent from ERP.
-- [ ] ERP remains inaccessible to public users.
-- [ ] Customer interactions use shared domain logic.
-- [ ] No duplicated pricing/business rules exist.
+- [x] Public website is visually independent from ERP.
+- [x] ERP remains inaccessible to public users.
+- [x] Customer interactions use shared domain logic.
+- [x] No duplicated pricing/business rules exist.

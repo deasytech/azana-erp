@@ -23,6 +23,8 @@ use App\Domain\Supplier\Models as SP;
 use App\Domain\Tasks\Messaging\LogMessageGateway;
 use App\Domain\Tasks\Messaging\MessageGateway;
 use App\Domain\Tasks\Models as TK;
+use App\Domain\Website\Models\Enquiry;
+use App\Domain\Website\Models\Listing;
 use App\Enums\Module;
 use App\Models\User;
 use App\Policies\AnimalPhotoPolicy;
@@ -53,6 +55,8 @@ use App\Policies\SlaughterMasterPolicy;
 use App\Policies\SlaughterPolicy;
 use App\Policies\SyncMutationPolicy;
 use App\Policies\TaskPolicy;
+use App\Policies\WebsiteListingPolicy;
+use App\Policies\WebsitePolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -124,6 +128,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(MT\MeatProduct::class, SlaughterMasterPolicy::class);
         Gate::policy(KpiTarget::class, ReportsPolicy::class);
         Gate::policy(SyncMutation::class, SyncMutationPolicy::class);
+        Gate::policy(Listing::class, WebsiteListingPolicy::class);
+        Gate::policy(Enquiry::class, WebsitePolicy::class);
         foreach ([TK\Task::class, TK\TaskAssignment::class, TK\TaskEvidence::class] as $model) {
             Gate::policy($model, TaskPolicy::class);
         }

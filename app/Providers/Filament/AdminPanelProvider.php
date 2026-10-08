@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->domain(config('website.erp_host'))
             ->login()
             ->profile()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])

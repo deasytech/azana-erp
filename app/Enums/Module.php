@@ -31,6 +31,7 @@ enum Module: string
     case Tasks = 'tasks';
     case Reports = 'reports';
     case Mobile = 'mobile';
+    case Website = 'website';
 
     public function label(): string
     {
@@ -58,6 +59,7 @@ enum Module: string
             self::Tasks => 'Tasks & alerts',
             self::Reports => 'Dashboards & reports',
             self::Mobile => 'Mobile app',
+            self::Website => 'Public website',
         };
     }
 

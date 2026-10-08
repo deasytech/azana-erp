@@ -35,6 +35,8 @@ final class SettingDefinitions
 
     private const TASKS = 'Tasks & notifications';
 
+    private const WEBSITE = 'Public website';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -89,6 +91,12 @@ final class SettingDefinitions
             new SettingDefinition('notifications.email_enabled', self::TASKS, 'Send alerts and task assignments by email', 'bool', '1'),
             new SettingDefinition('notifications.sms_enabled', self::TASKS, 'Send critical alerts by SMS', 'bool', '0', 'Needs a messaging gateway (MESSAGING_DRIVER) and a phone number on the user.'),
             new SettingDefinition('notifications.whatsapp_enabled', self::TASKS, 'Send critical alerts by WhatsApp', 'bool', '0', 'Needs a messaging gateway (MESSAGING_DRIVER) and a phone number on the user.'),
+            new SettingDefinition('website.tagline', self::WEBSITE, 'Tagline', 'string', 'Quality pigs, boar semen and fresh pork.', 'Shown under the farm name on the home page.'),
+            new SettingDefinition('website.about', self::WEBSITE, 'About the farm', 'string', '', 'A few sentences about the farm, shown on the home and about pages. Blank lines start a new paragraph.'),
+            new SettingDefinition('website.opening_hours', self::WEBSITE, 'Opening hours', 'string', '', 'Shown on the contact page. Leave empty to hide.'),
+            new SettingDefinition('website.whatsapp_number', self::WEBSITE, 'WhatsApp number', 'string', '', 'International format without + or spaces, for example 2348012345678. Leave empty to hide the WhatsApp button.'),
+            new SettingDefinition('website.enquiries_enabled', self::WEBSITE, 'Accept enquiries on the website', 'bool', '1', 'Switch off to show the contact details instead of the enquiry form.'),
+            new SettingDefinition('website.enquiry_notify_email', self::WEBSITE, 'Also e-mail new enquiries to', 'string', '', 'Optional extra address. People with website access are always told in the bell.'),
             new SettingDefinition('finance.books_closed_through', self::FINANCE, 'Books closed through (date)', 'string', '', 'Nothing can be posted on or before this date (YYYY-MM-DD). Leave empty to keep the books open.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
         ])->keyBy->key->all();
