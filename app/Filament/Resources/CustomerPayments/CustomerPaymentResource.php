@@ -21,6 +21,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -47,26 +48,30 @@ class CustomerPaymentResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            Select::make('customer_id')->label('Customer')->required()->searchable()->live()
-                ->options(fn () => Customer::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->code} - {$c->name}"])->all()),
-            MoneyInput::make('amount_minor', 'Amount received')->required(),
-            Select::make('method')->options(AnimalResource::enumOptions(ReceiptMethod::cases()))->required()->default(ReceiptMethod::BankTransfer->value),
-            DatePicker::make('received_on')->default(now())->maxDate(now())->required(),
-            TextInput::make('reference')->maxLength(60),
-            Select::make('apply')->label('Apply to')->options([
-                'oldest' => 'The oldest invoices first',
-                'invoices' => 'Invoices I choose',
-                'deposit' => 'Keep as a deposit',
-            ])->default('oldest')->required()->live(),
-            Textarea::make('notes')->columnSpanFull(),
-            Repeater::make('invoices')->label('Invoices')->columnSpanFull()->columns(2)->visible(fn ($get) => $get('apply') === 'invoices')->addActionLabel('Add invoice')
-                ->schema([
-                    Select::make('invoice_id')->label('Invoice')->required()->distinct()
-                        ->options(fn ($get) => Invoice::where('customer_id', $get('../../customer_id'))->with('allocations.payment')->orderBy('issued_on')->get()
-                            ->filter(fn (Invoice $i) => $i->balanceMinor() > 0)->mapWithKeys(fn (Invoice $i) => [$i->id => "{$i->number} (owes ".MoneyColumn::format($i->balanceMinor()).')'])->all()),
-                    MoneyInput::make('amount_minor', 'Amount')->required(),
-                ]),
+        return $schema->components([
+            Section::make('Payment')->description('Who paid, how much and how.')->columns(2)->schema([
+                Select::make('customer_id')->label('Customer')->required()->searchable()->live()
+                    ->options(fn () => Customer::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->code} - {$c->name}"])->all()),
+                MoneyInput::make('amount_minor', 'Amount received')->required(),
+                Select::make('method')->options(AnimalResource::enumOptions(ReceiptMethod::cases()))->required()->default(ReceiptMethod::BankTransfer->value),
+                DatePicker::make('received_on')->default(now())->maxDate(now())->required(),
+                TextInput::make('reference')->maxLength(60),
+            ]),
+            Section::make('Allocation')->description('Which invoices this payment settles.')->columns(2)->schema([
+                Select::make('apply')->label('Apply to')->options([
+                    'oldest' => 'The oldest invoices first',
+                    'invoices' => 'Invoices I choose',
+                    'deposit' => 'Keep as a deposit',
+                ])->default('oldest')->required()->live(),
+                Textarea::make('notes')->columnSpanFull(),
+                Repeater::make('invoices')->label('Invoices')->columnSpanFull()->columns(2)->visible(fn ($get) => $get('apply') === 'invoices')->addActionLabel('Add invoice')
+                    ->schema([
+                        Select::make('invoice_id')->label('Invoice')->required()->distinct()
+                            ->options(fn ($get) => Invoice::where('customer_id', $get('../../customer_id'))->with('allocations.payment')->orderBy('issued_on')->get()
+                                ->filter(fn (Invoice $i) => $i->balanceMinor() > 0)->mapWithKeys(fn (Invoice $i) => [$i->id => "{$i->number} (owes ".MoneyColumn::format($i->balanceMinor()).')'])->all()),
+                        MoneyInput::make('amount_minor', 'Amount')->required(),
+                    ]),
+            ]),
         ]);
     }
 

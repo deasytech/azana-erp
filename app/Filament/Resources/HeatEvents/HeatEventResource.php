@@ -6,6 +6,7 @@ use App\Domain\Breeding\Models\HeatEvent;
 use App\Filament\Resources\HeatEvents\Pages\CreateHeatEvent;
 use App\Filament\Resources\HeatEvents\Pages\ListHeatEvents;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\DateRangeFilter;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
@@ -47,6 +48,7 @@ class HeatEventResource extends Resource
                 TextColumn::make('sow.animal_number')->label('Sow')->searchable(),
                 TextColumn::make('notes')->limit(60)->placeholder('-'),
             ])
+            ->filters([DateRangeFilter::make('detected_on', 'Detected')])
             ->defaultSort('detected_on', 'desc');
     }
 

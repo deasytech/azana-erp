@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     <div class="flex flex-wrap items-end gap-4 text-sm">
         <label class="flex flex-col gap-1">Item
             <x-filament::input.wrapper>

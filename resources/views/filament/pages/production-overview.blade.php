@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php($rows = $this->summary)
     @if ($rows->isEmpty())
         <p class="text-sm text-gray-500">No active batches.</p>

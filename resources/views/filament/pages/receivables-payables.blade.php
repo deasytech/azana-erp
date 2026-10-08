@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php($report = $this->report)
     @foreach (['receivables' => 'Owed by customers', 'payables' => 'Owed to suppliers'] as $key => $title)
         <section class="space-y-2">

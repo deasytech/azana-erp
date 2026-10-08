@@ -22,6 +22,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -45,18 +46,22 @@ class FeedConsumptionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            Select::make('target')->label('Fed to')->options(['batch' => 'A batch', 'animal' => 'One animal'])->default('batch')->required()->live(),
-            Select::make('production_batch_id')->label('Batch')->searchable()
-                ->options(fn () => ProductionBatch::where('status', BatchStatus::Active->value)->orderBy('code')->get()->mapWithKeys(fn ($b) => [$b->id => "{$b->code} - {$b->name}"])->all())
-                ->visible(fn ($get) => $get('target') !== 'animal')->required(fn ($get) => $get('target') !== 'animal'),
-            AnimalPicker::any()->visible(fn ($get) => $get('target') === 'animal')->required(fn ($get) => $get('target') === 'animal'),
-            Select::make('feed_type_id')->label('Feed type')->required()->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-            DatePicker::make('consumed_on')->default(now())->maxDate(now())->required(),
-            TextInput::make('quantity_kg')->label('Quantity (kg)')->numeric()->minValue(0.01)->step(0.01)->required(),
-            MoneyInput::make('cost_per_kg_minor', 'Cost per kg')->helperText('Ignored when the feed is taken from a store: the stock cost is used.'),
-            StockForms::store('inventory_location_id', 'Take from store')->required(false)->helperText('Optional. Takes the feed out of stock; the feed type must be linked to a stock item.'),
-            Textarea::make('notes')->columnSpanFull(),
+        return $schema->components([
+            Section::make('Fed to')->description('Who ate the feed.')->columns(2)->schema([
+                Select::make('target')->label('Fed to')->options(['batch' => 'A batch', 'animal' => 'One animal'])->default('batch')->required()->live(),
+                Select::make('production_batch_id')->label('Batch')->searchable()
+                    ->options(fn () => ProductionBatch::where('status', BatchStatus::Active->value)->orderBy('code')->get()->mapWithKeys(fn ($b) => [$b->id => "{$b->code} - {$b->name}"])->all())
+                    ->visible(fn ($get) => $get('target') !== 'animal')->required(fn ($get) => $get('target') !== 'animal'),
+                AnimalPicker::any()->visible(fn ($get) => $get('target') === 'animal')->required(fn ($get) => $get('target') === 'animal'),
+            ]),
+            Section::make('Feed')->description('What, how much and at what cost.')->columns(2)->schema([
+                Select::make('feed_type_id')->label('Feed type')->required()->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
+                DatePicker::make('consumed_on')->default(now())->maxDate(now())->required(),
+                TextInput::make('quantity_kg')->label('Quantity (kg)')->numeric()->minValue(0.01)->step(0.01)->required(),
+                MoneyInput::make('cost_per_kg_minor', 'Cost per kg')->helperText('Ignored when the feed is taken from a store: the stock cost is used.'),
+                StockForms::store('inventory_location_id', 'Take from store')->required(false)->helperText('Optional. Takes the feed out of stock; the feed type must be linked to a stock item.'),
+                Textarea::make('notes')->columnSpanFull(),
+            ]),
         ]);
     }
 

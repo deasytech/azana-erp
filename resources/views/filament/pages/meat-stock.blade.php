@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php($rows = $this->rows)
     @if ($rows->isEmpty())
         <p class="text-sm text-gray-500">No meat in the cold rooms.</p>

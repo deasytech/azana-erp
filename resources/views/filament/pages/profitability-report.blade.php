@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     <div class="flex flex-wrap items-end gap-4 text-sm">
         <label class="flex flex-col gap-1">From
             <input type="date" wire:model.live="from" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
@@ -14,12 +14,14 @@
 
     @if ($report = $this->report)
         @php($t = $report['totals'])
-        <p class="text-sm">
-            Revenue {{ \App\Filament\Support\MoneyColumn::format($t['revenue_minor']) }}, direct costs {{ \App\Filament\Support\MoneyColumn::format($t['direct_cost_minor']) }}: gross margin {{ \App\Filament\Support\MoneyColumn::format($t['gross_margin_minor']) }}
-            ({{ $t['gross_margin_percent'] !== null ? $t['gross_margin_percent'].'%' : '-' }}).
-            Overheads {{ \App\Filament\Support\MoneyColumn::format($t['overhead_minor']) }}: net margin {{ \App\Filament\Support\MoneyColumn::format($t['net_margin_minor']) }}
-            ({{ $t['net_margin_percent'] !== null ? $t['net_margin_percent'].'%' : '-' }}).
-        </p>
+        @php($fmt = fn ($v) => \App\Filament\Support\MoneyColumn::format($v))
+        @php($pct = fn ($v) => $v !== null ? $v.'% margin' : null)
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <x-erp.kpi label="Revenue" :value="$fmt($t['revenue_minor'])" primary />
+            <x-erp.kpi label="Direct costs" :value="$fmt($t['direct_cost_minor'])" hint="Taken off revenue to give the gross margin" primary />
+            <x-erp.kpi label="Gross margin" :value="$fmt($t['gross_margin_minor'])" :hint="$pct($t['gross_margin_percent'])" primary />
+            <x-erp.kpi label="Net margin" :value="$fmt($t['net_margin_minor'])" :hint="'After overheads of '.$fmt($t['overhead_minor']).($t['net_margin_percent'] !== null ? ' - '.$t['net_margin_percent'].'%' : '')" primary />
+        </div>
         @if ($t['unassigned_revenue_minor'] || $t['unassigned_overhead_minor'])
             <p class="text-sm text-gray-500">Not assigned to a cost centre: revenue {{ \App\Filament\Support\MoneyColumn::format($t['unassigned_revenue_minor']) }}, overheads {{ \App\Filament\Support\MoneyColumn::format($t['unassigned_overhead_minor']) }}.</p>
         @endif
