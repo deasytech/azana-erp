@@ -31,19 +31,18 @@ class AdminPanelProvider extends PanelProvider
 
     /**
      * Sidebar order: the farm's day-to-day work first, then what it consumes and sells, then money, management and set-up. The group names
-     * belong to the resources; this only orders them and folds the ones used less often.
+     * belong to the resources; this only orders them and folds the ones used least.
      *
      * @return list<NavigationGroup>
      */
     private function navigationGroups(): array
     {
-        $open = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Production', 'Inventory', 'Purchasing', 'Sales', 'Finance', 'Tasks & alerts', 'Management'];
-        $folded = ['Biosecurity', 'Feed mill', 'Semen', 'Slaughter & meat', 'Website', 'Master data', 'Configuration', 'Administration'];
+        $groups = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Biosecurity', 'Production', 'Feed mill', 'Inventory', 'Purchasing', 'Semen', 'Sales', 'Slaughter & meat', 'Finance', 'Tasks & alerts', 'Management', 'Website', 'Master data', 'Configuration', 'Administration'];
 
-        return array_map(
-            fn (string $name): NavigationGroup => NavigationGroup::make($name)->collapsed(in_array($name, $folded, true)),
-            [...$open, ...$folded],
-        );
+        // Filament does not open a folded group on its own page, so only the groups used least are folded; the rest stay open.
+        $folded = ['Farm structure', 'Biosecurity', 'Feed mill', 'Semen', 'Slaughter & meat', 'Website', 'Master data', 'Configuration', 'Administration'];
+
+        return array_map(fn (string $name): NavigationGroup => NavigationGroup::make($name)->collapsed(in_array($name, $folded, true)), $groups);
     }
 
     public function panel(Panel $panel): Panel

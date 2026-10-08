@@ -267,3 +267,16 @@
         @apply text-2xl;
     }
 }
+
+/* The bar Livewire draws while a page loads takes the brand colour. */
+#nprogress .bar {
+    background: var(--azana-orange) !important;
+}
+#nprogress .peg {
+    box-shadow: 0 0 10px var(--azana-orange), 0 0 5px var(--azana-orange) !important;
+}
+
+/* Sidebar: closer groups, so a long navigation stays scannable. */
+.fi-sidebar-nav-groups {
+    @apply gap-y-4;
+}

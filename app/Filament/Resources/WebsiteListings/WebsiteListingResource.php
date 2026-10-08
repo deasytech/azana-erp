@@ -48,7 +48,7 @@ class WebsiteListingResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('What is offered')->description('The product and the words visitors read.')->columns(2)->schema([
+            Section::make('What is offered')->description('The product and the words visitors read.')->columnSpanFull()->columns(2)->schema([
                 Select::make('kind')->options(AnimalResource::enumOptions(ListingKind::cases()))->required()->live()
                     ->afterStateUpdated(fn ($set) => $set('inventory_item_id', null)),
                 TextInput::make('title')->required()->maxLength(255),
@@ -56,7 +56,7 @@ class WebsiteListingResource extends Resource
                 TextInput::make('summary')->required()->maxLength(300)->columnSpanFull(),
                 Textarea::make('description')->rows(6)->columnSpanFull()->helperText('Blank lines start a new paragraph.'),
             ]),
-            Section::make('Stock and price')->description('Where the price and availability come from.')->columns(2)->schema([
+            Section::make('Stock and price')->description('Where the price and availability come from.')->columnSpanFull()->columns(2)->schema([
                 Select::make('inventory_item_id')->label('Stock item')->searchable()->placeholder('None')
                     ->visible(fn ($get) => in_array($get('kind'), [ListingKind::Semen->value, ListingKind::Meat->value], true))
                     ->options(fn ($get) => InventoryItem::where('is_active', true)
@@ -66,7 +66,7 @@ class WebsiteListingResource extends Resource
                 TextInput::make('price_unit')->label('Price is quoted')->maxLength(30)->placeholder('per dose')->helperText('Words shown after the price.'),
                 Toggle::make('show_price')->label('Show the price')->helperText('The price is the one on the active price list for the stock item.'),
             ]),
-            Section::make('Publishing')->description('Order on the site and whether it is live.')->columns(2)->schema([
+            Section::make('Publishing')->description('Order on the site and whether it is live.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('sort_order')->numeric()->integer()->minValue(0)->maxValue(65000)->default(100)->helperText('Smaller numbers come first.'),
                 Toggle::make('is_published')->label('Published on the website'),
             ]),

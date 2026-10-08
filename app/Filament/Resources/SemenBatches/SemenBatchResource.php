@@ -53,12 +53,12 @@ class SemenBatchResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Collection')->description('Which boar and when.')->columns(2)->schema([
+            Section::make('Collection')->description('Which boar and when.')->columnSpanFull()->columns(2)->schema([
                 Select::make('animal_id')->label('Boar')->required()->searchable()
                     ->options(fn () => SemenBoar::with('animal')->where('status', SemenBoarStatus::Active)->get()->mapWithKeys(fn ($b) => [$b->animal_id => $b->animal->animal_number])->sort()->all()),
                 DateTimePicker::make('collected_at')->default(now())->maxDate(now())->seconds(false)->required(),
             ]),
-            Section::make('Ejaculate')->description('What was measured at collection.')->columns(2)->schema([
+            Section::make('Ejaculate')->description('What was measured at collection.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('volume_ml')->label('Volume (ml)')->numeric()->minValue(0.1)->maxValue(1000)->step(0.1)->required(),
                 TextInput::make('ph')->label('pH')->numeric()->minValue(0)->maxValue(14)->step(0.1),
                 TextInput::make('colour')->maxLength(30),

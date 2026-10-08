@@ -2,12 +2,20 @@
 
 use App\Domain\Health\Actions\RecordVeterinaryVisit;
 use App\Filament\Resources\VeterinaryVisits\Pages\ListVeterinaryVisits;
+use Database\Seeders\MasterDataSeeder;
+use Database\Seeders\RoleSeeder;
+use Filament\Facades\Filament;
 use Livewire\Livewire;
+
+beforeEach(function () {
+    $this->seed([RoleSeeder::class, MasterDataSeeder::class]);
+    Filament::setCurrentPanel('admin');
+});
 
 it('filters a list to the chosen date range', function () {
     $this->actingAs(owner());
-    app(RecordVeterinaryVisit::class)(now()->subDays(30), 'Old herd check');
-    app(RecordVeterinaryVisit::class)(now()->subDay(), 'Recent herd check');
+    app(RecordVeterinaryVisit::class)(now()->subDays(30), 'Old herd check', ['veterinarian_name' => 'Dr Ada']);
+    app(RecordVeterinaryVisit::class)(now()->subDay(), 'Recent herd check', ['veterinarian_name' => 'Dr Ada']);
 
     Livewire::test(ListVeterinaryVisits::class)
         ->assertSee('Old herd check')->assertSee('Recent herd check')

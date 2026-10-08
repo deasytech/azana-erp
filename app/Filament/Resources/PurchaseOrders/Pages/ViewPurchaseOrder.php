@@ -17,6 +17,7 @@ use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\PurchaseRequests\PurchaseRequestResource;
 use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\MoneyInput;
+use App\Filament\Support\ProgressSteps;
 use App\Filament\Widgets\PurchaseOrderProgressChartWidget;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -27,6 +28,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
@@ -63,6 +65,33 @@ class ViewPurchaseOrder extends ViewRecord
         $this->traceMemo = null;
     }
 
+    /** The order's journey, read from its status and the trace figures; the rules for each step live in the domain actions. @return list<array<string, mixed>> */
+    private function progress(): array
+    {
+        $order = $this->order();
+
+        if ($order->status === Status::Rejected || $order->status === Status::Cancelled) {
+            // A decision was only recorded if the order was approved before it was cancelled (a rejected order ends at the rejection).
+            return ProgressSteps::stopped($order->status === Status::Cancelled && $order->decided_at ? ['Drafted', 'Approved'] : ['Drafted'], $order->status->label());
+        }
+
+        $trace = $this->trace();
+        $done = match ($order->status) {
+            Status::Draft, Status::PendingApproval => 1,
+            Status::Approved, Status::PartiallyReceived => 2,
+            default => 3,
+        };
+        $done = $done === 3 && (int) $trace['invoiced'] > 0 ? 4 : $done;
+        // Paid only once everything received has been invoiced and that invoiced amount is settled.
+        $done = $done === 4 && (int) $trace['invoiced'] >= (int) $trace['received_value'] && (int) $trace['paid'] >= (int) $trace['invoiced'] ? 5 : $done;
+
+        return ProgressSteps::make(
+            ['Drafted', 'Approved', 'Received', 'Invoiced', 'Paid'],
+            $done,
+            [1 => $order->status === Status::PendingApproval ? 'Waiting for approval' : null, 2 => $order->status === Status::PartiallyReceived ? 'Part received' : null],
+        );
+    }
+
     /** Ordered, received, invoiced and paid drawn as bars, below the order's sections. */
     protected function getFooterWidgets(): array
     {
@@ -83,6 +112,9 @@ class ViewPurchaseOrder extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Progress')->description('From request to payment.')->schema([
+                ViewEntry::make('progress')->hiddenLabel()->view('filament.pages.partials.steps-entry')->state(fn () => $this->progress()),
+            ]),
             Section::make('Order')->columns(4)->schema([
                 TextEntry::make('number')->weight('bold')->copyable(),
                 TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label()),
@@ -104,6 +136,11 @@ class ViewPurchaseOrder extends ViewRecord
                 TextEntry::make('paid')->label('Paid')->state(fn () => MoneyColumn::format($this->trace()['paid'])),
             ]),
         ]);
+    }
+
+    public function getSubheading(): ?string
+    {
+        return $this->order()->supplier->name.' - ordered '.$this->order()->ordered_on->format('d M Y');
     }
 
     protected function getHeaderActions(): array

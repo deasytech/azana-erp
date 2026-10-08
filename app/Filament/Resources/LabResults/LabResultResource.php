@@ -37,14 +37,14 @@ class LabResultResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Sample')->description('What was sampled, from whom and when.')->columns(2)->schema([
+            Section::make('Sample')->description('What was sampled, from whom and when.')->columnSpanFull()->columns(2)->schema([
                 AnimalPicker::any()->helperText('Leave empty for a herd or pen sample.'),
                 TextInput::make('sample_type')->required()->maxLength(60)->placeholder('Blood, faeces, swab...'),
                 TextInput::make('test_name')->required()->maxLength(255),
                 DatePicker::make('sampled_on')->default(now())->maxDate(now())->required(),
                 DatePicker::make('resulted_on')->maxDate(now()),
             ]),
-            Section::make('Result')->description('What the laboratory found.')->columns(2)->schema([
+            Section::make('Result')->description('What the laboratory found.')->columnSpanFull()->columns(2)->schema([
                 Textarea::make('result'),
                 Toggle::make('is_abnormal')->label('Abnormal result'),
                 TextInput::make('lab_name')->maxLength(255),

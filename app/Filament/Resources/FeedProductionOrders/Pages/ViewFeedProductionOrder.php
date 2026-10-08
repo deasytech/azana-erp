@@ -12,6 +12,7 @@ use App\Filament\Resources\FeedFormulas\FeedFormulaResource;
 use App\Filament\Resources\FeedProductionOrders\FeedProductionOrderResource;
 use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\MoneyInput;
+use App\Filament\Support\ProgressSteps;
 use App\Support\Ratio;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -21,6 +22,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
@@ -57,6 +59,9 @@ class ViewFeedProductionOrder extends ViewRecord
         $made = fn (string $field, ?callable $format = null) => TextEntry::make("batch_{$field}")->state(fn () => ($b = $this->order()->batch) ? ($format ? $format($b->{$field}) : (string) $b->{$field}) : null)->placeholder('-');
 
         return $schema->components([
+            Section::make('Progress')->description('From plan to finished feed.')->schema([
+                ViewEntry::make('progress')->hiddenLabel()->view('filament.pages.partials.steps-entry')->state(fn () => $this->progress()),
+            ]),
             Section::make('Order')->columns(4)->schema([
                 TextEntry::make('number')->weight('bold')->copyable(),
                 TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label()),
@@ -83,6 +88,17 @@ class ViewFeedProductionOrder extends ViewRecord
                     ->state(fn () => $this->order()->batch?->reverse_reason),
             ]),
         ]);
+    }
+
+    /** The order's journey, read from its status; the rules live in the domain actions. @return list<array<string, mixed>> */
+    private function progress(): array
+    {
+        return match ($this->order()->status) {
+            Status::Planned => ProgressSteps::make(['Planned', 'Completed'], 1),
+            Status::Completed => ProgressSteps::make(['Planned', 'Completed'], 2),
+            Status::Reversed => ProgressSteps::stopped(['Planned', 'Completed'], 'Reversed'),
+            default => ProgressSteps::stopped(['Planned'], $this->order()->status->label()),
+        };
     }
 
     protected function getHeaderActions(): array

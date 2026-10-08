@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Domain\Tasks\Actions\GetAlerts;
 use App\Domain\Tasks\Actions\SendAlertNotifications;
+use App\Filament\Concerns\HasCachedNavigationBadge;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -15,6 +17,8 @@ use UnitEnum;
 /** Everything the system has noticed in its own data that needs attention, for the areas this user may view. */
 class Alerts extends Page
 {
+    use HasCachedNavigationBadge;
+
     protected string $view = 'filament.pages.alerts';
 
     protected static ?string $navigationLabel = 'Alerts';
@@ -24,6 +28,16 @@ class Alerts extends Page
     protected static string|UnitEnum|null $navigationGroup = 'Tasks & alerts';
 
     protected static ?int $navigationSort = 20;
+
+    protected static function navigationBadgeCount(User $user): int
+    {
+        return app(GetAlerts::class)($user)->where('severity', 'danger')->count();
+    }
+
+    protected static function navigationBadgeTooltipText(): ?string
+    {
+        return 'Critical alerts';
+    }
 
     public static function canAccess(): bool
     {

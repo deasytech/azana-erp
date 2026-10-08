@@ -21,6 +21,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -46,18 +47,22 @@ class BudgetResource extends Resource
     {
         $months = collect(range(1, 12))->mapWithKeys(fn ($m) => [$m => date('F', mktime(0, 0, 0, $m, 1))])->all();
 
-        return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('fiscal_year')->numeric()->integer()->minValue(2000)->maxValue(2100)->default((int) now()->year)->required(),
-            Textarea::make('notes')->columnSpanFull(),
-            Repeater::make('lines')->columnSpanFull()->minItems(1)->columns(4)->addActionLabel('Add line')
-                ->schema([
-                    Select::make('account_id')->label('Account')->required()->searchable()
-                        ->options(fn () => Account::where('is_active', true)->whereIn('type', [AccountType::Revenue->value, AccountType::Expense->value])->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
-                    Select::make('cost_centre_id')->label('Cost centre')->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
-                    Select::make('month')->options($months)->required(),
-                    MoneyInput::make('amount_minor', 'Amount')->required(),
-                ]),
+        return $schema->components([
+            Section::make('Budget')->description('Name and year.')->columnSpanFull()->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('fiscal_year')->numeric()->integer()->minValue(2000)->maxValue(2100)->default((int) now()->year)->required(),
+                Textarea::make('notes')->columnSpanFull(),
+            ]),
+            Section::make('Lines')->description('What is planned, by account, cost centre and month.')->columnSpanFull()->schema([
+                Repeater::make('lines')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(4)->addActionLabel('Add line')
+                    ->schema([
+                        Select::make('account_id')->label('Account')->required()->searchable()
+                            ->options(fn () => Account::where('is_active', true)->whereIn('type', [AccountType::Revenue->value, AccountType::Expense->value])->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
+                        Select::make('cost_centre_id')->label('Cost centre')->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
+                        Select::make('month')->options($months)->required(),
+                        MoneyInput::make('amount_minor', 'Amount')->required(),
+                    ]),
+            ]),
         ]);
     }
 

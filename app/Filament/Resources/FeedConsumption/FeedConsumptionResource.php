@@ -47,14 +47,14 @@ class FeedConsumptionResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Fed to')->description('Who ate the feed.')->columns(2)->schema([
+            Section::make('Fed to')->description('Who ate the feed.')->columnSpanFull()->columns(2)->schema([
                 Select::make('target')->label('Fed to')->options(['batch' => 'A batch', 'animal' => 'One animal'])->default('batch')->required()->live(),
                 Select::make('production_batch_id')->label('Batch')->searchable()
                     ->options(fn () => ProductionBatch::where('status', BatchStatus::Active->value)->orderBy('code')->get()->mapWithKeys(fn ($b) => [$b->id => "{$b->code} - {$b->name}"])->all())
                     ->visible(fn ($get) => $get('target') !== 'animal')->required(fn ($get) => $get('target') !== 'animal'),
                 AnimalPicker::any()->visible(fn ($get) => $get('target') === 'animal')->required(fn ($get) => $get('target') === 'animal'),
             ]),
-            Section::make('Feed')->description('What, how much and at what cost.')->columns(2)->schema([
+            Section::make('Feed')->description('What, how much and at what cost.')->columnSpanFull()->columns(2)->schema([
                 Select::make('feed_type_id')->label('Feed type')->required()->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 DatePicker::make('consumed_on')->default(now())->maxDate(now())->required(),
                 TextInput::make('quantity_kg')->label('Quantity (kg)')->numeric()->minValue(0.01)->step(0.01)->required(),

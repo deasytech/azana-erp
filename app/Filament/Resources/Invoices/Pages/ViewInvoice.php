@@ -35,6 +35,14 @@ class ViewInvoice extends ViewRecord
         ]);
     }
 
+    public function getSubheading(): ?string
+    {
+        $invoice = $this->getRecord();
+        assert($invoice instanceof Invoice);
+
+        return $invoice->customer->name.' - due '.$invoice->due_on->format('d M Y');
+    }
+
     protected function getHeaderActions(): array
     {
         return [

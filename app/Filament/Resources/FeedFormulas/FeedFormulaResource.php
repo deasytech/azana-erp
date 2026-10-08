@@ -58,26 +58,30 @@ class FeedFormulaResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            TextInput::make('code')->required()->maxLength(30)->visibleOn('create')->unique()
-                ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
-                ->helperText('Stays the same across versions; stored in upper case.'),
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('feed_type_id')->label('Feed type')->required()->searchable()
-                ->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-            TextInput::make('process_loss_percent')->label('Process loss (%)')->numeric()->minValue(0)->maxValue(50)->step(0.01)->default(0)->required()
-                ->helperText('Expected loss between mixing and bagging; the materials needed are increased to allow for it.'),
+        return $schema->components([
+            Section::make('Formula')->description('What it is and what it makes.')->columnSpanFull()->columns(2)->schema([
+                TextInput::make('code')->required()->maxLength(30)->visibleOn('create')->unique()
+                    ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
+                    ->helperText('Stays the same across versions; stored in upper case.'),
+                TextInput::make('name')->required()->maxLength(255),
+                Select::make('feed_type_id')->label('Feed type')->required()->searchable()
+                    ->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
+                TextInput::make('process_loss_percent')->label('Process loss (%)')->numeric()->minValue(0)->maxValue(50)->step(0.01)->default(0)->required()
+                    ->helperText('Expected loss between mixing and bagging; the materials needed are increased to allow for it.'),
+            ]),
             Section::make('Nutritional specification')->columns(4)->columnSpanFull()->description('Targets set by the nutritionist; all optional.')
                 ->schema(collect(FeedFormula::NUTRITION)->map(fn (string $label, string $field) => TextInput::make($field)->label($label)->numeric()->minValue(0)->step(0.01))->values()->all()),
-            Textarea::make('notes')->columnSpanFull(),
-            Repeater::make('items')->label('Ingredients')->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add ingredient')
-                ->schema([
-                    Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
-                        ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($i) => [$i->id => "{$i->code} - {$i->name}"])->all()),
-                    TextInput::make('inclusion_percent')->label('Inclusion (%)')->numeric()->minValue(0.0001)->maxValue(100)->step(0.0001)->required(),
-                    TextInput::make('notes')->maxLength(255),
-                ]),
-            Text::make(fn ($get) => 'Ingredients add up to '.static::total($get('items') ?? '').'% (must be exactly 100% to activate).')->columnSpanFull(),
+            Section::make('Ingredients and notes')->description('What goes into the mix, as a share of the whole.')->columnSpanFull()->schema([
+                Textarea::make('notes')->columnSpanFull(),
+                Repeater::make('items')->label('Ingredients')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add ingredient')
+                    ->schema([
+                        Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
+                            ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($i) => [$i->id => "{$i->code} - {$i->name}"])->all()),
+                        TextInput::make('inclusion_percent')->label('Inclusion (%)')->numeric()->minValue(0.0001)->maxValue(100)->step(0.0001)->required(),
+                        TextInput::make('notes')->maxLength(255),
+                    ]),
+                Text::make(fn ($get) => 'Ingredients add up to '.static::total($get('items') ?? '').'% (must be exactly 100% to activate).')->columnSpanFull(),
+            ]),
         ]);
     }
 

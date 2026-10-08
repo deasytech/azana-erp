@@ -13,6 +13,7 @@ use App\Filament\Resources\PurchaseOrders\Pages\ViewPurchaseOrder;
 use App\Filament\Resources\PurchaseOrders\RelationManagers\InvoicesRelationManager;
 use App\Filament\Resources\PurchaseOrders\RelationManagers\LinesRelationManager;
 use App\Filament\Resources\PurchaseOrders\RelationManagers\ReceiptsRelationManager;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\MoneyInput;
 use BackedEnum;
@@ -51,7 +52,7 @@ class PurchaseOrderResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Order')->description('Who we are buying from and when.')->columns(2)->schema([
+            Section::make('Order')->description('Who we are buying from and when.')->columnSpanFull()->columns(2)->schema([
                 Select::make('supplier_id')->label('Supplier')->required()->searchable()
                     ->options(fn () => Supplier::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 DatePicker::make('ordered_on')->default(now())->maxDate(now())->required(),
@@ -59,7 +60,7 @@ class PurchaseOrderResource extends Resource
                 Hidden::make('purchase_request_id'),
                 Textarea::make('notes'),
             ]),
-            Section::make('Items')->description('What is being ordered and at what cost.')->schema([
+            Section::make('Items')->description('What is being ordered and at what cost.')->columnSpanFull()->schema([
                 Repeater::make('lines')->label('Items')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add item')
                     ->schema([
                         Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
@@ -91,6 +92,7 @@ class PurchaseOrderResource extends Resource
             ->filters([
                 SelectFilter::make('status')->options(AnimalResource::enumOptions(PurchaseOrderStatus::cases())),
                 SelectFilter::make('supplier_id')->label('Supplier')->relationship('supplier', 'name')->searchable()->preload(),
+                DateRangeFilter::make('ordered_on', 'Ordered'),
             ])
             ->recordActions([ViewAction::make()])
             ->defaultSort('id', 'desc');

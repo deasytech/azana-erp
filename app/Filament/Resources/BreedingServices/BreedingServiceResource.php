@@ -21,6 +21,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -43,20 +44,26 @@ class BreedingServiceResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            AnimalPicker::sow()->required(),
-            DatePicker::make('serviced_on')->required()->default(now())->maxDate(now()),
-            Select::make('method')->options(AnimalResource::enumOptions(ServiceMethod::cases()))->required()->default(ServiceMethod::Natural->value),
-            AnimalPicker::boar()->helperText('Required for natural mating; optional for AI.'),
-            Select::make('semen_batch_id')->label('Semen batch')->searchable()->live()
-                ->options(fn () => SemenBatch::with(['boar', 'breed', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
-                    ->filter->isSellable()->mapWithKeys(fn (SemenBatch $b) => [$b->id => "{$b->number} ({$b->boar->animal_number}, expires {$b->expiry_date->format('d M')})"])->all())
-                ->helperText('For AI with our own released semen: one dose is taken from stock and the batch\'s boar is recorded as sire.'),
-            StockForms::store('semen_location_id', 'Take the dose from')->required(fn ($get) => filled($get('semen_batch_id')))->visible(fn ($get) => filled($get('semen_batch_id'))),
-            TextInput::make('semen_source')->maxLength(255)->helperText('For AI with outside semen: boar / supplier when no batch or boar is chosen.'),
-            Select::make('technician_id')->label('Technician (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-            TextInput::make('technician_name')->label('Technician (name)')->maxLength(255),
-            Textarea::make('notes')->columnSpanFull(),
+        return $schema->components([
+            Section::make('Service')->description('Which sow, when and how.')->columnSpanFull()->columns(2)->schema([
+                AnimalPicker::sow()->required(),
+                DatePicker::make('serviced_on')->required()->default(now())->maxDate(now()),
+                Select::make('method')->options(AnimalResource::enumOptions(ServiceMethod::cases()))->required()->default(ServiceMethod::Natural->value),
+            ]),
+            Section::make('Sire and semen')->description('The boar or the semen used.')->columnSpanFull()->columns(2)->schema([
+                AnimalPicker::boar()->helperText('Required for natural mating; optional for AI.'),
+                Select::make('semen_batch_id')->label('Semen batch')->searchable()->live()
+                    ->options(fn () => SemenBatch::with(['boar', 'breed', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
+                        ->filter->isSellable()->mapWithKeys(fn (SemenBatch $b) => [$b->id => "{$b->number} ({$b->boar->animal_number}, expires {$b->expiry_date->format('d M')})"])->all())
+                    ->helperText('For AI with our own released semen: one dose is taken from stock and the batch\'s boar is recorded as sire.'),
+                StockForms::store('semen_location_id', 'Take the dose from')->required(fn ($get) => filled($get('semen_batch_id')))->visible(fn ($get) => filled($get('semen_batch_id'))),
+                TextInput::make('semen_source')->maxLength(255)->helperText('For AI with outside semen: boar / supplier when no batch or boar is chosen.'),
+            ]),
+            Section::make('Technician')->description('Who performed the service.')->columnSpanFull()->columns(2)->schema([
+                Select::make('technician_id')->label('Technician (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
+                TextInput::make('technician_name')->label('Technician (name)')->maxLength(255),
+                Textarea::make('notes')->columnSpanFull(),
+            ]),
         ]);
     }
 

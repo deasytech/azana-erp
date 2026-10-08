@@ -16,6 +16,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -40,13 +41,17 @@ class StockAdjustmentResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            StockForms::item(),
-            StockForms::store(),
-            StockForms::batch(required: true),
-            TextInput::make('quantity')->numeric()->step(0.001)->required()->rule('not_in:0')
-                ->helperText('Positive adds stock, negative removes it.'),
-            Textarea::make('reason')->required()->columnSpanFull(),
-        ])->columns(2);
+            Section::make('Stock')->description('Which item, where it is held and which batch.')->columnSpanFull()->columns(2)->schema([
+                StockForms::item(),
+                StockForms::store(),
+                StockForms::batch(required: true),
+            ]),
+            Section::make('Adjustment')->description('How much to add or remove, and why.')->columnSpanFull()->columns(2)->schema([
+                TextInput::make('quantity')->numeric()->step(0.001)->required()->rule('not_in:0')
+                    ->helperText('Positive adds stock, negative removes it.'),
+                Textarea::make('reason')->required()->columnSpanFull(),
+            ]),
+        ]);
     }
 
     public static function table(Table $table): Table

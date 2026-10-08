@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -39,18 +40,22 @@ class SemenBoarResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            Select::make('animal_id')->label('Boar')->required()->searchable()->visibleOn('create')
-                ->options(fn () => Animal::whereHas('category', fn ($q) => $q->where('code', 'boar'))->where('status', AnimalStatus::Active)
-                    ->whereNotIn('id', SemenBoar::pluck('animal_id'))->orderBy('animal_number')->pluck('animal_number', 'id'))
-                ->helperText('Active boars not yet in the programme.'),
-            Select::make('status')->options(AnimalResource::enumOptions(SemenBoarStatus::cases()))->required()->default(SemenBoarStatus::Active->value)
-                ->helperText('A resting or retired boar is not collected from.'),
-            TextInput::make('min_interval_days')->label('Days between collections')->numeric()->integer()->minValue(0)->maxValue(365)
-                ->helperText('Leave empty to use the farm setting.'),
-            TextInput::make('target_doses_per_week')->label('Target doses per week')->numeric()->integer()->minValue(0)->maxValue(100000)
-                ->helperText('Leave empty to use the farm target.'),
-            Textarea::make('notes')->columnSpanFull(),
+        return $schema->components([
+            Section::make('Boar')->description('Which boar and whether it is being collected.')->columnSpanFull()->columns(2)->schema([
+                Select::make('animal_id')->label('Boar')->required()->searchable()->visibleOn('create')
+                    ->options(fn () => Animal::whereHas('category', fn ($q) => $q->where('code', 'boar'))->where('status', AnimalStatus::Active)
+                        ->whereNotIn('id', SemenBoar::pluck('animal_id'))->orderBy('animal_number')->pluck('animal_number', 'id'))
+                    ->helperText('Active boars not yet in the programme.'),
+                Select::make('status')->options(AnimalResource::enumOptions(SemenBoarStatus::cases()))->required()->default(SemenBoarStatus::Active->value)
+                    ->helperText('A resting or retired boar is not collected from.'),
+            ]),
+            Section::make('Collection plan')->description('How often to collect and how much to aim for.')->columnSpanFull()->columns(2)->schema([
+                TextInput::make('min_interval_days')->label('Days between collections')->numeric()->integer()->minValue(0)->maxValue(365)
+                    ->helperText('Leave empty to use the farm setting.'),
+                TextInput::make('target_doses_per_week')->label('Target doses per week')->numeric()->integer()->minValue(0)->maxValue(100000)
+                    ->helperText('Leave empty to use the farm target.'),
+                Textarea::make('notes')->columnSpanFull(),
+            ]),
         ]);
     }
 
