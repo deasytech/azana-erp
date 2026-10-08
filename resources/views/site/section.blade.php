@@ -12,7 +12,7 @@
     @if ($site['enquiries_enabled'])
         <x-site.section id="enquiry" tone="cream" :heading="true">
             <div class="narrow">
-                <x-site.heading id="enquiry" eyebrow="Enquiry" :title="'Ask about '.strtolower($section['title'])" />
+                <x-site.heading for="enquiry" eyebrow="Enquiry" :title="'Ask about '.strtolower($section['title'])" />
                 <div class="panel">@livewire(\App\Livewire\Public\EnquiryForm::class, ['kind' => $kind->value])</div>
             </div>
         </x-site.section>

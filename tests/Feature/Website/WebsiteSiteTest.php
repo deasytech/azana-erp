@@ -10,6 +10,8 @@ use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
+const ADA_EMAIL = 'ada@example.com';
+
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class, FinanceSeeder::class]);
     RateLimiter::clear('enquiry-minute:127.0.0.1');
@@ -92,8 +94,8 @@ describe('pages', function () {
         require base_path('routes/web.php');
         app('router')->getRoutes()->refreshNameLookups();
 
-        $this->get('http://www.azanafarms.com/about')->assertOk();
-        $this->get('http://erp.azanafarms.com/about')->assertNotFound();
+        $this->get('https://www.azanafarms.com/about')->assertOk();
+        $this->get('https://erp.azanafarms.com/about')->assertNotFound();
     });
 
     it('shows the contact details instead of the form when enquiries are off', function () {
@@ -106,7 +108,7 @@ describe('pages', function () {
 describe('enquiry form', function () {
     it('sends an enquiry and shows the reference', function () {
         Livewire::test(EnquiryForm::class, ['kind' => 'pigs'])
-            ->set('name', 'Ada Obi')->set('email', 'ada@example.com')->set('message', 'I need twenty weaners next month.')
+            ->set('name', 'Ada Obi')->set('email', ADA_EMAIL)->set('message', 'I need twenty weaners next month.')
             ->call('submit')->assertHasNoErrors()->assertSet('sent', 'ENQ-000001')->assertSee('ENQ-000001')->assertSet('name', '');
 
         expect(Enquiry::sole())->kind->value->toBe('pigs')->name->toBe('Ada Obi');
@@ -132,7 +134,7 @@ describe('enquiry form', function () {
     });
 
     it('keeps nothing from a script that fills the hidden field', function () {
-        Livewire::test(EnquiryForm::class)->set('name', 'Bot')->set('email', 'bot@example.com')->set('message', 'Buy cheap watches today!!')->set('website', 'http://spam.example')
+        Livewire::test(EnquiryForm::class)->set('name', 'Bot')->set('email', 'bot@example.com')->set('message', 'Buy cheap watches today!!')->set('website', 'https://spam.example')
             ->call('submit')->assertSet('sent', 'ENQ');
 
         expect(Enquiry::count())->toBe(0);
@@ -140,10 +142,10 @@ describe('enquiry form', function () {
 
     it('slows a flood down', function () {
         foreach (range(1, 3) as $i) {
-            Livewire::test(EnquiryForm::class)->set('name', "Ada {$i}")->set('email', 'ada@example.com')->set('message', "Message number {$i} about pigs")->call('submit')->assertHasNoErrors();
+            Livewire::test(EnquiryForm::class)->set('name', "Ada {$i}")->set('email', ADA_EMAIL)->set('message', "Message number {$i} about pigs")->call('submit')->assertHasNoErrors();
         }
 
-        Livewire::test(EnquiryForm::class)->set('name', 'Ada 4')->set('email', 'ada@example.com')->set('message', 'Message number 4 about pigs')->call('submit')
+        Livewire::test(EnquiryForm::class)->set('name', 'Ada 4')->set('email', ADA_EMAIL)->set('message', 'Message number 4 about pigs')->call('submit')
             ->assertHasErrors('message')->assertSet('sent', null);
         expect(Enquiry::count())->toBe(3);
     });
@@ -151,7 +153,7 @@ describe('enquiry form', function () {
     it('tells the visitor when enquiries are closed instead of losing the message', function () {
         app(ResolveSettings::class)->set('website.enquiries_enabled', false);
 
-        Livewire::test(EnquiryForm::class)->set('name', 'Ada')->set('email', 'ada@example.com')->set('message', 'I need twenty weaners.')->call('submit')
+        Livewire::test(EnquiryForm::class)->set('name', 'Ada')->set('email', ADA_EMAIL)->set('message', 'I need twenty weaners.')->call('submit')
             ->assertHasErrors('message')->assertSee('not being taken');
     });
 });

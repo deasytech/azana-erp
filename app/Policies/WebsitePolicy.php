@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\Module;
+use App\Enums\PermissionAction;
 use App\Models\User;
 
 /** Enquiries come from the public: staff follow them up, close them or mark them as spam, but never create or delete them. */
@@ -13,18 +14,13 @@ class WebsitePolicy extends ModulePolicy
         return Module::Website;
     }
 
-    public function create(User $user): bool
+    protected function can(User $user, PermissionAction $action): bool
     {
-        return false;
-    }
-
-    public function delete(User $user, mixed $model = null): bool
-    {
-        return false;
+        return ! in_array($action, [PermissionAction::Create, PermissionAction::Delete], true) && parent::can($user, $action);
     }
 
     public function deleteAny(User $user): bool
     {
-        return false;
+        return $this->can($user, PermissionAction::Delete);
     }
 }

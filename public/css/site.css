@@ -192,7 +192,8 @@ input[aria-invalid=true],textarea[aria-invalid=true]{border-color:var(--color-er
 .notice{border-radius:var(--radius);padding:1.5rem}
 .notice-ok{background:var(--color-gold-light);border-left:4px solid var(--color-primary)}
 .notice:focus{outline:3px solid var(--color-primary)}
-.notice h2{font-size:1.4rem;margin-bottom:.5rem}
+output.notice{display:block}
+.notice-title{display:block;margin-bottom:.5rem;font:600 1.4rem/1.2 var(--font-display)}
 
 /* Footer */
 .foot{background:var(--color-brown);color:#d9cdc0;padding:4.5rem 0 2rem;border-top:4px solid var(--color-primary)}

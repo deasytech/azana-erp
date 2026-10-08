@@ -1,9 +1,9 @@
 <div>
     @if ($sent)
-        <div class="notice notice-ok" role="status" tabindex="-1" x-data x-init="$el.focus()">
-            <h2 class="h3">Thank you, we have your enquiry.</h2>
-            <p>@if ($sent !== 'ENQ') Your reference is <strong>{{ $sent }}</strong>. @endif We will get back to you using the details you gave.</p>
-        </div>
+        <output class="notice notice-ok" tabindex="-1" x-data x-init="$el.focus()">
+            <span class="notice-title">Thank you, we have your enquiry.</span>
+            <span>@if ($sent !== 'ENQ') Your reference is <strong>{{ $sent }}</strong>. @endif We will get back to you using the details you gave.</span>
+        </output>
     @else
         <form wire:submit="submit" class="form" novalidate>
             <div class="field">

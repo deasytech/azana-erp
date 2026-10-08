@@ -11,14 +11,14 @@
         <div class="split">
             <div class="frame reveal"><x-site.image name="about" alt="Farm workers caring for pigs" ratio="r45" /></div>
             <div>
-                <x-site.heading id="story" eyebrow="Who we are" title="One farm, every stage in view" />
+                <x-site.heading for="story" eyebrow="Who we are" title="One farm, every stage in view" />
                 <div class="prose reveal">@foreach ($about as $paragraph)<p>{{ $paragraph }}</p>@endforeach</div>
             </div>
         </div>
     </x-site.section>
 
     <x-site.section id="why" tone="cream" :heading="true">
-        <x-site.heading id="why" eyebrow="What we stand for" title="Our principles" :center="true" />
+        <x-site.heading for="why" eyebrow="What we stand for" title="Our principles" :center="true" />
         <div class="grid g3">@foreach (config('website.values') as $item)<x-site.feature-card :item="$item" />@endforeach</div>
     </x-site.section>
 

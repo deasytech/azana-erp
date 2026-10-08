@@ -57,7 +57,13 @@ class GetPublicCatalogue
 
         $price = ($this->price)($listing->item);
 
-        return $price ? Money::ofMinor($price['price_minor'], $price['currency'])->format().($listing->price_unit ? " {$listing->price_unit}" : '') : null;
+        if (! $price) {
+            return null;
+        }
+
+        $formatted = Money::ofMinor($price['price_minor'], $price['currency'])->format();
+
+        return $listing->price_unit ? "{$formatted} {$listing->price_unit}" : $formatted;
     }
 
     /** @param list<int> $sellableBreeds */

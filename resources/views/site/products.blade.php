@@ -9,7 +9,7 @@
 
     @foreach ($groups as $kind => $rows)
         <x-site.section :id="'g-'.$kind" tone="cream" :heading="true">
-            <x-site.heading :id="'g-'.$kind" eyebrow="Current listings" :title="\App\Enums\ListingKind::from($kind)->label()" />
+            <x-site.heading :for="'g-'.$kind" eyebrow="Current listings" :title="\App\Enums\ListingKind::from($kind)->label()" />
             <div class="grid g3">@foreach ($rows as $row)<x-site.listing-card :row="$row" />@endforeach</div>
         </x-site.section>
     @endforeach

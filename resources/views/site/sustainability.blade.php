@@ -5,7 +5,7 @@
         <div class="split flip">
             <div class="frame reveal"><x-site.image name="sustainability" alt="The farm and its surroundings" /></div>
             <div>
-                <x-site.heading id="approach" eyebrow="Our approach" title="How we farm responsibly" />
+                <x-site.heading for="approach" eyebrow="Our approach" title="How we farm responsibly" />
                 <ul class="ticks reveal">
                     @foreach (config('website.sustainability') as $item)<li><x-site.icon name="check" /><span><strong>{{ $item['title'] }}.</strong> {{ $item['text'] }}</span></li>@endforeach
                 </ul>

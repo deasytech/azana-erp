@@ -19,6 +19,9 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 
+const WEBSITE_MANAGER = 'General Manager';
+const WEBSITE_SALES = 'Sales Officer';
+
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class, FinanceSeeder::class]);
     Filament::setCurrentPanel('admin');
@@ -34,7 +37,7 @@ describe('enquiries', function () {
         $open = waitingEnquiry();
         $done = waitingEnquiry(['name' => 'Old Request']);
         $done->update(['status' => EnquiryStatus::Closed]);
-        $this->actingAs(userWithRole('Sales Officer'));
+        $this->actingAs(userWithRole(WEBSITE_SALES));
 
         Livewire::test(ListWebsiteEnquiries::class)->assertCanSeeTableRecords([$open])->assertCanNotSeeTableRecords([$done])
             ->callAction(TestAction::make('contacted')->table($open), ['note' => 'Phoned him'])->assertNotified('Marked as contacted');
@@ -45,7 +48,7 @@ describe('enquiries', function () {
 
     it('turns an enquiry into a customer and takes the user to them', function () {
         $enquiry = waitingEnquiry();
-        $this->actingAs(userWithRole('Sales Officer'));
+        $this->actingAs(userWithRole(WEBSITE_SALES));
 
         Livewire::test(ViewWebsiteEnquiry::class, ['record' => $enquiry->getKey()])
             ->callAction('makeCustomer', ['customer_type_id' => lookup(LookupCategory::CustomerType, 'butcher')])->assertNotified();
@@ -60,7 +63,7 @@ describe('enquiries', function () {
         $this->actingAs(farmWorker());
         $this->get('/admin/website-enquiries')->assertForbidden();
 
-        $this->actingAs($manager = userWithRole('General Manager'));
+        $this->actingAs($manager = userWithRole(WEBSITE_MANAGER));
         expect($manager->can('create', Enquiry::class))->toBeFalse()->and($manager->can('delete', Enquiry::first()))->toBeFalse();
         $this->get('/admin/website-enquiries')->assertOk();
     });
@@ -83,7 +86,7 @@ describe('enquiries', function () {
 
 describe('listings', function () {
     it('lets a manager publish a listing and see it on the site', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(WEBSITE_MANAGER));
 
         Livewire::test(CreateWebsiteListing::class)
             ->fillForm(['kind' => 'pigs', 'title' => 'Weaners', 'summary' => 'Healthy weaners.', 'is_published' => true])
@@ -94,7 +97,7 @@ describe('listings', function () {
     });
 
     it('explains a rule the listing breaks instead of saving it', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(WEBSITE_MANAGER));
 
         Livewire::test(CreateWebsiteListing::class)
             ->fillForm(['kind' => 'semen', 'title' => 'Semen', 'summary' => 'Doses.', 'show_price' => true])
@@ -105,7 +108,7 @@ describe('listings', function () {
 
     it('edits and unpublishes a listing', function () {
         $listing = Listing::create(['kind' => 'pigs', 'slug' => 'weaners', 'title' => 'Weaners', 'summary' => 'Healthy.', 'is_published' => true]);
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(WEBSITE_MANAGER));
 
         Livewire::test(EditWebsiteListing::class, ['record' => $listing->getKey()])->fillForm(['is_published' => false])->call('save')->assertHasNoFormErrors();
 
@@ -115,7 +118,7 @@ describe('listings', function () {
     });
 
     it('is closed to a sales officer who can only follow up enquiries', function () {
-        $this->actingAs(userWithRole('Sales Officer'));
+        $this->actingAs(userWithRole(WEBSITE_SALES));
 
         $this->get('/admin/website-listings')->assertOk();
         expect(auth()->user()->can('delete', new Listing))->toBeFalse();

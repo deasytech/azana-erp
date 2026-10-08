@@ -26,7 +26,7 @@
         <div class="split">
             <div class="frame reveal"><x-site.image name="about" alt="Farm workers caring for pigs" ratio="r45" /></div>
             <div>
-                <x-site.heading id="about" eyebrow="About us" title="Integrated agriculture, run with discipline" />
+                <x-site.heading for="about" eyebrow="About us" title="Integrated agriculture, run with discipline" />
                 <div class="prose reveal">
                     @foreach ($about as $paragraph)<p>{{ $paragraph }}</p>@endforeach
                 </div>
@@ -41,7 +41,7 @@
     </x-site.section>
 
     <x-site.section id="operations" tone="cream" :heading="true">
-        <x-site.heading id="operations" eyebrow="Our operations" title="From breeding pen to finished product" intro="Every stage of the pig's life is managed on the farm, which is how we keep quality consistent." />
+        <x-site.heading for="operations" eyebrow="Our operations" title="From breeding pen to finished product" intro="Every stage of the pig's life is managed on the farm, which is how we keep quality consistent." />
         <div class="grid g3">
             @foreach (config('website.operations') as $op)<x-site.operation-card :op="$op" />@endforeach
         </div>
@@ -49,7 +49,7 @@
 
     <x-site.section id="technology" tone="dark" :heading="true">
         <div class="split">
-            <x-site.heading id="technology" eyebrow="Modern agriculture" title="Technology behind better farming" intro="We use modern tools to see what is happening on the farm and act on it early. It is how we keep animals healthy, feed efficient and records dependable." />
+            <x-site.heading for="technology" eyebrow="Modern agriculture" title="Technology behind better farming" intro="We use modern tools to see what is happening on the farm and act on it early. It is how we keep animals healthy, feed efficient and records dependable." />
             <ul class="tech-list reveal">
                 @foreach (config('website.technology') as $item)<li><x-site.icon :name="$item['icon']" /><span>{{ $item['text'] }}</span></li>@endforeach
             </ul>
@@ -57,14 +57,14 @@
     </x-site.section>
 
     <x-site.section id="why" :heading="true">
-        <x-site.heading id="why" eyebrow="Why Azana Farms" title="What you can expect from us" :center="true" />
+        <x-site.heading for="why" eyebrow="Why Azana Farms" title="What you can expect from us" :center="true" />
         <div class="grid g3">
             @foreach (config('website.values') as $item)<x-site.feature-card :item="$item" />@endforeach
         </div>
     </x-site.section>
 
     <x-site.section id="products" tone="cream" :heading="true">
-        <x-site.heading id="products" eyebrow="Products &amp; services" title="What we offer" intro="Tell us what you need and we will confirm what is ready and when." />
+        <x-site.heading for="products" eyebrow="Products &amp; services" title="What we offer" intro="Tell us what you need and we will confirm what is ready and when." />
         <div class="grid g3">
             @foreach (config('website.sections') as $kind => $section)<x-site.product-card :kind="$kind" :section="$section" :image="['pigs' => 'livestock', 'semen' => 'breeding', 'meat' => 'meat'][$kind] ?? 'livestock'" />@endforeach
         </div>
@@ -74,7 +74,7 @@
         <div class="split flip">
             <div class="frame reveal"><x-site.image name="sustainability" alt="The farm and its surroundings" /></div>
             <div>
-                <x-site.heading id="sustainability" eyebrow="Sustainability" title="Responsible farming, built to last" intro="Looking after animals, feed and resources carefully is good for the land and good for business." />
+                <x-site.heading for="sustainability" eyebrow="Sustainability" title="Responsible farming, built to last" intro="Looking after animals, feed and resources carefully is good for the land and good for business." />
                 <ul class="ticks reveal">
                     @foreach (config('website.sustainability') as $item)<li><x-site.icon name="check" /><span><strong>{{ $item['title'] }}.</strong> {{ $item['text'] }}</span></li>@endforeach
                 </ul>
@@ -87,7 +87,7 @@
     <x-site.section id="enquiry" tone="cream" :heading="true">
         <div class="contact-grid">
             <div>
-                <x-site.heading id="enquiry" eyebrow="Contact" title="Talk to us" intro="Whether you are buying pigs, planning a breeding programme or looking for fresh pork, we would like to hear from you." />
+                <x-site.heading for="enquiry" eyebrow="Contact" title="Talk to us" intro="Whether you are buying pigs, planning a breeding programme or looking for fresh pork, we would like to hear from you." />
                 <x-site.contact-details :site="$site" />
             </div>
             <div class="panel">

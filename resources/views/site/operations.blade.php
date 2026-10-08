@@ -7,7 +7,7 @@
 
     <x-site.section id="technology" tone="dark" :heading="true">
         <div class="split">
-            <x-site.heading id="technology" eyebrow="Modern agriculture" title="Technology behind better farming" intro="We use modern tools to see what is happening on the farm and act on it early." />
+            <x-site.heading for="technology" eyebrow="Modern agriculture" title="Technology behind better farming" intro="We use modern tools to see what is happening on the farm and act on it early." />
             <ul class="tech-list reveal">@foreach (config('website.technology') as $item)<li><x-site.icon :name="$item['icon']" /><span>{{ $item['text'] }}</span></li>@endforeach</ul>
         </div>
     </x-site.section>
