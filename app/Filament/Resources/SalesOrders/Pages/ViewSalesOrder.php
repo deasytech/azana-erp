@@ -96,7 +96,9 @@ class ViewSalesOrder extends ViewRecord
 
     public function getSubheading(): ?string
     {
-        return $this->record->customer->name.' - ordered '.$this->record->ordered_on->format('d M Y');
+        $order = $this->order();
+
+        return $order->customer->name.' - ordered '.$order->ordered_on->format('d M Y');
     }
 
     protected function getHeaderActions(): array
