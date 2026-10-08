@@ -12,6 +12,7 @@ use App\Filament\Resources\FeedFormulas\Pages\EditFeedFormula;
 use App\Filament\Resources\FeedFormulas\Pages\ListFeedFormulas;
 use App\Filament\Resources\FeedFormulas\Pages\ViewFeedFormula;
 use App\Filament\Resources\FeedFormulas\RelationManagers\IngredientsRelationManager;
+use App\Filament\Support\CodeField;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Repeater;
@@ -60,9 +61,9 @@ class FeedFormulaResource extends Resource
     {
         return $schema->components([
             Section::make('Formula')->description('What it is and what it makes.')->columnSpanFull()->columns(2)->schema([
-                TextInput::make('code')->required()->maxLength(30)->visibleOn('create')->unique()
+                CodeField::make('feed_formulas', 'FF')->required()->maxLength(30)->visibleOn('create')->unique()
                     ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
-                    ->helperText('Stays the same across versions; stored in upper case.'),
+                    ->helperText('Filled in for you. Stays the same across versions; stored in upper case.'),
                 TextInput::make('name')->required()->maxLength(255),
                 Select::make('feed_type_id')->label('Feed type')->required()->searchable()
                     ->options(fn () => FeedType::where('is_active', true)->orderBy('name')->pluck('name', 'id')),

@@ -22,6 +22,8 @@ class VaccinationScheduleResource extends MasterResource
 {
     protected static ?string $model = VaccinationSchedule::class;
 
+    protected static ?string $codePrefix = 'VS';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
     protected static string|UnitEnum|null $navigationGroup = 'Health';

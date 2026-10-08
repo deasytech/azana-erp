@@ -17,6 +17,8 @@ class FeedTypeResource extends MasterResource
 {
     protected static ?string $model = FeedType::class;
 
+    protected static ?string $codePrefix = 'FT';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
 
     protected static string|UnitEnum|null $navigationGroup = 'Production';

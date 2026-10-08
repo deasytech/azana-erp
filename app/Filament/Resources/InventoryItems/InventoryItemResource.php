@@ -27,6 +27,8 @@ class InventoryItemResource extends MasterResource
 {
     protected static ?string $model = InventoryItem::class;
 
+    protected static ?string $codePrefix = 'ITM';
+
     protected static ?string $navigationLabel = 'Items';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArchiveBox;

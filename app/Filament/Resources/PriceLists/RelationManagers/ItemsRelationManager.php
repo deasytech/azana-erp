@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PriceLists\RelationManagers;
 
 use App\Domain\Inventory\Models\InventoryItem;
+use App\Filament\Support\CodeField;
 use App\Filament\Support\MoneyInput;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -23,7 +24,7 @@ class ItemsRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('code')->required()->maxLength(60)
+            CodeField::make('price_list_items', 'ITEM', fn ($q) => $q->where('price_list_id', $this->getOwnerRecord()->getKey()))->required()->maxLength(60)
                 ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
                 ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('price_list_id', $this->getOwnerRecord()->getKey())),
             TextInput::make('description')->required()->maxLength(255),

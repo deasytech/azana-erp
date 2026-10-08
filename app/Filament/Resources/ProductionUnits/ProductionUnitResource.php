@@ -21,6 +21,8 @@ class ProductionUnitResource extends MasterResource
 {
     protected static ?string $model = ProductionUnit::class;
 
+    protected static ?string $codePrefix = 'PU';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
 
     protected static string|UnitEnum|null $navigationGroup = 'Farm structure';

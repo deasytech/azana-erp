@@ -17,6 +17,8 @@ class CostCentreResource extends MasterResource
 {
     protected static ?string $model = CostCentre::class;
 
+    protected static ?string $codePrefix = 'CC';
+
     protected static ?string $navigationLabel = 'Cost centres';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;

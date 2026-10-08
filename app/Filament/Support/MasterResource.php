@@ -31,6 +31,9 @@ abstract class MasterResource extends Resource
 
     protected static int $codeLength = 30;
 
+    /** The letters generated codes start with (e.g. PEN for PEN-0001); null leaves the code to be typed, as for the chart of accounts. */
+    protected static ?string $codePrefix = null;
+
     /** @return list<string> */
     public static function getGloballySearchableAttributes(): array
     {
@@ -91,12 +94,14 @@ abstract class MasterResource extends Resource
 
     protected static function codeField(): TextInput
     {
-        return TextInput::make('code')
+        $field = static::$codePrefix ? CodeField::make((new (static::getModel()))->getTable(), static::$codePrefix) : TextInput::make('code');
+
+        return $field
             ->required()
             ->maxLength(static::$codeLength)
             ->mutateStateForValidationUsing(fn (?string $state) => static::normalizeCode($state))
             ->unique(ignoreRecord: true)
-            ->helperText('Unique business identifier; stored in upper case.');
+            ->helperText(static::$codePrefix ? 'Filled in for you; use the sparkles icon for another, or type your own. Must be unique; stored in upper case.' : 'Unique business identifier; stored in upper case.');
     }
 
     /** Mirrors HasBusinessCode so uniqueness is checked against what will actually be stored. */

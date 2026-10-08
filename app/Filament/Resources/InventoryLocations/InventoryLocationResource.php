@@ -20,6 +20,8 @@ class InventoryLocationResource extends MasterResource
 {
     protected static ?string $model = InventoryLocation::class;
 
+    protected static ?string $codePrefix = 'STORE';
+
     protected static ?string $navigationLabel = 'Stores';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;

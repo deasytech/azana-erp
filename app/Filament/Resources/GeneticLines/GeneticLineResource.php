@@ -19,6 +19,8 @@ class GeneticLineResource extends MasterResource
 {
     protected static ?string $model = GeneticLine::class;
 
+    protected static ?string $codePrefix = 'GL';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBeaker;
 
     protected static string|UnitEnum|null $navigationGroup = 'Master data';

@@ -18,6 +18,8 @@ class FarmResource extends MasterResource
 {
     protected static ?string $model = Farm::class;
 
+    protected static ?string $codePrefix = 'FRM';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
 
     protected static string|UnitEnum|null $navigationGroup = 'Farm structure';

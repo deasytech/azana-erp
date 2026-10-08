@@ -22,6 +22,8 @@ class LocationResource extends MasterResource
 {
     protected static ?string $model = Location::class;
 
+    protected static ?string $codePrefix = 'LOC';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMapPin;
 
     protected static string|UnitEnum|null $navigationGroup = 'Farm structure';

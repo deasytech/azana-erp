@@ -18,6 +18,8 @@ class SupplierResource extends MasterResource
 {
     protected static ?string $model = Supplier::class;
 
+    protected static ?string $codePrefix = 'SUP';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 
     protected static string|UnitEnum|null $navigationGroup = 'Purchasing';

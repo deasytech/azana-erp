@@ -20,6 +20,8 @@ class BuildingResource extends MasterResource
 {
     protected static ?string $model = Building::class;
 
+    protected static ?string $codePrefix = 'BLD';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHomeModern;
 
     protected static string|UnitEnum|null $navigationGroup = 'Farm structure';
