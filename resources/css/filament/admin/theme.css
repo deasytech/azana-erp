@@ -68,6 +68,14 @@
 .fi-sidebar {
     @apply shadow-none;
 }
+/* The sidebar is its own plane: a deeper cream than the page, with a hairline against it. */
+:root:not(.dark) .fi-sidebar {
+    background-color: color-mix(in srgb, var(--azana-cream) 85%, #e9dfc0);
+    border-inline-end: 1px solid var(--azana-line);
+}
+:root:not(.dark) .fi-sidebar-header {
+    background-color: transparent;
+}
 .fi-sidebar-header {
     @apply shadow-none ring-0;
     border-bottom: 1px solid var(--azana-line);

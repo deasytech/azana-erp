@@ -37,6 +37,28 @@
         </x-filament::section>
     @endif
 
+    {{-- What matters most for this user's job --}}
+    @if ($focus = $this->focus())
+        @if (count($focus['kpis']) || count($focus['links']))
+            <x-filament::section :icon="\Filament\Support\Icons\Heroicon::Star" :heading="__($focus['heading'])" :description="__($focus['description'])">
+                @if (count($focus['kpis']))
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($focus['kpis'] as $k)
+                            <x-erp.kpi :label="$k['label']" :value="$fmt($k)" />
+                        @endforeach
+                    </div>
+                @endif
+                @if (count($focus['links']))
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        @foreach ($focus['links'] as $link)
+                            <x-filament::button tag="a" :href="$link['url']" color="gray" size="sm" outlined>{{ $link['label'] }}</x-filament::button>
+                        @endforeach
+                    </div>
+                @endif
+            </x-filament::section>
+        @endif
+    @endif
+
     {{-- The farm now: headline figures first, the other levels beneath --}}
     @if ($now->isNotEmpty())
         <section class="space-y-3" aria-labelledby="farm-now">

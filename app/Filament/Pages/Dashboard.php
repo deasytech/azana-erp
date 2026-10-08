@@ -2,8 +2,14 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Reporting\Actions\GetKpis;
 use App\Domain\Reporting\Actions\GetOwnerSnapshot;
 use App\Filament\Resources\Tasks\TaskResource;
+use App\Filament\Support\DashboardFocus;
+use App\Filament\Widgets\AnimalsByStatusChartWidget;
+use App\Filament\Widgets\BornAliveChartWidget;
+use App\Filament\Widgets\HerdByCategoryChartWidget;
+use App\Filament\Widgets\SalesTrendChartWidget;
 use App\Filament\Widgets\TargetAttainmentChartWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -16,21 +22,42 @@ class Dashboard extends BaseDashboard
 
     protected static ?string $navigationLabel = 'Home';
 
-    /** This month's headline indicators drawn against target, below the snapshot. */
+    /** The trends and splits behind the snapshot, then this month's indicators against target. Each chart shows only to users who may see its data. */
     protected function getFooterWidgets(): array
     {
-        return [TargetAttainmentChartWidget::class];
+        return [SalesTrendChartWidget::class, BornAliveChartWidget::class, AnimalsByStatusChartWidget::class, HerdByCategoryChartWidget::class, TargetAttainmentChartWidget::class];
     }
 
-    public function getFooterWidgetsColumns(): int
+    public function getFooterWidgetsColumns(): int|array
     {
-        return 1;
+        return ['default' => 1, 'lg' => 2];
     }
 
     /** @return array<string, mixed> */
     public function getSnapshotProperty(): array
     {
         return app(GetOwnerSnapshot::class)(auth()->user());
+    }
+
+    /**
+     * The part of the dashboard that matches the user's job: month-to-date figures for the indicators that matter to it, and shortcuts.
+     * Figures the user may not view are left out; null when their roles have no focus.
+     *
+     * @return array{heading: string, description: string, kpis: list<array<string, mixed>>, links: list<array{label: string, url: string}>}|null
+     */
+    public function focus(): ?array
+    {
+        $user = auth()->user();
+        $focus = DashboardFocus::for($user);
+
+        if (! $focus) {
+            return null;
+        }
+
+        $values = (app(GetKpis::class))(now()->startOfMonth(), now(), $user);
+        $focus['kpis'] = array_values(array_intersect_key($values, array_flip($focus['kpis'])));
+
+        return $focus;
     }
 
     public function greeting(): string
