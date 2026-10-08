@@ -1,69 +1,79 @@
 <x-filament-panels::page>
     @php
         $s = $this->snapshot;
+        $fmt = fn (array $k) => \App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['value']);
+        $now = collect($s['now'])->keyBy('key');
+        $headline = $now->only(['herd.active_animals', 'production.growing_pigs', 'finance.cash_minor', 'sales.receivables_minor']);
+        $levels = $now->except($headline->keys()->all());
+        $attention = $this->attention();
+        $anyAttention = collect($attention)->contains(fn ($a) => $a['count'] > 0);
     @endphp
 
-    <div class="flex flex-wrap gap-2 text-sm">
-        @foreach ($this->links() as $link)
-            <a href="{{ $link['url'] }}"
-                class="inline-flex items-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-400/40 dark:border-white/10 dark:text-gray-200 dark:hover:bg-white/5">
-                {{ $link['label'] }}
-            </a>
-        @endforeach
+    {{-- Welcome and the way into the rest --}}
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+            {{ $this->greeting() }}, {{ auth()->user()->name }}. {{ now()->format('l, j F Y') }}.
+        </p>
+        <div class="flex flex-wrap gap-2">
+            @foreach ($this->links() as $link)
+                <x-filament::button tag="a" :href="$link['url']" color="gray" size="sm" outlined>
+                    {{ $link['label'] }}
+                </x-filament::button>
+            @endforeach
+        </div>
     </div>
 
-    @if (collect($s['attention'])->contains(fn ($n) => $n !== null))
-        <x-filament::section
-            :icon="Filament\Support\Icons\Heroicon::BellAlert"
-            :heading="__('Needs attention')"
-        >
+    {{-- What needs attention: only items this user may act on --}}
+    @if (count($attention))
+        <x-filament::section :icon="\Filament\Support\Icons\Heroicon::BellAlert" :heading="__('Needs attention')"
+            :description="$anyAttention ? __('Open these first.') : __('Nothing is waiting for you right now.')">
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach (['critical_alerts' => 'Critical alerts', 'overdue_tasks' => 'Overdue tasks', 'my_open_tasks' => 'My open tasks', 'approvals' => 'Waiting for approval'] as $key => $label)
-                    @if ($s['attention'][$key] !== null)
-                        <div
-                            class="flex items-center gap-3 rounded-lg border p-4 {{ $key === 'critical_alerts'
-                                ? 'border-danger-300 bg-danger-50 dark:border-danger-700 dark:bg-danger-950'
-                                : ($key === 'overdue_tasks' && $s['attention'][$key] > 0
-                                    ? 'border-warning-300 bg-warning-50 dark:border-warning-700 dark:bg-warning-950'
-                                    : 'border-gray-200 dark:border-white/10 bg-white dark:bg-gray-950'
-                                )
-                            }}"
-                        >
-                            <div class="flex-1 text-xs font-medium text-gray-500 dark:text-gray-400">{{ $label }}</div>
-                            <div class="text-xl font-bold text-gray-950 dark:text-white">{{ $s['attention'][$key] }}</div>
-                        </div>
-                    @endif
+                @foreach ($attention as $a)
+                    <x-erp.kpi :label="$a['label']" :value="$a['count']" :url="$a['url']"
+                        :tone="$a['count'] > 0 ? $a['tone'] : null"
+                        :hint="$a['count'] > 0 ? $a['hint'] : null" />
                 @endforeach
             </div>
         </x-filament::section>
     @endif
 
-    @foreach (['today' => 'Today', 'now' => 'The farm now'] as $block => $title)
-        @php
-            $icon = $block === 'today' ? Filament\Support\Icons\Heroicon::CalendarDays : Filament\Support\Icons\Heroicon::LightBulb;
-        @endphp
-        <x-filament::section
-            :icon="$icon"
-            :heading="__('The farm ' . $title)"
-        >
+    {{-- The farm now: headline figures first, the other levels beneath --}}
+    @if ($now->isNotEmpty())
+        <section class="space-y-3" aria-labelledby="farm-now">
+            <h2 id="farm-now" class="text-base font-semibold text-gray-950 dark:text-white">{{ __('The farm now') }}</h2>
+            @if ($headline->isNotEmpty())
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    @foreach ($s[$block] as $k)
-                        <div class="rounded-lg border border-gray-200 p-4 dark:border-white/10">
-                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $k['label'] }}</div>
-                            <div class="mt-1 text-xl font-bold text-gray-950 dark:text-white">
-                                {{ \App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['value']) }}
-                            </div>
-                        </div>
+                    @foreach ($headline as $k)
+                        <x-erp.kpi :label="$k['label']" :value="$fmt($k)" primary />
                     @endforeach
                 </div>
-            </x-filament::section>
-    @endforeach
+            @endif
+            @if ($levels->isNotEmpty())
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach ($levels as $k)
+                        <x-erp.kpi :label="$k['label']" :value="$fmt($k)" />
+                    @endforeach
+                </div>
+            @endif
+        </section>
+    @endif
 
+    {{-- Today --}}
+    @if (count($s['today']))
+        <section class="space-y-3" aria-labelledby="farm-today">
+            <h2 id="farm-today" class="text-base font-semibold text-gray-950 dark:text-white">{{ __('Today') }}</h2>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                @foreach ($s['today'] as $k)
+                    <x-erp.kpi :label="$k['label']" :value="$fmt($k)" />
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    {{-- This month against target --}}
     @if ($s['month'])
-        <x-filament::section
-            :icon="Filament\Support\Icons\Heroicon::ChartBar"
-            :heading="__('This month against target')"
-        >
+        <x-filament::section :icon="\Filament\Support\Icons\Heroicon::ChartBar" :heading="__('This month against target')"
+            :description="__('The headline indicators for :month.', ['month' => now()->format('F Y')])">
             @include('filament.pages.partials.kpi-table', ['kpis' => $s['month']])
         </x-filament::section>
     @endif

@@ -57,6 +57,7 @@ use App\Policies\SyncMutationPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\WebsiteListingPolicy;
 use App\Policies\WebsitePolicy;
+use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -82,6 +83,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every list offers the same page sizes and jumps to its first and last page.
+        Table::configureUsing(fn (Table $table): Table => $table->paginationPageOptions([10, 25, 50, 100])->extremePaginationLinks());
+
         // Sign-in is limited twice: per address (one place trying many accounts) and per account (many places trying one account). The account's
         // limit does not depend on the address, so changing address does not give an attacker a fresh budget. Plenty of room to sync a day's queue.
         RateLimiter::for('mobile-login', fn (Request $request) => [

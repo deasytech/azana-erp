@@ -38,25 +38,15 @@
     >
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @forelse ($this->kpis as $k)
-                <x-filament::card>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ $k['label'] }}</div>
-                    <div class="text-xl font-semibold text-gray-950 dark:text-white">
-                        {{ \App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['value']) }}
-                    </div>
-                    @if ($k['target'] !== null)
-                        <div class="mt-2 text-xs leading-5 {{ $k['status'] === 'met'
-                            ? 'text-success-600'
-                            : ($k['status'] === 'missed' ? 'text-danger-600' : 'text-gray-500 dark:text-gray-400')
-                            }}">
-                            Target {{ \App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['target']) }}@if ($k['attainment_percent'] !== null) ({{ $k['attainment_percent'] }}%)@endif
-                            @if ($k['status'] === 'met')
-                                - met
-                            @elseif ($k['status'] === 'missed')
-                                - missed
-                            @endif
-                        </div>
-                    @endif
-                </x-filament::card>
+                @php
+                    $targetHint = $k['target'] !== null
+                        ? 'Target '.\App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['target'])
+                            .($k['attainment_percent'] !== null ? ' ('.$k['attainment_percent'].'%)' : '')
+                            .($k['status'] === 'met' ? ' - met' : ($k['status'] === 'missed' ? ' - missed' : ''))
+                        : null;
+                @endphp
+                <x-erp.kpi :label="$k['label']" :value="\App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['value'])"
+                    :hint="$targetHint" :tone="$k['status'] === 'met' ? 'success' : ($k['status'] === 'missed' ? 'danger' : null)" />
             @empty
                 <p class="text-sm text-gray-500">Nothing to show for this area.</p>
             @endforelse

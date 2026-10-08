@@ -32,6 +32,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class ViewAnimal extends ViewRecord
 {
@@ -42,9 +43,9 @@ class ViewAnimal extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Passport')->columns(3)->schema([
+            Section::make('Passport')->description('Who the animal is.')->icon(Heroicon::OutlinedIdentification)->columns(3)->schema([
                 TextEntry::make('animal_number')->label('Permanent number')->weight('bold')->copyable(),
-                TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label()),
+                TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label())->color(fn ($state) => $state->color()),
                 TextEntry::make('category.name')->label('Category'),
                 TextEntry::make('sex')->formatStateUsing(fn ($state) => $state->label()),
                 TextEntry::make('breed.name')->label('Breed')->placeholder('-'),
@@ -54,7 +55,7 @@ class ViewAnimal extends ViewRecord
                 TextEntry::make('source_name')->label('Source')->placeholder('-'),
                 TextEntry::make('qr')->label('QR / barcode payload')->state(fn (Animal $r) => $r->qrPayload())->copyable()->columnSpanFull(),
             ]),
-            Section::make('Current state')->columns(3)->schema([
+            Section::make('Current state')->description('Where it is and how big it is.')->icon(Heroicon::OutlinedMapPin)->columns(3)->schema([
                 TextEntry::make('position')->state(fn (Animal $r) => $r->positionLabel()),
                 TextEntry::make('weight')->label('Latest weight')->state(fn (Animal $r) => ($w = $r->latestWeight()) ? "{$w->weight_kg} kg on {$w->weighed_at->format('d M Y')}" : 'Not weighed'),
                 TextEntry::make('parents')->label('Parents')->state(fn (Animal $r) => collect([
@@ -62,7 +63,7 @@ class ViewAnimal extends ViewRecord
                     'Dam' => $r->parentage?->dam?->animal_number ?? $r->parentage?->dam_note,
                 ])->filter()->map(fn ($v, $k) => "{$k}: {$v}")->implode(' | ') ?: 'Not recorded'),
             ]),
-            Section::make('Health')->columns(3)->schema([
+            Section::make('Health')->description('Restrictions and recent care.')->icon(Heroicon::OutlinedHeart)->columns(3)->schema([
                 TextEntry::make('withdrawal')->label('Withdrawal')
                     ->state(fn (Animal $r) => ($w = $this->restrictions($r)['withdrawals']->first()) ? "Until {$w->ends_on->format('d M Y')} ({$w->medicine->name})" : 'None')
                     ->color(fn (Animal $r) => $this->restrictions($r)['withdrawals']->isNotEmpty() ? 'danger' : null),
@@ -73,13 +74,13 @@ class ViewAnimal extends ViewRecord
                 TextEntry::make('last_treatment')->label('Last treatment')->state(fn (Animal $r) => ($t = $r->treatments()->with('medicine')->first()) ? "{$t->medicine->name}, {$t->administered_on->format('d M Y')}" : '-'),
                 TextEntry::make('last_vaccination')->label('Last vaccination')->state(fn (Animal $r) => ($v = $r->vaccinations()->with('medicine')->first()) ? "{$v->medicine->name}, {$v->administered_on->format('d M Y')}" : '-'),
             ]),
-            Section::make('Growth')->columns(4)->schema([
+            Section::make('Growth')->description('Gain and feed efficiency while growing.')->icon(Heroicon::OutlinedChartBar)->columns(4)->schema([
                 TextEntry::make('batch')->label('Batch')->state(fn (Animal $r) => ProductionBatchAnimal::with('batch')->where('animal_id', $r->id)->whereNull('left_on')->first()?->batch->code ?? '-'),
                 TextEntry::make('growth_adg')->label('Average daily gain')->state(fn (Animal $r) => ($v = $this->growth($r)['adg_kg']) === null ? '-' : "{$v} kg/day"),
                 TextEntry::make('growth_gain')->label('Gained')->state(fn (Animal $r) => ($v = $this->growth($r)['gain_kg']) === null ? '-' : "{$v} kg over {$this->growth($r)['days']} days"),
                 TextEntry::make('growth_fcr')->label('FCR (feed recorded)')->state(fn (Animal $r) => $this->growth($r)['fcr'] ?? '-'),
             ]),
-            Section::make('Reproduction')->columns(4)->visible(fn (Animal $r) => $r->isBreedingFemale())->schema(
+            Section::make('Reproduction')->description('Litter performance of this female.')->icon(Heroicon::OutlinedSparkles)->columns(4)->visible(fn (Animal $r) => $r->isBreedingFemale())->schema(
                 collect([
                     'status' => 'Reproductive status', 'parity' => 'Litters (parity)', 'avg_total_born' => 'Avg total born',
                     'avg_born_alive' => 'Avg born alive', 'avg_weaned' => 'Avg weaned', 'total_weaned' => 'Total weaned',
@@ -88,11 +89,16 @@ class ViewAnimal extends ViewRecord
                 ])->map(fn ($label, $key) => TextEntry::make("perf_{$key}")->label($label)->formatStateUsing(fn ($state) => $state ?? '-')
                     ->state(fn (Animal $r) => ($v = app(GetSowPerformance::class)($r)[$key]) === null ? null : ucfirst(str_ends_with($key, 'percent') ? $v.'%' : (string) $v)))->values()->all(),
             ),
-            Section::make('Lifecycle history')->collapsible()->schema([
+            Section::make('Lifecycle history')->description('Everything recorded about this animal, newest first.')->icon(Heroicon::OutlinedClock)->collapsible()->schema([
                 ViewEntry::make('history')->hiddenLabel()->view('filament.animals.history')
                     ->state(fn (Animal $r) => app(GetAnimalHistory::class)($r)),
             ]),
         ]);
+    }
+
+    public function getSubheading(): ?string
+    {
+        return $this->record->category->name.' - '.$this->record->positionLabel();
     }
 
     protected function getHeaderActions(): array
