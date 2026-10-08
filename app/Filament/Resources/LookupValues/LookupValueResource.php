@@ -49,8 +49,20 @@ class LookupValueResource extends Resource
         return $schema->components([
             FormSections::make('List entry', 'Which list it belongs to and how it is named.', [
                 Select::make('category')->options(collect(LookupCategory::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all())->required()->disabledOn('edit')->dehydrated(),
-                TextInput::make('code')->required()->maxLength(60)->alphaDash()
-                    ->suffixAction(Action::make('generateCode')->icon(Heroicon::OutlinedSparkles)->tooltip('Make the code from the name')->hidden(fn (string $operation): bool => $operation !== 'create')->action(fn ($set, $get) => $set('code', CodeField::slug($get('name')))))->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtolower(trim($state)))->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('category', $get('category')))->helperText('Made from the name when you leave it; stored in lower case.'),
+                TextInput::make('code')
+                    ->required()
+                    ->maxLength(60)
+                    ->alphaDash()
+                    ->suffixAction(
+                        Action::make('generateCode')
+                            ->icon(Heroicon::OutlinedSparkles)
+                            ->tooltip('Make the code from the name')
+                            ->hidden(fn (string $operation): bool => $operation !== 'create')
+                            ->action(fn ($set, $get) => $set('code', CodeField::slug($get('name')))),
+                    )
+                    ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtolower(trim($state)))
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('category', $get('category')))
+                    ->helperText('Made from the name when you leave it; stored in lower case.'),
                 TextInput::make('name')->required()->maxLength(120)->live(onBlur: true)
                     ->afterStateUpdated(fn ($state, $set, $get, string $operation) => $operation === 'create' && blank($get('code')) ? $set('code', CodeField::slug($state)) : null),
                 TextInput::make('description')->maxLength(255),

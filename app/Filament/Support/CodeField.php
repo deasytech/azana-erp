@@ -22,12 +22,13 @@ class CodeField
      */
     public static function next(string $table, string $prefix, ?Closure $scope = null, string $column = 'code', int $pad = 4): string
     {
-        $codes = DB::table($table)
+        // The number after "PREFIX-", read as an integer by the database, so only one value comes back however many records exist. A code
+        // that merely starts with the prefix (PEN-12X) reads as its leading digits, which can only skip a number, never repeat one.
+        $cast = DB::connection()->getDriverName() === 'mysql' ? 'UNSIGNED' : 'INTEGER';
+        $highest = (int) DB::table($table)
             ->where($column, 'like', $prefix.'-%')
             ->when($scope, fn (Builder $q) => $scope($q))
-            ->pluck($column);
-
-        $highest = $codes->map(fn (string $code): int => preg_match('/^'.preg_quote($prefix, '/').'-(\d+)$/i', $code, $m) ? (int) $m[1] : 0)->max() ?? 0;
+            ->max(DB::raw("CAST(SUBSTR({$column}, ".(strlen($prefix) + 2).") AS {$cast})"));
 
         return sprintf('%s-%0'.$pad.'d', $prefix, $highest + 1);
     }
@@ -50,9 +51,21 @@ class CodeField
             );
     }
 
-    /** A lower snake_case code made from a name, for the lookup lists (e.g. "Weaner pen" gives weaner_pen). */
+    /**
+     * A lower snake_case code made from a name, for the lookup lists (e.g. "Weaner pen" gives weaner_pen). Accents are transliterated
+     * first ("Épaule" gives epaule); a name with nothing usable in it, such as one in a script that has no ASCII form, gets a short
+     * code from its hash so the field is never left empty. A blank name gives a blank code.
+     */
     public static function slug(?string $name): string
     {
-        return str((string) $name)->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->limit(60, '')->toString();
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            return '';
+        }
+
+        $slug = str($name)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->limit(60, '')->toString();
+
+        return $slug !== '' ? $slug : 'entry_'.substr(hash('sha256', $name), 0, 8);
     }
 }

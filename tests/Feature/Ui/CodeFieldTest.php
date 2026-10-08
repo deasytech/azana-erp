@@ -25,6 +25,7 @@ it('works out the next free code from the highest number in use', function () {
     Breed::create(['code' => 'TST-0001', 'name' => 'A', 'species' => 'pig']);
     Breed::create(['code' => 'TST-0009', 'name' => 'B', 'species' => 'pig']);
     Breed::create(['code' => 'OTHER', 'name' => 'C', 'species' => 'pig']);
+    Breed::create(['code' => 'TSTX-0500', 'name' => 'D', 'species' => 'pig']);
 
     expect($next())->toBe('TST-0010');
 });
@@ -62,7 +63,10 @@ it('does not offer the generator when editing', function () {
 });
 
 it('makes a lookup code from the name', function () {
-    expect(CodeField::slug('Weaner pen (large)'))->toBe('weaner_pen_large');
+    expect(CodeField::slug('Weaner pen (large)'))->toBe('weaner_pen_large')
+        ->and(CodeField::slug('Épaule fumée'))->toBe('epaule_fumee')
+        ->and(CodeField::slug('  '))->toBe('')
+        ->and(CodeField::slug('!!!'))->toMatch('/^entry_[0-9a-f]{8}$/');
 
     Livewire::test(CreateLookupValue::class)
         ->fillForm(['category' => LookupCategory::cases()[0]->value, 'name' => 'Cull reason A'])
