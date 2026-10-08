@@ -10,8 +10,10 @@ use App\Domain\Inventory\Models\StockCount;
 use App\Enums\StockCountStatus;
 use App\Filament\Concerns\HasWorkflowSteps;
 use App\Filament\Resources\StockCounts\StockCountResource;
+use App\Filament\Support\ProgressSteps;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -26,6 +28,9 @@ class ViewStockCount extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Progress')->description('From draft to approval.')->schema([
+                ViewEntry::make('progress')->hiddenLabel()->view('filament.pages.partials.steps-entry')->state(fn () => $this->progress()),
+            ]),
             Section::make('Count')->columns(4)->schema([
                 TextEntry::make('number')->weight('bold')->copyable(),
                 TextEntry::make('location.name')->label('Store'),
@@ -52,6 +57,24 @@ class ViewStockCount extends ViewRecord
         assert($this->record instanceof StockCount);
 
         return $this->record;
+    }
+
+    /** The count's journey, read from its status; the rules live in the domain actions. @return list<array<string, mixed>> */
+    private function progress(): array
+    {
+        $status = $this->record->status;
+
+        if ($status === StockCountStatus::Rejected || $status === StockCountStatus::Cancelled) {
+            return ProgressSteps::stopped(['Drafted'], $status->label());
+        }
+
+        $done = match ($status) {
+            StockCountStatus::Draft => 1,
+            StockCountStatus::Submitted => 2,
+            default => 3,
+        };
+
+        return ProgressSteps::make(['Drafted', 'Submitted', 'Approved'], $done, [2 => $status === StockCountStatus::Submitted ? 'Waiting for approval' : null]);
     }
 
     protected function getHeaderActions(): array

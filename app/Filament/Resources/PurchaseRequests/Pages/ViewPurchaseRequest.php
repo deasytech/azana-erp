@@ -9,9 +9,11 @@ use App\Enums\PurchaseRequestStatus as Status;
 use App\Filament\Concerns\HasWorkflowSteps;
 use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\PurchaseRequests\PurchaseRequestResource;
+use App\Filament\Support\ProgressSteps;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -25,6 +27,9 @@ class ViewPurchaseRequest extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Progress')->description('From draft to order.')->schema([
+                ViewEntry::make('progress')->hiddenLabel()->view('filament.pages.partials.steps-entry')->state(fn () => $this->progress()),
+            ]),
             Section::make('Request')->columns(4)->schema([
                 TextEntry::make('number')->weight('bold')->copyable(),
                 TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label()),
@@ -44,6 +49,25 @@ class ViewPurchaseRequest extends ViewRecord
         assert($this->record instanceof PurchaseRequest);
 
         return $this->record;
+    }
+
+    /** The request's journey, read from its status; the rules live in the domain actions. @return list<array<string, mixed>> */
+    private function progress(): array
+    {
+        $status = $this->record->status;
+
+        if ($status === Status::Rejected || $status === Status::Cancelled) {
+            return ProgressSteps::stopped(['Drafted'], $status->label());
+        }
+
+        $done = match ($status) {
+            Status::Draft => 1,
+            Status::Submitted => 2,
+            Status::Approved => 3,
+            default => 4,
+        };
+
+        return ProgressSteps::make(['Drafted', 'Submitted', 'Approved', 'Ordered'], $done, [2 => $status === Status::Submitted ? 'Waiting for approval' : null]);
     }
 
     protected function getHeaderActions(): array

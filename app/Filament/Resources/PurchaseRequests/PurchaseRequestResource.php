@@ -19,6 +19,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -45,16 +46,20 @@ class PurchaseRequestResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            DatePicker::make('needed_by')->minDate(now()),
-            Textarea::make('notes'),
-            Repeater::make('lines')->label('Items')->columnSpanFull()->minItems(1)->columns(4)->addActionLabel('Add item')
-                ->schema([
-                    Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
-                        ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($i) => [$i->id => "{$i->code} - {$i->name} ({$i->unit->code})"])->all()),
-                    TextInput::make('quantity')->numeric()->minValue(0.001)->step(0.001)->required(),
-                    MoneyInput::make('estimated_unit_cost_minor', 'Estimated cost per unit'),
-                    TextInput::make('notes')->maxLength(255),
-                ]),
+            Section::make('Request')->description('When it is needed and why.')->columns(2)->schema([
+                DatePicker::make('needed_by')->minDate(now()),
+                Textarea::make('notes'),
+            ]),
+            Section::make('Items')->description('What is needed and an estimate of the cost.')->schema([
+                Repeater::make('lines')->label('Items')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(4)->addActionLabel('Add item')
+                    ->schema([
+                        Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
+                            ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($i) => [$i->id => "{$i->code} - {$i->name} ({$i->unit->code})"])->all()),
+                        TextInput::make('quantity')->numeric()->minValue(0.001)->step(0.001)->required(),
+                        MoneyInput::make('estimated_unit_cost_minor', 'Estimated cost per unit'),
+                        TextInput::make('notes')->maxLength(255),
+                    ]),
+            ]),
         ]);
     }
 

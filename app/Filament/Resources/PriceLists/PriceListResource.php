@@ -17,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -46,23 +47,27 @@ class PriceListResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('code')->required()->maxLength(30)
-                ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
-                ->unique(ignoreRecord: true),
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('farm_id')->label('Farm')->relationship('farm', 'name')->required()
-                ->default(fn () => Farm::orderBy('id')->value('id'))
-                ->live()
-                ->afterStateUpdated(fn ($state, $set) => $set('currency_code', Farm::find($state)?->currency_code)),
-            Select::make('category_id')->label('Category')
-                ->relationship('category', 'name', modifyQueryUsing: fn ($query) => $query->where('category', LookupCategory::PriceCategory->value)->where('is_active', true)->orderBy('sort_order'))
-                ->required()->preload(),
-            TextInput::make('currency_code')->label('Currency (ISO code)')->required()->length(3)
-                ->default(fn () => Farm::orderBy('id')->value('currency_code') ?? 'NGN')
-                ->dehydrateStateUsing(fn ($state) => strtoupper($state)),
-            DatePicker::make('valid_from'),
-            DatePicker::make('valid_to')->afterOrEqual('valid_from'),
-            Toggle::make('is_active')->label('Active')->default(true),
+            Section::make('Price list')->description('What it is and which farm and category it covers.')->columns(2)->schema([
+                TextInput::make('code')->required()->maxLength(30)
+                    ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
+                    ->unique(ignoreRecord: true),
+                TextInput::make('name')->required()->maxLength(255),
+                Select::make('farm_id')->label('Farm')->relationship('farm', 'name')->required()
+                    ->default(fn () => Farm::orderBy('id')->value('id'))
+                    ->live()
+                    ->afterStateUpdated(fn ($state, $set) => $set('currency_code', Farm::find($state)?->currency_code)),
+                Select::make('category_id')->label('Category')
+                    ->relationship('category', 'name', modifyQueryUsing: fn ($query) => $query->where('category', LookupCategory::PriceCategory->value)->where('is_active', true)->orderBy('sort_order'))
+                    ->required()->preload(),
+            ]),
+            Section::make('Currency and validity')->description('Which currency it is in and when it applies.')->columns(2)->schema([
+                TextInput::make('currency_code')->label('Currency (ISO code)')->required()->length(3)
+                    ->default(fn () => Farm::orderBy('id')->value('currency_code') ?? 'NGN')
+                    ->dehydrateStateUsing(fn ($state) => strtoupper($state)),
+                DatePicker::make('valid_from'),
+                DatePicker::make('valid_to')->afterOrEqual('valid_from'),
+                Toggle::make('is_active')->label('Active')->default(true),
+            ]),
         ]);
     }
 

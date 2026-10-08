@@ -13,6 +13,7 @@ use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\SalesOrders\SalesOrderResource;
 use App\Filament\Support\MoneyColumn;
+use App\Filament\Support\ProgressSteps;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -54,6 +55,9 @@ class ViewSalesOrder extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Progress')->description('From draft to invoice.')->schema([
+                ViewEntry::make('progress')->hiddenLabel()->view('filament.pages.partials.steps-entry')->state(fn (SalesOrder $o) => $this->progress($o)),
+            ]),
             Section::make('Order')->columns(4)->schema([
                 TextEntry::make('number')->weight('bold')->copyable(),
                 TextEntry::make('status')->badge()->formatStateUsing(fn ($state) => $state->label()),
@@ -72,6 +76,22 @@ class ViewSalesOrder extends ViewRecord
                 ->visible(fn (SalesOrder $o) => in_array($o->status, [Status::Confirmed, Status::Dispatched], true))
                 ->schema([ViewEntry::make('picking')->hiddenLabel()->view('filament.sales.picking-list')->state(fn (SalesOrder $o) => app(GetPickingList::class)($o))]),
         ]);
+    }
+
+    /** The order's journey, read from its status and invoice; the rules live in the domain actions. @return list<array<string, mixed>> */
+    private function progress(SalesOrder $order): array
+    {
+        if ($order->status === Status::Cancelled) {
+            return ProgressSteps::stopped(['Drafted'], 'Cancelled');
+        }
+
+        $done = match ($order->status) {
+            Status::Draft => 1,
+            Status::Confirmed => 2,
+            default => $order->invoice ? 4 : 3,
+        };
+
+        return ProgressSteps::make(['Drafted', 'Confirmed', 'Dispatched', 'Invoiced'], $done);
     }
 
     protected function getHeaderActions(): array

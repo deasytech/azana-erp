@@ -26,6 +26,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -50,16 +51,20 @@ class JournalEntryResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            DatePicker::make('entry_date')->label('Date')->default(now())->maxDate(now())->required(),
-            TextInput::make('description')->required()->maxLength(255),
-            Repeater::make('lines')->columnSpanFull()->minItems(2)->columns(4)->addActionLabel('Add line')
-                ->schema([
-                    Select::make('account_id')->label('Account')->required()->searchable()->options(fn () => Account::where('is_active', true)->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
-                    Select::make('cost_centre_id')->label('Cost centre')->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
-                    MoneyInput::make('debit_minor', 'Debit'),
-                    MoneyInput::make('credit_minor', 'Credit'),
-                ]),
+        return $schema->components([
+            Section::make('Entry')->description('When and why.')->columns(2)->schema([
+                DatePicker::make('entry_date')->label('Date')->default(now())->maxDate(now())->required(),
+                TextInput::make('description')->required()->maxLength(255),
+            ]),
+            Section::make('Lines')->description('Debits and credits must balance.')->schema([
+                Repeater::make('lines')->hiddenLabel()->columnSpanFull()->minItems(2)->columns(4)->addActionLabel('Add line')
+                    ->schema([
+                        Select::make('account_id')->label('Account')->required()->searchable()->options(fn () => Account::where('is_active', true)->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
+                        Select::make('cost_centre_id')->label('Cost centre')->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
+                        MoneyInput::make('debit_minor', 'Debit'),
+                        MoneyInput::make('credit_minor', 'Credit'),
+                    ]),
+            ]),
         ]);
     }
 
