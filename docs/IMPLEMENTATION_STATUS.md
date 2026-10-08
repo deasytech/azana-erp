@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 18 - Public Website and Customer-Facing Surface (not started)
+Phase 19 - Import, Backup and Deployment (not started)
 
 ## Completed
 
@@ -382,6 +382,30 @@ Phase 18 - Public Website and Customer-Facing Surface (not started)
   - Quick actions that need server numbers not on the device (e.g. a new litter's number for `add_birth`) rely on the `farrowing` result being synced first; mutations are processed in the order sent.
   - Only `record_*` actions that already had idempotency keys are idempotent in the domain; the rest (mortality, weaning, add birth, stock count) rely on the sync log's idempotency.
   - Push notifications and photo upload for task evidence from the app are not included.
+
+### Phase 18 - Public Website and Customer-Facing Surface (2026-10-14)
+- Delivery: one PR, one commit (51 files, under 100). Branched from `phase-17-mobile-api`, because Phase 17 is not merged to `main` yet: merge Phase 17 first, then retarget this PR.
+- Tests: `vendor/bin/pest` - 36 new website tests pass (`tests/Feature/Website/WebsiteDomainTest.php`, `WebsiteSiteTest.php`, `WebsiteUiTest.php`); the settings-count test was updated (52 -> 58 settings). Verified end to end by serving the app and requesting every public page, the sitemap and robots.txt. MySQL migrate up/down/up and `migrate:fresh --seed` verified.
+- Not caused by this phase: on today's clock three older tests fail on the Phase 17 branch too (`MobileApiTest` offline-day test, and the two chart tests "stock value by store" and "orders by status"). They are dependent on dates and were not changed here.
+- Package changes: none (Blade and the Livewire that Filament already brings).
+- What was done:
+  - Schema (1 migration): `website_listings` (what the site offers) and `website_enquiries` (what visitors ask). No prices, stock or customer data are copied: a listing links to a stock item and its price and availability are read from the price lists and stock ledger.
+  - **Public site, redesigned to `PHASE_18_PUBLIC_WEBSITE_CLAUDE_PROMPT.md`** (`SiteController`, Blade components in `resources/views/components/site/`, `public/css/site.css` with the logo's colours as tokens, `public/js/site.js` for the mobile menu and scroll reveal; no ERP styles): home (hero, about, operations, technology, why Azana, products, sustainability, call to action, contact and enquiry form), about, operations, sustainability, products, a page each for live pigs, boar semen and pork/meat, a product page per listing, contact, `sitemap.xml` and a generated `robots.txt` (the static one was removed). Fraunces and Inter come from Google Fonts. Page wording lives in `config/website.php`; it states no figures, certificates, places or contact details. The logo (`public/images/branding/logo.jpeg`) is used unaltered; the footer names the parent printed on it.
+  - **Photographs are not included.** Add the farm's own pictures to `public/images/site/` as hero, about, livestock, breeding, feed, meat, management and sustainability (.jpg, .webp or .png); until then each slot shows a plain brand panel. The opening-hours setting no longer has an invented default. Page titles, descriptions, canonical and Open Graph tags, JSON-LD (LocalBusiness, Product, ContactPage), skip link, landmarks, labelled and error-linked form fields, visible focus, dark mode and reduced-motion support; every page works without JavaScript except the enquiry form's live feedback.
+  - **One source for every figure** (`GetSiteProfile`, `GetPublicCatalogue`): farm name, address, phone and e-mail come from the farm record; prices from `GetItemPrice` (the same call the sales order uses); availability from the stock ledger and, for semen, only released, in-date batches (`GetSemenStock`). Visitors see "Available" or "Ask about next batch", never quantities. Nothing is cached, so a price change shows at once.
+  - **Enquiries** (`SubmitEnquiry`, Livewire `EnquiryForm`): numbered ENQ-000001, stored with the product asked about; it reserves no stock, quotes no price and creates no order. A honeypot field, 3 a minute and 30 a day per address, the same words sent twice within 15 minutes count once, the address is kept only as a hash. Staff with `website.edit` are told in the bell (and by e-mail when notifications are on); an extra address can be set in settings.
+  - **Staff screens** (Filament group *Website*): *Enquiries* (open tab first, new count badge, mark contacted / quoted / closed / spam / reopen with a note, *Make customer*) and *Listings* (create, edit, publish, unpublish, delete; rules in `SaveListing`: semen listings link to semen items, meat to meat items, a price needs a stock item, addresses are unique). *Make customer* (`ConvertEnquiryToCustomer`) reuses a customer with the same e-mail or phone, else creates one through `SaveCustomer` on cash terms; the order is then raised through the sales screens, where credit, discount and stock rules apply.
+  - **Settings** (group *Public website*): tagline, about text, opening hours, WhatsApp number, accept enquiries on/off, extra notification e-mail.
+  - **Hosts**: `WEBSITE_HOST` (www) and `ERP_HOST` (erp) in `config/website.php`; when set, the public routes answer only on the first and the Filament panel only on the second. Unset, both answer everywhere (local development). The public pages never link to the ERP.
+  - Permissions: new module `website`. General Manager: view, create, edit, delete; Sales Officer: view, create, edit; Farm Manager: view; Owner everything. Enquiries can never be created or deleted by hand.
+- Migration notes: 1 new reversible migration; 6 new settings (no data migration). After deploying run `php artisan config:clear` (or `config:cache` again), `route:clear`, and re-run `RoleSeeder` so existing roles receive the `website` permissions.
+- Known issues / notes:
+  - There is no customer portal (the phase said only if required): visitors do not sign in, so there are no customer accounts, order history or online payment. Orders are raised by staff from an enquiry.
+  - Listings have no photos yet (text only); product images would need the secure-upload work.
+  - Pigs and services are described, not priced: live pigs have no price list entry to read from. Add one before showing pig prices.
+  - Page copy for the three sections is in `config/website.php`; the rest comes from settings and listings.
+  - Enquiries are protected by a honeypot and rate limits; for heavy abuse add a CAPTCHA service.
+  - E-mail to the visitor (an acknowledgement) is not sent; staff reply by phone or e-mail.
 
 ## In Progress
 None
