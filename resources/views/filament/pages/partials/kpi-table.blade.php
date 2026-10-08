@@ -1,4 +1,4 @@
-<x-filament::card>
+<div class="overflow-hidden rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
     @php($labels = ['met' => 'Met', 'missed' => 'Missed', 'none' => ''])
     <div class="overflow-x-auto">
         <table class="w-full divide-y divide-gray-200 text-sm dark:divide-white/10">
@@ -36,4 +36,4 @@
             </tbody>
         </table>
     </div>
-</x-filament::card>
+</div>

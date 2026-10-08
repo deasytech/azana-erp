@@ -19,3 +19,203 @@
     @apply gap-4;
 }
 
+
+/*
+ * Azana Farms ERP theme. White, cream and warm neutrals with deep brown for text; orange only marks what is active or primary.
+ * Brand tokens come from the logo (the same values as the public site); change them here only.
+ */
+:root {
+    --azana-brown: #261b14;
+    --azana-brown-soft: #4a3a2e;
+    --azana-cream: #fbfbea;
+    --azana-gold: #f3c63c;
+    --azana-orange: #f08732;
+    --azana-line: #ebe7d6;
+}
+
+/* Page: a faint cream behind white surfaces so cards and tables read as separate planes. */
+.fi-body {
+    @apply antialiased;
+}
+:root:not(.dark) .fi-body {
+    background-color: color-mix(in srgb, var(--azana-cream) 55%, #ffffff);
+}
+
+/* Page heading: strong but not large; the subheading is quiet. */
+.fi-header-heading {
+    @apply text-2xl font-semibold tracking-tight;
+    color: var(--azana-brown);
+}
+.dark .fi-header-heading {
+    @apply text-white;
+}
+.fi-header-subheading {
+    @apply text-sm;
+}
+.fi-breadcrumbs {
+    @apply text-xs;
+}
+
+/* Top bar and sidebar: white surfaces with a hairline, no heavy shadow. */
+.fi-topbar > nav,
+.fi-topbar nav {
+    @apply shadow-none ring-0;
+    border-bottom: 1px solid var(--azana-line);
+}
+.dark .fi-topbar nav {
+    border-color: rgb(255 255 255 / 0.08);
+}
+.fi-sidebar {
+    @apply shadow-none;
+}
+.fi-sidebar-header {
+    @apply shadow-none ring-0;
+    border-bottom: 1px solid var(--azana-line);
+}
+.dark .fi-sidebar-header {
+    border-color: rgb(255 255 255 / 0.08);
+}
+/* The logo is a JPEG with a white ground: give it a tile so it also sits cleanly on the dark theme. */
+.fi-logo {
+    @apply rounded-md bg-white;
+}
+
+/* Sidebar group labels: small caps, quiet. */
+.fi-sidebar-group-label {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-wider;
+    color: var(--azana-brown-soft);
+}
+.dark .fi-sidebar-group-label {
+    @apply text-gray-400;
+}
+
+/* Sidebar items: compact rows; the active one carries an orange bar and a pale tint instead of a filled block. */
+.fi-sidebar-item-btn {
+    @apply rounded-lg py-1.5 text-sm;
+    position: relative;
+}
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    background-color: color-mix(in srgb, var(--azana-orange) 10%, transparent);
+}
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+    content: '';
+    position: absolute;
+    inset-block: 0.35rem;
+    inset-inline-start: -0.5rem;
+    width: 3px;
+    border-radius: 9999px;
+    background-color: var(--azana-orange);
+}
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label {
+    @apply font-semibold;
+    color: var(--azana-brown);
+}
+.dark .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label {
+    @apply text-white;
+}
+
+/* Surfaces: sections, tables and widgets share one quiet card: light border, small shadow, even radius. */
+.fi-section:not(.fi-section-not-contained),
+.fi-ta-ctn,
+.fi-wi-stats-overview-stat,
+.fi-wi-chart {
+    @apply rounded-xl bg-white shadow-xs ring-1;
+    --tw-ring-color: var(--azana-line);
+}
+.dark .fi-section:not(.fi-section-not-contained),
+.dark .fi-ta-ctn,
+.dark .fi-wi-stats-overview-stat,
+.dark .fi-wi-chart {
+    @apply bg-gray-900 ring-white/10;
+    --tw-ring-color: rgb(255 255 255 / 0.1);
+}
+.fi-section-header-heading {
+    @apply text-base font-semibold;
+    color: var(--azana-brown);
+}
+.dark .fi-section-header-heading {
+    @apply text-white;
+}
+
+/* Tables: comfortable rows, a pale header, numbers that line up. */
+.fi-ta-header-cell {
+    @apply text-xs font-semibold uppercase tracking-wide;
+    background-color: color-mix(in srgb, var(--azana-cream) 70%, #ffffff);
+    color: var(--azana-brown-soft);
+}
+.dark .fi-ta-header-cell {
+    @apply bg-white/5 text-gray-300;
+}
+.fi-ta-cell {
+    @apply tabular-nums;
+}
+.fi-ta-row {
+    @apply transition-colors;
+}
+.fi-ta-row:hover {
+    background-color: color-mix(in srgb, var(--azana-cream) 60%, transparent);
+}
+.dark .fi-ta-row:hover {
+    @apply bg-white/5;
+}
+.fi-ta-empty-state-heading {
+    @apply text-base font-semibold;
+}
+
+/* Stat widgets and KPI tiles: figures are the point. */
+.fi-wi-stats-overview-stat-value {
+    @apply tabular-nums tracking-tight;
+    color: var(--azana-brown);
+}
+.dark .fi-wi-stats-overview-stat-value {
+    @apply text-white;
+}
+.fi-wi-stats-overview-stat-label {
+    @apply text-xs font-medium uppercase tracking-wide;
+}
+
+/* Tabs: the selected tab takes the brand colour. */
+.fi-tabs-item.fi-active {
+    @apply font-semibold;
+}
+
+/* Notifications: a readable, restrained card. */
+.fi-no-notification {
+    @apply rounded-xl shadow-md;
+}
+
+/* Our own KPI cards (dashboard and reports). */
+.azana-kpi {
+    @apply flex flex-col gap-1 rounded-xl bg-white p-4 shadow-xs ring-1;
+    --tw-ring-color: var(--azana-line);
+}
+.dark .azana-kpi {
+    @apply bg-gray-900;
+    --tw-ring-color: rgb(255 255 255 / 0.1);
+}
+.azana-kpi-label {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400;
+}
+.azana-kpi-value {
+    @apply text-2xl font-semibold tabular-nums tracking-tight;
+    color: var(--azana-brown);
+}
+.dark .azana-kpi-value {
+    @apply text-white;
+}
+.azana-kpi-primary .azana-kpi-value {
+    @apply text-3xl;
+}
+.azana-kpi-primary {
+    border-top: 3px solid var(--azana-gold);
+}
+.azana-kpi-hint {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+
+/* Reduced motion: no transitions for people who ask for none. */
+@media (prefers-reduced-motion: reduce) {
+    .fi-ta-row {
+        transition: none;
+    }
+}

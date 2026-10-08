@@ -17,6 +17,18 @@ enum AnimalStatus: string
         return $this !== self::Active;
     }
 
+    /** The badge colour used wherever the status is shown: green on the farm, red lost, amber culled, blue left alive. */
+    public function color(): string
+    {
+        return match ($this) {
+            self::Active => 'success',
+            self::Dead => 'danger',
+            self::Culled => 'warning',
+            self::Sold, self::TransferredOut => 'info',
+            self::Slaughtered => 'gray',
+        };
+    }
+
     public function label(): string
     {
         return str($this->value)->replace('_', ' ')->ucfirst()->toString();

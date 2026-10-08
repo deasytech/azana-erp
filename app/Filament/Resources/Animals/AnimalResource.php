@@ -136,7 +136,7 @@ class AnimalResource extends Resource
                 TextColumn::make('sex')->formatStateUsing(fn ($state) => $state->label()),
                 TextColumn::make('breed.name')->label('Breed')->placeholder('-'),
                 TextColumn::make('status')->badge()->formatStateUsing(fn ($state) => $state->label())
-                    ->color(fn ($state) => $state === AnimalStatus::Active ? 'success' : 'gray'),
+                    ->color(fn ($state) => $state->color()),
                 TextColumn::make('position')->label('Position')->state(fn (Animal $r) => $r->positionLabel()),
                 TextColumn::make('latest_weight_kg')->label('Latest kg')->numeric(decimalPlaces: 2)->placeholder('-'),
                 TextColumn::make('birth_date')->date()->sortable()->toggleable(isToggledHiddenByDefault: true),

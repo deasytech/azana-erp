@@ -47,6 +47,27 @@ class TaskResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'number';
 
+    /** Overdue open tasks assigned to the signed-in user: one indexed count, so the sidebar stays cheap. */
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+        $overdue = $user?->can('tasks.view')
+            ? Task::whereIn('status', [TaskStatus::Open, TaskStatus::InProgress])->where('assigned_to', $user->id)->whereDate('due_on', '<', now()->toDateString())->count()
+            : 0;
+
+        return $overdue > 0 ? (string) $overdue : null;
+    }
+
+    public static function getNavigationBadgeColor(): string
+    {
+        return 'danger';
+    }
+
+    public static function getNavigationBadgeTooltip(): string
+    {
+        return 'Overdue tasks assigned to you';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([

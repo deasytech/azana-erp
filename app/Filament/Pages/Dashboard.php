@@ -33,6 +33,36 @@ class Dashboard extends BaseDashboard
         return app(GetOwnerSnapshot::class)(auth()->user());
     }
 
+    public function greeting(): string
+    {
+        return match (true) {
+            now()->hour < 12 => 'Good morning',
+            now()->hour < 18 => 'Good afternoon',
+            default => 'Good evening',
+        };
+    }
+
+    /**
+     * The attention counts from the snapshot, each with the page where it is dealt with; a count the user may not see is left out.
+     *
+     * @return list<array{label: string, count: int, tone: string, hint: string, url: string}>
+     */
+    public function attention(): array
+    {
+        $a = $this->snapshot['attention'];
+        $rows = [
+            ['critical_alerts', 'Critical alerts', 'danger', 'Review and resolve', Alerts::getUrl()],
+            ['overdue_tasks', 'Overdue tasks', 'warning', 'Past their due date', TaskResource::getUrl('index')],
+            ['my_open_tasks', 'My open tasks', 'warning', 'Assigned to you', TaskResource::getUrl('index')],
+            ['approvals', 'Waiting for approval', 'warning', 'Needs a decision', ApprovalInbox::getUrl()],
+        ];
+
+        return array_values(array_map(
+            fn (array $r): array => ['label' => $r[1], 'count' => (int) $a[$r[0]], 'tone' => $r[2], 'hint' => $r[3], 'url' => $r[4]],
+            array_filter($rows, fn (array $r): bool => $a[$r[0]] !== null),
+        ));
+    }
+
     /** @return list<array{label: string, url: string}> */
     public function links(): array
     {

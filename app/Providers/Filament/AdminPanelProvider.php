@@ -8,6 +8,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -22,6 +23,29 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
+    /** The Azana orange (#F08732 at 500), darkened for text and hover and lightened for tints. */
+    private const PRIMARY = [
+        50 => '#fff6ee', 100 => '#fdebd9', 200 => '#fbd5b0', 300 => '#f8bb83', 400 => '#f4a05a',
+        500 => '#f08732', 600 => '#d96f20', 700 => '#b5571a', 800 => '#92461b', 900 => '#773b19', 950 => '#411d0a',
+    ];
+
+    /**
+     * Sidebar order: the farm's day-to-day work first, then what it consumes and sells, then money, management and set-up. The group names
+     * belong to the resources; this only orders them and folds the ones used less often.
+     *
+     * @return list<NavigationGroup>
+     */
+    private function navigationGroups(): array
+    {
+        $open = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Production', 'Inventory', 'Purchasing', 'Sales', 'Finance', 'Tasks & alerts', 'Management'];
+        $folded = ['Biosecurity', 'Feed mill', 'Semen', 'Slaughter & meat', 'Website', 'Master data', 'Configuration', 'Administration'];
+
+        return array_map(
+            fn (string $name): NavigationGroup => NavigationGroup::make($name)->collapsed(in_array($name, $folded, true)),
+            [...$open, ...$folded],
+        );
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -41,8 +65,22 @@ class AdminPanelProvider extends PanelProvider
                 isRequired: fn (): bool => (bool) auth()->user()?->requiresTwoFactor(),
             )
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->brandName('Azana Farms')
+            ->brandLogo(asset('images/branding/logo.jpeg'))
+            ->brandLogoHeight('2.5rem')
+            ->favicon(asset('images/branding/logo.jpeg'))
+            ->font('Inter')
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('17rem')
+            ->navigationGroups($this->navigationGroups())
+            // Orange is the brand accent (actions, active states); the neutrals are warm stone, and status colours keep their own meaning.
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => self::PRIMARY,
+                'gray' => Color::Stone,
+                'success' => Color::Green,
+                'warning' => Color::Amber,
+                'danger' => Color::Red,
+                'info' => Color::Blue,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
