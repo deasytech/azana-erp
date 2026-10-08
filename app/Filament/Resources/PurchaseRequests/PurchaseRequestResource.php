@@ -46,11 +46,11 @@ class PurchaseRequestResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Request')->description('When it is needed and why.')->columns(2)->schema([
+            Section::make('Request')->description('When it is needed and why.')->columnSpanFull()->columns(2)->schema([
                 DatePicker::make('needed_by')->minDate(now()),
                 Textarea::make('notes'),
             ]),
-            Section::make('Items')->description('What is needed and an estimate of the cost.')->schema([
+            Section::make('Items')->description('What is needed and an estimate of the cost.')->columnSpanFull()->schema([
                 Repeater::make('lines')->label('Items')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(4)->addActionLabel('Add item')
                     ->schema([
                         Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()

@@ -23,6 +23,7 @@ use App\Filament\Resources\Animals\RelationManagers\MovementsRelationManager;
 use App\Filament\Resources\Animals\RelationManagers\PhotosRelationManager;
 use App\Filament\Resources\Animals\RelationManagers\StatusHistoryRelationManager;
 use App\Filament\Resources\Animals\RelationManagers\WeightsRelationManager;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\LookupSelect;
 use App\Filament\Support\MoneyInput;
 use BackedEnum;
@@ -146,7 +147,8 @@ class AnimalResource extends Resource
                 SelectFilter::make('category_id')->label('Category')->relationship('category', 'name'),
                 SelectFilter::make('sex')->options(self::enumOptions(AnimalSex::cases())),
                 SelectFilter::make('breed_id')->label('Breed')->relationship('breed', 'name'),
-                SelectFilter::make('current_pen_id')->label('Pen')->relationship('currentPen', 'code'),
+                SelectFilter::make('current_pen_id')->label('Pen')->relationship('currentPen', 'code')->searchable()->preload(),
+                DateRangeFilter::make('birth_date', 'Born'),
             ])
             ->recordActions([ViewAction::make(), EditAction::make()])
             ->defaultSort(self::NUMBER);

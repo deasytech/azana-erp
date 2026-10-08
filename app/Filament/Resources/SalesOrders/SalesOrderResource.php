@@ -18,6 +18,7 @@ use App\Filament\Resources\SalesOrders\Pages\ListSalesOrders;
 use App\Filament\Resources\SalesOrders\Pages\ViewSalesOrder;
 use App\Filament\Resources\SalesOrders\RelationManagers\LinesRelationManager;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\MoneyInput;
 use App\Filament\Support\StockForms;
@@ -58,13 +59,13 @@ class SalesOrderResource extends Resource
         $is = fn (SalesLineKind $kind) => fn ($get) => $get('kind') === $kind->value;
 
         return $schema->components([
-            Section::make('Order')->description('Who is buying and when.')->columns(2)->schema([
+            Section::make('Order')->description('Who is buying and when.')->columnSpanFull()->columns(2)->schema([
                 Select::make('customer_id')->label('Customer')->required()->searchable()
                     ->options(fn () => Customer::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->code} - {$c->name}"])->all()),
                 DatePicker::make('ordered_on')->default(now())->maxDate(now())->required(),
                 Textarea::make('notes')->columnSpanFull(),
             ]),
-            Section::make('Lines')->description('What is being sold. Prices come from the price list unless you enter one.')->schema([
+            Section::make('Lines')->description('What is being sold. Prices come from the price list unless you enter one.')->columnSpanFull()->schema([
                 Repeater::make('lines')->label('Lines')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add line')
                     ->schema([
                         Select::make('kind')->label('Sells')->options(collect(SalesLineKind::cases())->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all())->required()->live()->default(SalesLineKind::Semen->value),
@@ -123,6 +124,7 @@ class SalesOrderResource extends Resource
             ->filters([
                 SelectFilter::make('status')->options(AnimalResource::enumOptions(SalesOrderStatus::cases())),
                 SelectFilter::make('customer_id')->label('Customer')->relationship('customer', 'name')->searchable()->preload(),
+                DateRangeFilter::make('ordered_on', 'Ordered'),
             ])
             ->recordActions([ViewAction::make()])
             ->defaultSort('id', 'desc');

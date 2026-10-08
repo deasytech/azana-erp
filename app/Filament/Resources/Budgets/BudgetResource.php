@@ -48,12 +48,12 @@ class BudgetResource extends Resource
         $months = collect(range(1, 12))->mapWithKeys(fn ($m) => [$m => date('F', mktime(0, 0, 0, $m, 1))])->all();
 
         return $schema->components([
-            Section::make('Budget')->description('Name and year.')->columns(2)->schema([
+            Section::make('Budget')->description('Name and year.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('fiscal_year')->numeric()->integer()->minValue(2000)->maxValue(2100)->default((int) now()->year)->required(),
                 Textarea::make('notes')->columnSpanFull(),
             ]),
-            Section::make('Lines')->description('What is planned, by account, cost centre and month.')->schema([
+            Section::make('Lines')->description('What is planned, by account, cost centre and month.')->columnSpanFull()->schema([
                 Repeater::make('lines')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(4)->addActionLabel('Add line')
                     ->schema([
                         Select::make('account_id')->label('Account')->required()->searchable()

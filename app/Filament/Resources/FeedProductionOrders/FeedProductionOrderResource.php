@@ -46,13 +46,13 @@ class FeedProductionOrderResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Production')->description('What to make, how much and when.')->columns(2)->schema([
+            Section::make('Production')->description('What to make, how much and when.')->columnSpanFull()->columns(2)->schema([
                 Select::make('feed_formula_id')->label('Formula')->required()->searchable()
                     ->options(fn () => FeedFormula::where('status', FormulaStatus::Active)->orderBy('code')->get()->mapWithKeys(fn ($f) => [$f->id => "{$f->code} v{$f->version} - {$f->name}"])->all()),
                 TextInput::make('planned_output_kg')->label('Finished feed to make (kg)')->numeric()->minValue(0.001)->step(0.001)->required(),
                 DatePicker::make('planned_on')->default(now())->required(),
             ]),
-            Section::make('Stores')->description('Where the materials come from and the feed goes.')->columns(2)->schema([
+            Section::make('Stores')->description('Where the materials come from and the feed goes.')->columnSpanFull()->columns(2)->schema([
                 StockForms::store('source_location_id', 'Take materials from'),
                 StockForms::store('output_location_id', 'Put finished feed in'),
                 Textarea::make('notes')->columnSpanFull(),

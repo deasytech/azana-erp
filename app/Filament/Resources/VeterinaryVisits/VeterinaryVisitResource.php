@@ -37,12 +37,12 @@ class VeterinaryVisitResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Visit')->description('When the vet came and who they are.')->columns(2)->schema([
+            Section::make('Visit')->description('When the vet came and who they are.')->columnSpanFull()->columns(2)->schema([
                 DatePicker::make('visited_on')->default(now())->maxDate(now())->required(),
                 Select::make('veterinarian_id')->label('Veterinarian (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 TextInput::make('veterinarian_name')->label('Veterinarian (name)')->maxLength(255),
             ]),
-            Section::make('Outcome')->description('What was found and what to do next.')->columns(2)->schema([
+            Section::make('Outcome')->description('What was found and what to do next.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('reason')->required()->maxLength(255),
                 Textarea::make('findings'),
                 Textarea::make('recommendations'),

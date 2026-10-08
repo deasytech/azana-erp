@@ -59,7 +59,7 @@ class FeedFormulaResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Formula')->description('What it is and what it makes.')->columns(2)->schema([
+            Section::make('Formula')->description('What it is and what it makes.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('code')->required()->maxLength(30)->visibleOn('create')->unique()
                     ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
                     ->helperText('Stays the same across versions; stored in upper case.'),
@@ -71,7 +71,7 @@ class FeedFormulaResource extends Resource
             ]),
             Section::make('Nutritional specification')->columns(4)->columnSpanFull()->description('Targets set by the nutritionist; all optional.')
                 ->schema(collect(FeedFormula::NUTRITION)->map(fn (string $label, string $field) => TextInput::make($field)->label($label)->numeric()->minValue(0)->step(0.01))->values()->all()),
-            Section::make('Ingredients and notes')->description('What goes into the mix, as a share of the whole.')->schema([
+            Section::make('Ingredients and notes')->description('What goes into the mix, as a share of the whole.')->columnSpanFull()->schema([
                 Textarea::make('notes')->columnSpanFull(),
                 Repeater::make('items')->label('Ingredients')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add ingredient')
                     ->schema([

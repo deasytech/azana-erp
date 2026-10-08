@@ -7,6 +7,7 @@ use App\Filament\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Resources\Invoices\Pages\ViewInvoice;
 use App\Filament\Resources\Invoices\RelationManagers\AllocationsRelationManager;
 use App\Filament\Resources\Invoices\RelationManagers\LinesRelationManager;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\MoneyColumn;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -65,6 +66,7 @@ class InvoiceResource extends Resource
                 SelectFilter::make('customer_id')->label('Customer')->relationship('customer', 'name')->searchable()->preload(),
                 Filter::make('owing')->label('Still owing')->default()->query(fn (Builder $query) => $query
                     ->whereRaw('total_minor > (select coalesce(sum(a.amount_minor), 0) from payment_allocations a join payments p on p.id = a.payment_id where a.invoice_id = invoices.id and p.voided_at is null)')),
+                DateRangeFilter::make('issued_on', 'Issued'),
             ])
             ->recordActions([ViewAction::make()])
             ->defaultSort('due_on');

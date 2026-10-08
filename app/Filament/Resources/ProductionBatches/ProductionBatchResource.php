@@ -57,19 +57,19 @@ class ProductionBatchResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Batch')->description('What the group is and when it started.')->columns(2)->schema([
+            Section::make('Batch')->description('What the group is and when it started.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('name')->required()->maxLength(255),
                 LookupSelect::make('stage_id', 'stage', LookupCategory::AnimalCategory, 'Stage')->required(),
                 DatePicker::make('started_on')->required()->default(now())->maxDate(now()),
                 TextInput::make('count')->label('Pigs placed')->numeric()->integer()->minValue(1)->required(),
                 TextInput::make('average_weight_kg')->label('Average weight at placement (kg)')->numeric()->minValue(0.01)->step(0.01),
             ]),
-            Section::make('Placement')->description('The pigs as they enter the batch.')->columns(2)->schema([
+            Section::make('Placement')->description('The pigs as they enter the batch.')->columnSpanFull()->columns(2)->schema([
                 MoneyInput::make('unit_cost_minor', 'Cost per pig at entry'),
                 TextInput::make('placed_age_days')->label('Average age at placement (days)')->numeric()->integer()->minValue(0),
                 TextInput::make('target_weight_kg')->label('Target market weight (kg)')->numeric()->minValue(0.01)->step(0.01)->helperText('Leave empty to use the farm setting.'),
             ]),
-            Section::make('Housing and source')->description('Where the batch is kept and where it came from.')->columns(2)->schema([
+            Section::make('Housing and source')->description('Where the batch is kept and where it came from.')->columnSpanFull()->columns(2)->schema([
                 Select::make('breed_id')->label('Breed')->searchable()->options(fn () => Breed::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 Select::make('pen_id')->label('Pen')->searchable()->options(fn () => Pen::where('is_active', true)->orderBy('code')->pluck('code', 'id')),
                 TextInput::make('source_note')->label('Source')->maxLength(255)->helperText('For example: weaned from litters L01-L04, or bought from a supplier.'),

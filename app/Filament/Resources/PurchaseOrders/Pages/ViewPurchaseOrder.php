@@ -136,6 +136,11 @@ class ViewPurchaseOrder extends ViewRecord
         ]);
     }
 
+    public function getSubheading(): ?string
+    {
+        return $this->order()->supplier->name.' - ordered '.$this->order()->ordered_on->format('d M Y');
+    }
+
     protected function getHeaderActions(): array
     {
         $in = fn (Status ...$statuses) => in_array($this->order()->status, $statuses, true);

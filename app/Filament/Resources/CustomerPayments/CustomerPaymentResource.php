@@ -49,7 +49,7 @@ class CustomerPaymentResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Payment')->description('Who paid, how much and how.')->columns(2)->schema([
+            Section::make('Payment')->description('Who paid, how much and how.')->columnSpanFull()->columns(2)->schema([
                 Select::make('customer_id')->label('Customer')->required()->searchable()->live()
                     ->options(fn () => Customer::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->code} - {$c->name}"])->all()),
                 MoneyInput::make('amount_minor', 'Amount received')->required(),
@@ -57,7 +57,7 @@ class CustomerPaymentResource extends Resource
                 DatePicker::make('received_on')->default(now())->maxDate(now())->required(),
                 TextInput::make('reference')->maxLength(60),
             ]),
-            Section::make('Allocation')->description('Which invoices this payment settles.')->columns(2)->schema([
+            Section::make('Allocation')->description('Which invoices this payment settles.')->columnSpanFull()->columns(2)->schema([
                 Select::make('apply')->label('Apply to')->options([
                     'oldest' => 'The oldest invoices first',
                     'invoices' => 'Invoices I choose',

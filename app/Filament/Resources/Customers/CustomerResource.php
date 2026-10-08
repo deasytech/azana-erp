@@ -56,12 +56,12 @@ class CustomerResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Customer')->description('Who they are.')->columns(2)->schema([
+            Section::make('Customer')->description('Who they are.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('name')->required()->maxLength(255),
                 Select::make('customer_type_id')->label('Customer type')->required()->searchable()
                     ->options(fn () => LookupValue::inCategory(LookupCategory::CustomerType)->pluck('name', 'id')->all()),
             ]),
-            Section::make('Contact')->description('How to reach them.')->columns(2)->schema([
+            Section::make('Contact')->description('How to reach them.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('contact_name')->maxLength(255),
                 TextInput::make('phone')->tel()->maxLength(40),
                 TextInput::make('email')->email()->maxLength(255),

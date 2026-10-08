@@ -94,6 +94,11 @@ class ViewSalesOrder extends ViewRecord
         return ProgressSteps::make(['Drafted', 'Confirmed', 'Dispatched', 'Invoiced'], $done);
     }
 
+    public function getSubheading(): ?string
+    {
+        return $this->record->customer->name.' - ordered '.$this->record->ordered_on->format('d M Y');
+    }
+
     protected function getHeaderActions(): array
     {
         $in = fn (Status ...$statuses) => in_array($this->order()->status, $statuses, true);

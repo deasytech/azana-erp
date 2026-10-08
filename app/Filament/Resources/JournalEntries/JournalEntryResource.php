@@ -52,11 +52,11 @@ class JournalEntryResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Entry')->description('When and why.')->columns(2)->schema([
+            Section::make('Entry')->description('When and why.')->columnSpanFull()->columns(2)->schema([
                 DatePicker::make('entry_date')->label('Date')->default(now())->maxDate(now())->required(),
                 TextInput::make('description')->required()->maxLength(255),
             ]),
-            Section::make('Lines')->description('Debits and credits must balance.')->schema([
+            Section::make('Lines')->description('Debits and credits must balance.')->columnSpanFull()->schema([
                 Repeater::make('lines')->hiddenLabel()->columnSpanFull()->minItems(2)->columns(4)->addActionLabel('Add line')
                     ->schema([
                         Select::make('account_id')->label('Account')->required()->searchable()->options(fn () => Account::where('is_active', true)->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),

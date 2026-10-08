@@ -47,7 +47,7 @@ class PriceListResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Price list')->description('What it is and which farm and category it covers.')->columns(2)->schema([
+            Section::make('Price list')->description('What it is and which farm and category it covers.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('code')->required()->maxLength(30)
                     ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
                     ->unique(ignoreRecord: true),
@@ -60,7 +60,7 @@ class PriceListResource extends Resource
                     ->relationship('category', 'name', modifyQueryUsing: fn ($query) => $query->where('category', LookupCategory::PriceCategory->value)->where('is_active', true)->orderBy('sort_order'))
                     ->required()->preload(),
             ]),
-            Section::make('Currency and validity')->description('Which currency it is in and when it applies.')->columns(2)->schema([
+            Section::make('Currency and validity')->description('Which currency it is in and when it applies.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('currency_code')->label('Currency (ISO code)')->required()->length(3)
                     ->default(fn () => Farm::orderBy('id')->value('currency_code') ?? 'NGN')
                     ->dehydrateStateUsing(fn ($state) => strtoupper($state)),

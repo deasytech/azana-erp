@@ -40,11 +40,11 @@ class BiosecurityCheckResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Check')->description('When, and which unit it covers.')->columns(2)->schema([
+            Section::make('Check')->description('When, and which unit it covers.')->columnSpanFull()->columns(2)->schema([
                 DatePicker::make('checked_on')->default(now())->maxDate(now())->required(),
                 Select::make('production_unit_id')->label('Production unit')->options(fn () => ProductionUnit::where('is_active', true)->orderBy('name')->pluck('name', 'id'))->helperText('Leave empty for a whole-farm check.'),
             ]),
-            Section::make('Checklist')->description('Tick what passed; add a note for anything that did not.')->schema([
+            Section::make('Checklist')->description('Tick what passed; add a note for anything that did not.')->columnSpanFull()->schema([
                 Repeater::make('results')->hiddenLabel()->addable(false)->deletable(false)->reorderable(false)->columns(3)->columnSpanFull()
                     ->default(fn () => BiosecurityChecklistItem::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
                         ->map(fn ($i) => ['item_id' => $i->id, 'description' => $i->description, 'passed' => true, 'notes' => null])->all())

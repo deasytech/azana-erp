@@ -45,12 +45,12 @@ class BreedingServiceResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Service')->description('Which sow, when and how.')->columns(2)->schema([
+            Section::make('Service')->description('Which sow, when and how.')->columnSpanFull()->columns(2)->schema([
                 AnimalPicker::sow()->required(),
                 DatePicker::make('serviced_on')->required()->default(now())->maxDate(now()),
                 Select::make('method')->options(AnimalResource::enumOptions(ServiceMethod::cases()))->required()->default(ServiceMethod::Natural->value),
             ]),
-            Section::make('Sire and semen')->description('The boar or the semen used.')->columns(2)->schema([
+            Section::make('Sire and semen')->description('The boar or the semen used.')->columnSpanFull()->columns(2)->schema([
                 AnimalPicker::boar()->helperText('Required for natural mating; optional for AI.'),
                 Select::make('semen_batch_id')->label('Semen batch')->searchable()->live()
                     ->options(fn () => SemenBatch::with(['boar', 'breed', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
@@ -59,7 +59,7 @@ class BreedingServiceResource extends Resource
                 StockForms::store('semen_location_id', 'Take the dose from')->required(fn ($get) => filled($get('semen_batch_id')))->visible(fn ($get) => filled($get('semen_batch_id'))),
                 TextInput::make('semen_source')->maxLength(255)->helperText('For AI with outside semen: boar / supplier when no batch or boar is chosen.'),
             ]),
-            Section::make('Technician')->description('Who performed the service.')->columns(2)->schema([
+            Section::make('Technician')->description('Who performed the service.')->columnSpanFull()->columns(2)->schema([
                 Select::make('technician_id')->label('Technician (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 TextInput::make('technician_name')->label('Technician (name)')->maxLength(255),
                 Textarea::make('notes')->columnSpanFull(),

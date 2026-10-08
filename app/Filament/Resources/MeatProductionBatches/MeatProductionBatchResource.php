@@ -51,7 +51,7 @@ class MeatProductionBatchResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Source')->description('Which carcasses are being processed, and where the meat goes.')->columns(2)->schema([
+            Section::make('Source')->description('Which carcasses are being processed, and where the meat goes.')->columnSpanFull()->columns(2)->schema([
                 Select::make('carcass_ids')->label('Carcasses')->multiple()->required()->searchable()->columnSpanFull()
                     ->options(fn () => Carcass::with('record.animal')->where('status', CarcassStatus::Hanging)->orderBy('id')->get()
                         ->mapWithKeys(fn (Carcass $c) => [$c->id => "{$c->number} - {$c->record->sourceLabel()} ({$c->usableKg()} kg usable)"])->all())
@@ -60,7 +60,7 @@ class MeatProductionBatchResource extends Resource
                     ->options(fn () => InventoryLocation::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
                 DatePicker::make('produced_on')->default(now())->maxDate(now())->required(),
             ]),
-            Section::make('Products made')->description('What came out of the carcasses.')->schema([
+            Section::make('Products made')->description('What came out of the carcasses.')->columnSpanFull()->schema([
                 Repeater::make('lines')->hiddenLabel()->label('Products made')->columnSpanFull()->minItems(1)->columns(2)->addActionLabel('Add product')
                     ->schema([
                         Select::make('meat_product_id')->label('Product')->required()->searchable()->distinct()
@@ -68,7 +68,7 @@ class MeatProductionBatchResource extends Resource
                         TextInput::make('weight_kg')->label('Weight (kg)')->numeric()->minValue(0.01)->step(0.01)->required(),
                     ]),
             ]),
-            Section::make('Waste and cost')->description('What was lost and what processing cost.')->columns(2)->schema([
+            Section::make('Waste and cost')->description('What was lost and what processing cost.')->columnSpanFull()->columns(2)->schema([
                 TextInput::make('waste_kg')->label('Waste (kg)')->numeric()->minValue(0)->step(0.01)->default(0)->helperText('Trim, bone and anything thrown away.'),
                 MoneyInput::make('other_cost_minor', 'Other processing costs')->helperText('Labour, power, packaging; added to what the pigs cost to raise.'),
                 Textarea::make('notes')->columnSpanFull(),
