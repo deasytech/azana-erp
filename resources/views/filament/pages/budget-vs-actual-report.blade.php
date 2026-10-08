@@ -1,21 +1,19 @@
 <x-filament-panels::page class="azana-report">
-    <div class="flex flex-wrap items-end gap-4 text-sm">
-        <label class="flex flex-col gap-1">Budget
-            <select wire:model.live="budgetId" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
+    <x-erp.filters heading="Report options" description="Choose the budget and how far through the year to read it.">
+        <x-erp.filter-select label="Budget" wire:model.live="budgetId">
                 @foreach ($this->budgets() as $id => $name)
                     <option value="{{ $id }}">{{ $name }}</option>
                 @endforeach
-            </select>
-        </label>
-        <label class="flex flex-col gap-1">Through month
-            <select wire:model.live="month" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
+            
+        </x-erp.filter-select>
+        <x-erp.filter-select label="Through month" wire:model.live="month">
                 <option value="">Current</option>
                 @foreach (range(1, 12) as $m)
                     <option value="{{ $m }}">{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
                 @endforeach
-            </select>
-        </label>
-    </div>
+            
+        </x-erp.filter-select>
+    </x-erp.filters>
 
     @if ($report = $this->report)
         @php($t = $report['totals'])

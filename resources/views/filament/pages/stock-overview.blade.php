@@ -1,27 +1,21 @@
 <x-filament-panels::page class="azana-report">
-    <div class="flex flex-wrap items-end gap-4 text-sm">
-        <label class="flex flex-col gap-1">Item
-            <x-filament::input.wrapper>
-                <x-filament::input.select wire:model.live="itemId">
+    <x-erp.filters heading="Stock filters" description="Narrow the stock list by item or store.">
+        <x-erp.filter-select label="Item" wire:model.live="itemId">
                     <option value="">All items</option>
                     @foreach ($this->itemOptions() as $id => $name)
                         <option value="{{ $id }}">{{ $name }}</option>
                     @endforeach
-                </x-filament::input.select>
-            </x-filament::input.wrapper>
-        </label>
-        <label class="flex flex-col gap-1">Store
-            <x-filament::input.wrapper>
-                <x-filament::input.select wire:model.live="locationId">
+                
+        </x-erp.filter-select>
+        <x-erp.filter-select label="Store" wire:model.live="locationId">
                     <option value="">All stores</option>
                     @foreach ($this->storeOptions() as $id => $name)
                         <option value="{{ $id }}">{{ $name }}</option>
                     @endforeach
-                </x-filament::input.select>
-            </x-filament::input.wrapper>
-        </label>
-        <p class="ml-auto font-medium">Total value: {{ $this->totalValue }}</p>
-    </div>
+                
+        </x-erp.filter-select>
+        <x-slot:aside><span class="text-gray-500">Total value</span> <strong class="text-base tabular-nums">{{ $this->totalValue }}</strong></x-slot:aside>
+    </x-erp.filters>
 
     @php($levels = $this->levels)
     @if ($levels->isEmpty())

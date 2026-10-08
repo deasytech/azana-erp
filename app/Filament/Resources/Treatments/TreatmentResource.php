@@ -6,6 +6,7 @@ use App\Domain\Health\Models\Treatment;
 use App\Filament\Resources\Treatments\Pages\CreateTreatment;
 use App\Filament\Resources\Treatments\Pages\ListTreatments;
 use App\Filament\Support\AnimalPicker;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\HealthForms;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -32,8 +33,8 @@ class TreatmentResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->required(),
-            ...HealthForms::treatment(),
+            FormSections::make('Animal', 'Which animal this is about.', [AnimalPicker::any()->required()], Heroicon::OutlinedTag),
+            FormSections::make('Treatment', 'The medicine, dose and withdrawal period.', HealthForms::treatment(), Heroicon::OutlinedHeart),
         ]);
     }
 

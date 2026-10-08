@@ -1,16 +1,14 @@
 <x-filament-panels::page>
-    <div class="flex flex-wrap items-end gap-4 text-sm">
-        <label class="flex flex-col gap-1">Month
-            <select wire:model.live="month" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
+    <x-erp.filters heading="Period" description="The month and year to compare against target.">
+        <x-erp.filter-select label="Month" wire:model.live="month">
                 @foreach ($this->monthOptions() as $number => $name)<option value="{{ $number }}">{{ $name }}</option>@endforeach
-            </select>
-        </label>
-        <label class="flex flex-col gap-1">Year
-            <select wire:model.live="year" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
+            
+        </x-erp.filter-select>
+        <x-erp.filter-select label="Year" wire:model.live="year">
                 @foreach ($this->yearOptions() as $y)<option value="{{ $y }}">{{ $y }}</option>@endforeach
-            </select>
-        </label>
-    </div>
+            
+        </x-erp.filter-select>
+    </x-erp.filters>
 
     <h2 class="text-base font-semibold">{{ $this->periodLabel() }}</h2>
     @foreach (collect($this->kpis)->groupBy('area') as $area => $kpis)

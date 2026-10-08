@@ -7,6 +7,7 @@ use App\Filament\Resources\HeatEvents\Pages\CreateHeatEvent;
 use App\Filament\Resources\HeatEvents\Pages\ListHeatEvents;
 use App\Filament\Support\AnimalPicker;
 use App\Filament\Support\DateRangeFilter;
+use App\Filament\Support\FormSections;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
@@ -33,9 +34,11 @@ class HeatEventResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::sow()->required(),
-            DatePicker::make('detected_on')->required()->default(now())->maxDate(now()),
-            Textarea::make('notes'),
+            FormSections::make('Heat event', 'Which sow came on heat, and when it was seen.', [
+                AnimalPicker::sow()->required(),
+                DatePicker::make('detected_on')->required()->default(now())->maxDate(now()),
+                Textarea::make('notes'),
+            ], Heroicon::OutlinedHeart),
         ]);
     }
 

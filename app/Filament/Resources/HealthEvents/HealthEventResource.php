@@ -8,6 +8,7 @@ use App\Filament\Resources\HealthEvents\Pages\CreateHealthEvent;
 use App\Filament\Resources\HealthEvents\Pages\ListHealthEvents;
 use App\Filament\Support\AnimalPicker;
 use App\Filament\Support\DomainAction;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\HealthForms;
 use BackedEnum;
 use Carbon\Carbon;
@@ -38,8 +39,8 @@ class HealthEventResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->required(),
-            ...HealthForms::caseReport(),
+            FormSections::make('Animal', 'Which animal this is about.', [AnimalPicker::any()->required()], Heroicon::OutlinedTag),
+            FormSections::make('Case', 'What was seen and how it was assessed.', HealthForms::caseReport(), Heroicon::OutlinedHeart),
         ]);
     }
 

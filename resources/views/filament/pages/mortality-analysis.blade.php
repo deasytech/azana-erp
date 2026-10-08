@@ -1,23 +1,12 @@
 <x-filament-panels::page>
-    <div class="flex flex-wrap items-end gap-4 text-sm">
-        <label class="flex flex-col gap-1">Group by
-            <x-filament::input.wrapper>
-                <x-filament::input.select wire:model.live="dimension">
+    <x-erp.filters heading="Grouping and period" description="How to group the deaths and the dates to cover.">
+        <x-erp.filter-select label="Group by" wire:model.live="dimension">
                     @foreach ($this->dimensions() as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach
-                </x-filament::input.select>
-            </x-filament::input.wrapper>
-        </label>
-        <label class="flex flex-col gap-1">From
-            <x-filament::input.wrapper>
-                <x-filament::input type="date" wire:model.live="from" />
-            </x-filament::input.wrapper>
-        </label>
-        <label class="flex flex-col gap-1">To
-            <x-filament::input.wrapper>
-                <x-filament::input type="date" wire:model.live="to" />
-            </x-filament::input.wrapper>
-        </label>
-    </div>
+                
+        </x-erp.filter-select>
+        <x-erp.filter-date label="From" wire:model.live="from" />
+        <x-erp.filter-date label="To" wire:model.live="to" />
+    </x-erp.filters>
 
     @php($errors = $this->inputErrors())
     @if ($errors !== [])

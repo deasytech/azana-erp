@@ -1,20 +1,14 @@
 <x-filament-panels::page>
-    <div class="flex flex-wrap items-end gap-4 text-sm">
-        <label class="flex flex-col gap-1">Month
-            <x-filament::input.wrapper>
-                <x-filament::input.select wire:model.live="month">
+    <x-erp.filters heading="Period" description="The month the indicators are read for.">
+        <x-erp.filter-select label="Month" wire:model.live="month">
                     @foreach ($this->monthOptions() as $number => $name)<option value="{{ $number }}">{{ $name }}</option>@endforeach
-                </x-filament::input.select>
-            </x-filament::input.wrapper>
-        </label>
-        <label class="flex flex-col gap-1">Year
-            <x-filament::input.wrapper>
-                <x-filament::input.select wire:model.live="year">
+                
+        </x-erp.filter-select>
+        <x-erp.filter-select label="Year" wire:model.live="year">
                     @foreach ($this->yearOptions() as $y)<option value="{{ $y }}">{{ $y }}</option>@endforeach
-                </x-filament::input.select>
-            </x-filament::input.wrapper>
-        </label>
-    </div>
+                
+        </x-erp.filter-select>
+    </x-erp.filters>
 
     <div class="flex flex-wrap gap-2 text-sm">
         @foreach ($this->areas() as $key => $name)

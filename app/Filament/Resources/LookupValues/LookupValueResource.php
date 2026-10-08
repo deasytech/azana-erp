@@ -7,6 +7,7 @@ use App\Enums\LookupCategory;
 use App\Filament\Resources\LookupValues\Pages\CreateLookupValue;
 use App\Filament\Resources\LookupValues\Pages\EditLookupValue;
 use App\Filament\Resources\LookupValues\Pages\ListLookupValues;
+use App\Filament\Support\FormSections;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -44,12 +45,16 @@ class LookupValueResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Select::make('category')->options(collect(LookupCategory::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all())->required()->disabledOn('edit')->dehydrated(),
-            TextInput::make('code')->required()->maxLength(60)->alphaDash()->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtolower(trim($state)))->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('category', $get('category')))->helperText('Stored in lower case.'),
-            TextInput::make('name')->required()->maxLength(120),
-            TextInput::make('description')->maxLength(255),
-            TextInput::make('sort_order')->numeric()->integer()->default(0)->minValue(0),
-            Toggle::make('is_active')->label('Active')->default(true),
+            FormSections::make('List entry', 'Which list it belongs to and how it is named.', [
+                Select::make('category')->options(collect(LookupCategory::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all())->required()->disabledOn('edit')->dehydrated(),
+                TextInput::make('code')->required()->maxLength(60)->alphaDash()->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtolower(trim($state)))->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('category', $get('category')))->helperText('Stored in lower case.'),
+                TextInput::make('name')->required()->maxLength(120),
+                TextInput::make('description')->maxLength(255),
+                TextInput::make('sort_order')->numeric()->integer()->default(0)->minValue(0)->helperText('Lower numbers are listed first.'),
+            ], Heroicon::OutlinedListBullet),
+            FormSections::make('Status', 'Inactive entries are no longer offered for new records.', [
+                Toggle::make('is_active')->label('Active')->default(true),
+            ], Heroicon::OutlinedPower, 1),
         ]);
     }
 

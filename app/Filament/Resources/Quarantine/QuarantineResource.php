@@ -8,6 +8,7 @@ use App\Filament\Resources\Quarantine\Pages\CreateQuarantine;
 use App\Filament\Resources\Quarantine\Pages\ListQuarantines;
 use App\Filament\Support\AnimalPicker;
 use App\Filament\Support\DomainAction;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\HealthForms;
 use BackedEnum;
 use Carbon\Carbon;
@@ -38,8 +39,8 @@ class QuarantineResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->required(),
-            ...HealthForms::quarantine(),
+            FormSections::make('Animal', 'Which animal this is about.', [AnimalPicker::any()->required()], Heroicon::OutlinedTag),
+            FormSections::make('Quarantine', 'Why and for how long the animal is kept apart.', HealthForms::quarantine(), Heroicon::OutlinedHeart),
         ]);
     }
 

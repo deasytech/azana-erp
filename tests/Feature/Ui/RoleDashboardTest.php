@@ -10,7 +10,10 @@ use App\Models\User;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class]);
@@ -62,4 +65,25 @@ it('draws the dashboard charts only for data the user may see', function () {
         Livewire::test($widget)->assertOk();
     }
     Livewire::test(Dashboard::class)->assertOk();
+});
+
+it('keeps the focus figures for a minute and recalculates when permissions change', function () {
+    Cache::flush();
+    $this->actingAs($user = userWithRole('Store Officer'));
+
+    $queries = function () {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        Livewire::test(Dashboard::class)->instance()->focus();
+
+        return count(DB::getQueryLog());
+    };
+
+    $first = $queries();
+    expect($queries())->toBeLessThan($first);
+
+    $user->givePermissionTo('finance.view');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $keys = collect(Livewire::test(Dashboard::class)->instance()->focus()['kpis'])->pluck('key');
+    expect($keys)->toContain('finance.payables_minor');
 });

@@ -6,11 +6,14 @@ use App\Enums\LookupCategory;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -49,10 +52,25 @@ abstract class MasterResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            static::codeField(),
-            ...static::fields(),
-            static::activeToggle(),
+            Section::make(static::detailsHeading())->description(static::detailsDescription())->icon(Heroicon::OutlinedClipboardDocumentList)->columnSpanFull()->columns(2)->schema([
+                static::codeField(),
+                ...array_map(fn (Component $field): Component => $field instanceof Textarea ? $field->rows(3)->columnSpanFull() : $field, static::fields()),
+            ]),
+            Section::make('Status')->description('Inactive records stay on past entries but are no longer offered for new ones.')->icon(Heroicon::OutlinedPower)->columnSpanFull()->schema([
+                static::activeToggle()->inline(false),
+            ]),
         ]);
+    }
+
+    /** The heading of the form's main section; subclasses may name it after the record, e.g. "Building". */
+    protected static function detailsHeading(): string
+    {
+        return static::getModelLabel() ? ucfirst(static::getModelLabel()) : 'Details';
+    }
+
+    protected static function detailsDescription(): string
+    {
+        return 'The identifier and the facts that describe this record.';
     }
 
     public static function table(Table $table): Table

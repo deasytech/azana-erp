@@ -9,6 +9,7 @@ use App\Filament\Resources\StockCounts\Pages\CreateStockCount;
 use App\Filament\Resources\StockCounts\Pages\ListStockCounts;
 use App\Filament\Resources\StockCounts\Pages\ViewStockCount;
 use App\Filament\Resources\StockCounts\RelationManagers\LinesRelationManager;
+use App\Filament\Support\FormSections;
 use App\Filament\Support\StockForms;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -41,10 +42,12 @@ class StockCountResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            StockForms::store(),
-            DatePicker::make('counted_on')->default(now())->maxDate(now())->required(),
-            Textarea::make('notes')->columnSpanFull(),
-        ])->columns(2);
+            FormSections::make('Stock count', 'Which store is counted, and on what day.', [
+                StockForms::store(),
+                DatePicker::make('counted_on')->default(now())->maxDate(now())->required(),
+                Textarea::make('notes'),
+            ], Heroicon::OutlinedClipboardDocumentCheck),
+        ]);
     }
 
     public static function table(Table $table): Table

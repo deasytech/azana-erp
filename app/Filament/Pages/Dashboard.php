@@ -12,6 +12,7 @@ use App\Filament\Widgets\HerdByCategoryChartWidget;
 use App\Filament\Widgets\SalesTrendChartWidget;
 use App\Filament\Widgets\TargetAttainmentChartWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Illuminate\Support\Facades\Cache;
 
 /** The home screen: the daily snapshot for whoever signs in, limited to what they may see, with the way into everything else. */
 class Dashboard extends BaseDashboard
@@ -41,7 +42,7 @@ class Dashboard extends BaseDashboard
 
     /**
      * The part of the dashboard that matches the user's job: month-to-date figures for the indicators that matter to it, and shortcuts.
-     * Figures the user may not view are left out; null when their roles have no focus.
+     * Figures the user may not view are left out; null when their roles have no focus. The figures may be up to a minute behind.
      *
      * @return array{heading: string, description: string, kpis: list<array<string, mixed>>, links: list<array{label: string, url: string}>}|null
      */
@@ -54,7 +55,14 @@ class Dashboard extends BaseDashboard
             return null;
         }
 
-        $values = (app(GetKpis::class))(now()->startOfMonth(), now(), $user);
+        // Working out every indicator the user may view reads most modules, so keep the result for a minute per user and month. The key
+        // carries a fingerprint of their permissions, so a role change takes effect at once rather than after the minute.
+        $permissions = md5($user->getAllPermissions()->pluck('name')->sort()->implode(','));
+        $values = Cache::remember(
+            "dashboard-focus:{$user->getKey()}:{$permissions}:".now()->format('Y-m'),
+            60,
+            fn (): array => (app(GetKpis::class))(now()->startOfMonth(), now(), $user),
+        );
         $focus['kpis'] = array_values(array_intersect_key($values, array_flip($focus['kpis'])));
 
         return $focus;
