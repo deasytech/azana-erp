@@ -57,7 +57,16 @@ class ViewPurchaseRequest extends ViewRecord
         $status = $this->record->status;
 
         if ($status === Status::Rejected || $status === Status::Cancelled) {
-            return ProgressSteps::stopped(['Drafted'], $status->label());
+            // Each stage reached before the request stopped is kept: submitted, and approved (a decision on a cancelled request is an approval).
+            $completed = $status === Status::Rejected
+                ? ['Drafted', 'Submitted']
+                : array_values(array_filter([
+                    'Drafted',
+                    $this->record->submitted_at ? 'Submitted' : null,
+                    $this->record->decided_at ? 'Approved' : null,
+                ]));
+
+            return ProgressSteps::stopped($completed, $status->label());
         }
 
         $done = match ($status) {

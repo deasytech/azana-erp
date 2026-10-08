@@ -71,7 +71,8 @@ class ViewPurchaseOrder extends ViewRecord
         $order = $this->order();
 
         if ($order->status === Status::Rejected || $order->status === Status::Cancelled) {
-            return ProgressSteps::stopped(['Drafted'], $order->status->label());
+            // A decision was only recorded if the order was approved before it was cancelled (a rejected order ends at the rejection).
+            return ProgressSteps::stopped($order->status === Status::Cancelled && $order->decided_at ? ['Drafted', 'Approved'] : ['Drafted'], $order->status->label());
         }
 
         $trace = $this->trace();
@@ -81,7 +82,8 @@ class ViewPurchaseOrder extends ViewRecord
             default => 3,
         };
         $done = $done === 3 && (int) $trace['invoiced'] > 0 ? 4 : $done;
-        $done = $done === 4 && (int) $trace['paid'] >= (int) $trace['invoiced'] ? 5 : $done;
+        // Paid only once everything received has been invoiced and that invoiced amount is settled.
+        $done = $done === 4 && (int) $trace['invoiced'] >= (int) $trace['received_value'] && (int) $trace['paid'] >= (int) $trace['invoiced'] ? 5 : $done;
 
         return ProgressSteps::make(
             ['Drafted', 'Approved', 'Received', 'Invoiced', 'Paid'],

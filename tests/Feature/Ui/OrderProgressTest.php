@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Procurement\Actions\DecidePurchaseOrder;
+use App\Domain\Procurement\Actions\DecidePurchaseRequest;
 use App\Filament\Resources\PurchaseOrders\Pages\ViewPurchaseOrder;
 use App\Filament\Resources\PurchaseRequests\Pages\ViewPurchaseRequest;
 use Database\Seeders\MasterDataSeeder;
@@ -34,4 +35,22 @@ it('draws the journey of a purchase request and a planned feed order', function 
     $request = approvedRequest(userWithRole('Store Officer'), $manager);
     Livewire::test(ViewPurchaseRequest::class, ['record' => $request->getRouteKey()])
         ->assertSee('Progress')->assertSee('Submitted')->assertSee('Ordered');
+});
+
+it('keeps the stages reached when a purchase order is cancelled after approval', function () {
+    $this->actingAs(userWithRole('Store Officer'));
+    $order = purchaseOrder(approve: true);
+    app(DecidePurchaseOrder::class)->cancel($order);
+
+    $this->actingAs(owner());
+    Livewire::test(ViewPurchaseOrder::class, ['record' => $order->getRouteKey()])->assertSeeInOrder(['Drafted', 'Approved', 'Cancelled']);
+});
+
+it('keeps the stages reached when a purchase request is cancelled after approval', function () {
+    $manager = userWithRole('Farm Manager');
+    $request = approvedRequest(userWithRole('Store Officer'), $manager);
+    app(DecidePurchaseRequest::class)->cancel($request);
+
+    $this->actingAs($manager);
+    Livewire::test(ViewPurchaseRequest::class, ['record' => $request->getRouteKey()])->assertSeeInOrder(['Drafted', 'Submitted', 'Approved', 'Cancelled']);
 });

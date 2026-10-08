@@ -82,7 +82,7 @@ class ViewSalesOrder extends ViewRecord
     private function progress(SalesOrder $order): array
     {
         if ($order->status === Status::Cancelled) {
-            return ProgressSteps::stopped(['Drafted'], 'Cancelled');
+            return ProgressSteps::stopped($order->confirmed_at ? ['Drafted', 'Confirmed'] : ['Drafted'], 'Cancelled');
         }
 
         $done = match ($order->status) {

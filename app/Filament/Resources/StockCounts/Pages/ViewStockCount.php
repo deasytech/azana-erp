@@ -65,7 +65,8 @@ class ViewStockCount extends ViewRecord
         $status = $this->record->status;
 
         if ($status === StockCountStatus::Rejected || $status === StockCountStatus::Cancelled) {
-            return ProgressSteps::stopped(['Drafted'], $status->label());
+            // A count is only rejected after it was submitted; it can only be cancelled while still a draft.
+            return ProgressSteps::stopped($status === StockCountStatus::Rejected ? ['Drafted', 'Submitted'] : ['Drafted'], $status->label());
         }
 
         $done = match ($status) {
