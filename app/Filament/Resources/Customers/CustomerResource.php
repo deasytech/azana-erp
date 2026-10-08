@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -54,17 +55,21 @@ class CustomerResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('customer_type_id')->label('Customer type')->required()->searchable()
-                ->options(fn () => LookupValue::inCategory(LookupCategory::CustomerType)->pluck('name', 'id')->all()),
-            TextInput::make('contact_name')->maxLength(255),
-            TextInput::make('phone')->tel()->maxLength(40),
-            TextInput::make('email')->email()->maxLength(255),
-            TextInput::make('tax_number')->maxLength(60),
-            Textarea::make('address'),
-            Textarea::make('notes'),
-            Toggle::make('is_active')->label('Active')->default(true),
+        return $schema->components([
+            Section::make('Customer')->description('Who they are.')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                Select::make('customer_type_id')->label('Customer type')->required()->searchable()
+                    ->options(fn () => LookupValue::inCategory(LookupCategory::CustomerType)->pluck('name', 'id')->all()),
+            ]),
+            Section::make('Contact')->description('How to reach them.')->columns(2)->schema([
+                TextInput::make('contact_name')->maxLength(255),
+                TextInput::make('phone')->tel()->maxLength(40),
+                TextInput::make('email')->email()->maxLength(255),
+                TextInput::make('tax_number')->maxLength(60),
+                Textarea::make('address'),
+                Textarea::make('notes'),
+                Toggle::make('is_active')->label('Active')->default(true),
+            ]),
         ]);
     }
 

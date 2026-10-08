@@ -16,6 +16,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -40,19 +41,25 @@ class BiosecurityVisitResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('visitor_name')->required()->maxLength(255),
-            TextInput::make('organisation')->maxLength(255),
-            TextInput::make('phone')->tel()->maxLength(40),
-            TextInput::make('vehicle_registration')->maxLength(30),
-            TextInput::make('purpose')->required()->maxLength(255),
-            DateTimePicker::make('arrived_at')->default(now())->maxDate(now())->required()->seconds(false),
-            TextInput::make('last_pig_contact_hours')->label('Hours since last contact with pigs')->numeric()->integer()->minValue(0),
-            Toggle::make('health_declaration')->label('Visitor declares no symptoms of illness')
-                ->helperText('A visitor who has not declared, or has been near pigs too recently, can only be signed in by a user with approval rights.'),
-            Textarea::make('areas_visited'),
-            Select::make('host_id')->label('Host (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-            TextInput::make('host_name')->label('Host (name)')->maxLength(255),
-            Textarea::make('notes'),
+            Section::make('Visitor')->description('Who is visiting and how they arrived.')->columns(2)->schema([
+                TextInput::make('visitor_name')->required()->maxLength(255),
+                TextInput::make('organisation')->maxLength(255),
+                TextInput::make('phone')->tel()->maxLength(40),
+                TextInput::make('vehicle_registration')->maxLength(30),
+            ]),
+            Section::make('Visit')->description('Why they are here and how recently they were near pigs.')->columns(2)->schema([
+                TextInput::make('purpose')->required()->maxLength(255),
+                DateTimePicker::make('arrived_at')->default(now())->maxDate(now())->required()->seconds(false),
+                TextInput::make('last_pig_contact_hours')->label('Hours since last contact with pigs')->numeric()->integer()->minValue(0),
+                Toggle::make('health_declaration')->label('Visitor declares no symptoms of illness')
+                    ->helperText('A visitor who has not declared, or has been near pigs too recently, can only be signed in by a user with approval rights.'),
+                Textarea::make('areas_visited'),
+            ]),
+            Section::make('Host')->description('Who is receiving the visitor.')->columns(2)->schema([
+                Select::make('host_id')->label('Host (user)')->searchable()->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
+                TextInput::make('host_name')->label('Host (name)')->maxLength(255),
+                Textarea::make('notes')->columnSpanFull(),
+            ]),
         ]);
     }
 

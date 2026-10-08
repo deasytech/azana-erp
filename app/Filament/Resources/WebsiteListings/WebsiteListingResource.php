@@ -18,6 +18,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -47,23 +48,29 @@ class WebsiteListingResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Select::make('kind')->options(AnimalResource::enumOptions(ListingKind::cases()))->required()->live()
-                ->afterStateUpdated(fn ($set) => $set('inventory_item_id', null)),
-            TextInput::make('title')->required()->maxLength(255),
-            TextInput::make('slug')->label('Web address')->maxLength(120)->helperText('Made from the title when left empty, for example "duroc-semen".'),
-            TextInput::make('summary')->required()->maxLength(300)->columnSpanFull(),
-            Textarea::make('description')->rows(6)->columnSpanFull()->helperText('Blank lines start a new paragraph.'),
-            Select::make('inventory_item_id')->label('Stock item')->searchable()->placeholder('None')
-                ->visible(fn ($get) => in_array($get('kind'), [ListingKind::Semen->value, ListingKind::Meat->value], true))
-                ->options(fn ($get) => InventoryItem::where('is_active', true)
-                    ->where('category', $get('kind') === ListingKind::Semen->value ? InventoryCategory::Semen : InventoryCategory::Meat)
-                    ->orderBy('name')->pluck('name', 'id'))
-                ->helperText('Links the listing to its price list entry and to the stock it is sold from.'),
-            TextInput::make('price_unit')->label('Price is quoted')->maxLength(30)->placeholder('per dose')->helperText('Words shown after the price.'),
-            Toggle::make('show_price')->label('Show the price')->helperText('The price is the one on the active price list for the stock item.'),
-            TextInput::make('sort_order')->numeric()->integer()->minValue(0)->maxValue(65000)->default(100)->helperText('Smaller numbers come first.'),
-            Toggle::make('is_published')->label('Published on the website'),
-        ])->columns(2);
+            Section::make('What is offered')->description('The product and the words visitors read.')->columns(2)->schema([
+                Select::make('kind')->options(AnimalResource::enumOptions(ListingKind::cases()))->required()->live()
+                    ->afterStateUpdated(fn ($set) => $set('inventory_item_id', null)),
+                TextInput::make('title')->required()->maxLength(255),
+                TextInput::make('slug')->label('Web address')->maxLength(120)->helperText('Made from the title when left empty, for example "duroc-semen".'),
+                TextInput::make('summary')->required()->maxLength(300)->columnSpanFull(),
+                Textarea::make('description')->rows(6)->columnSpanFull()->helperText('Blank lines start a new paragraph.'),
+            ]),
+            Section::make('Stock and price')->description('Where the price and availability come from.')->columns(2)->schema([
+                Select::make('inventory_item_id')->label('Stock item')->searchable()->placeholder('None')
+                    ->visible(fn ($get) => in_array($get('kind'), [ListingKind::Semen->value, ListingKind::Meat->value], true))
+                    ->options(fn ($get) => InventoryItem::where('is_active', true)
+                        ->where('category', $get('kind') === ListingKind::Semen->value ? InventoryCategory::Semen : InventoryCategory::Meat)
+                        ->orderBy('name')->pluck('name', 'id'))
+                    ->helperText('Links the listing to its price list entry and to the stock it is sold from.'),
+                TextInput::make('price_unit')->label('Price is quoted')->maxLength(30)->placeholder('per dose')->helperText('Words shown after the price.'),
+                Toggle::make('show_price')->label('Show the price')->helperText('The price is the one on the active price list for the stock item.'),
+            ]),
+            Section::make('Publishing')->description('Order on the site and whether it is live.')->columns(2)->schema([
+                TextInput::make('sort_order')->numeric()->integer()->minValue(0)->maxValue(65000)->default(100)->helperText('Smaller numbers come first.'),
+                Toggle::make('is_published')->label('Published on the website'),
+            ]),
+        ]);
     }
 
     public static function table(Table $table): Table

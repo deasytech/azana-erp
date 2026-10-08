@@ -12,6 +12,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -36,15 +37,19 @@ class LabResultResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            AnimalPicker::any()->helperText('Leave empty for a herd or pen sample.'),
-            TextInput::make('sample_type')->required()->maxLength(60)->placeholder('Blood, faeces, swab...'),
-            TextInput::make('test_name')->required()->maxLength(255),
-            DatePicker::make('sampled_on')->default(now())->maxDate(now())->required(),
-            DatePicker::make('resulted_on')->maxDate(now()),
-            Textarea::make('result'),
-            Toggle::make('is_abnormal')->label('Abnormal result'),
-            TextInput::make('lab_name')->maxLength(255),
-            Textarea::make('notes'),
+            Section::make('Sample')->description('What was sampled, from whom and when.')->columns(2)->schema([
+                AnimalPicker::any()->helperText('Leave empty for a herd or pen sample.'),
+                TextInput::make('sample_type')->required()->maxLength(60)->placeholder('Blood, faeces, swab...'),
+                TextInput::make('test_name')->required()->maxLength(255),
+                DatePicker::make('sampled_on')->default(now())->maxDate(now())->required(),
+                DatePicker::make('resulted_on')->maxDate(now()),
+            ]),
+            Section::make('Result')->description('What the laboratory found.')->columns(2)->schema([
+                Textarea::make('result'),
+                Toggle::make('is_abnormal')->label('Abnormal result'),
+                TextInput::make('lab_name')->maxLength(255),
+                Textarea::make('notes'),
+            ]),
         ]);
     }
 

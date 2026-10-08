@@ -24,6 +24,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -49,20 +50,24 @@ class PurchaseOrderResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            Select::make('supplier_id')->label('Supplier')->required()->searchable()
-                ->options(fn () => Supplier::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-            DatePicker::make('ordered_on')->default(now())->maxDate(now())->required(),
-            DatePicker::make('expected_on')->label('Expected delivery'),
-            Hidden::make('purchase_request_id'),
-            Textarea::make('notes'),
-            Repeater::make('lines')->label('Items')->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add item')
-                ->schema([
-                    Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
-                        ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($i) => [$i->id => "{$i->code} - {$i->name} ({$i->unit->code})"])->all()),
-                    TextInput::make('quantity')->numeric()->minValue(0.001)->step(0.001)->required(),
-                    MoneyInput::make('unit_cost_minor', 'Cost per unit')->required(),
-                ]),
+        return $schema->components([
+            Section::make('Order')->description('Who we are buying from and when.')->columns(2)->schema([
+                Select::make('supplier_id')->label('Supplier')->required()->searchable()
+                    ->options(fn () => Supplier::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
+                DatePicker::make('ordered_on')->default(now())->maxDate(now())->required(),
+                DatePicker::make('expected_on')->label('Expected delivery'),
+                Hidden::make('purchase_request_id'),
+                Textarea::make('notes'),
+            ]),
+            Section::make('Items')->description('What is being ordered and at what cost.')->schema([
+                Repeater::make('lines')->label('Items')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add item')
+                    ->schema([
+                        Select::make('inventory_item_id')->label('Item')->required()->searchable()->distinct()
+                            ->options(fn () => InventoryItem::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($i) => [$i->id => "{$i->code} - {$i->name} ({$i->unit->code})"])->all()),
+                        TextInput::make('quantity')->numeric()->minValue(0.001)->step(0.001)->required(),
+                        MoneyInput::make('unit_cost_minor', 'Cost per unit')->required(),
+                    ]),
+            ]),
         ]);
     }
 

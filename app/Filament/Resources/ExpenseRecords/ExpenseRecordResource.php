@@ -19,6 +19,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -43,16 +44,20 @@ class ExpenseRecordResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            DatePicker::make('expense_date')->label('Date')->default(now())->maxDate(now())->required(),
-            Select::make('account_id')->label('Expense account')->required()->searchable()->options(fn () => Account::where('is_active', true)->where('type', AccountType::Expense->value)->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
-            Select::make('cost_centre_id')->label('Cost centre')->required()->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
-            MoneyInput::make('amount_minor', 'Amount')->required(),
-            Select::make('paid_from_account_id')->label('Paid from')->searchable()->helperText('Leave empty if it has not been paid yet (it is then owed to the supplier).')
-                ->options(fn () => Account::where('is_active', true)->whereIn('system_key', ['cash', 'bank'])->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
-            TextInput::make('payee')->maxLength(255),
-            TextInput::make('reference')->maxLength(60),
-            Textarea::make('description')->columnSpanFull(),
+        return $schema->components([
+            Section::make('Expense')->description('What was spent, and where it is booked.')->columns(2)->schema([
+                DatePicker::make('expense_date')->label('Date')->default(now())->maxDate(now())->required(),
+                Select::make('account_id')->label('Expense account')->required()->searchable()->options(fn () => Account::where('is_active', true)->where('type', AccountType::Expense->value)->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
+                Select::make('cost_centre_id')->label('Cost centre')->required()->searchable()->options(fn () => CostCentre::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
+                MoneyInput::make('amount_minor', 'Amount')->required(),
+            ]),
+            Section::make('Payment')->description('Who was paid and from which account.')->columns(2)->schema([
+                Select::make('paid_from_account_id')->label('Paid from')->searchable()->helperText('Leave empty if it has not been paid yet (it is then owed to the supplier).')
+                    ->options(fn () => Account::where('is_active', true)->whereIn('system_key', ['cash', 'bank'])->orderBy('code')->get()->mapWithKeys(fn ($a) => [$a->id => $a->label()])->all()),
+                TextInput::make('payee')->maxLength(255),
+                TextInput::make('reference')->maxLength(60),
+                Textarea::make('description')->columnSpanFull(),
+            ]),
         ]);
     }
 

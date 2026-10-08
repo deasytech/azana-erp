@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -70,16 +71,22 @@ class TaskResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            TextInput::make('title')->required()->maxLength(255)->columnSpanFull(),
-            Textarea::make('description')->columnSpanFull(),
-            Select::make('category')->options(AnimalResource::enumOptions(TaskCategory::cases()))->default(TaskCategory::General->value)->required(),
-            Select::make('priority')->options(AnimalResource::enumOptions(TaskPriority::cases()))->default(TaskPriority::Normal->value)->required(),
-            DatePicker::make('due_on')->label('Due')->default(now())->required(),
-            Select::make('assigned_to')->label('Assign to')->searchable()->options(fn () => static::userOptions()),
-            Select::make('responsible_role')->label('Or leave for a role')->searchable()->options(fn () => Role::orderBy('name')->pluck('name', 'name')->all())
-                ->helperText('Anyone holding this role may pick the task up while nobody is assigned.'),
-            Toggle::make('requires_evidence')->label('Needs a photo before it can be completed'),
+        return $schema->components([
+            Section::make('Task')->description('What needs doing.')->columns(2)->schema([
+                TextInput::make('title')->required()->maxLength(255)->columnSpanFull(),
+                Textarea::make('description')->columnSpanFull(),
+            ]),
+            Section::make('Planning')->description('Kind, urgency and due date.')->columns(2)->schema([
+                Select::make('category')->options(AnimalResource::enumOptions(TaskCategory::cases()))->default(TaskCategory::General->value)->required(),
+                Select::make('priority')->options(AnimalResource::enumOptions(TaskPriority::cases()))->default(TaskPriority::Normal->value)->required(),
+                DatePicker::make('due_on')->label('Due')->default(now())->required(),
+            ]),
+            Section::make('Who does it')->description('Assign a person, or leave it for a role.')->columns(2)->schema([
+                Select::make('assigned_to')->label('Assign to')->searchable()->options(fn () => static::userOptions()),
+                Select::make('responsible_role')->label('Or leave for a role')->searchable()->options(fn () => Role::orderBy('name')->pluck('name', 'name')->all())
+                    ->helperText('Anyone holding this role may pick the task up while nobody is assigned.'),
+                Toggle::make('requires_evidence')->label('Needs a photo before it can be completed'),
+            ]),
         ]);
     }
 

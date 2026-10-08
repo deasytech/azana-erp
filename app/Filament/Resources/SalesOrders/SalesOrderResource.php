@@ -29,6 +29,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -56,37 +57,41 @@ class SalesOrderResource extends Resource
     {
         $is = fn (SalesLineKind $kind) => fn ($get) => $get('kind') === $kind->value;
 
-        return $schema->columns(2)->components([
-            Select::make('customer_id')->label('Customer')->required()->searchable()
-                ->options(fn () => Customer::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->code} - {$c->name}"])->all()),
-            DatePicker::make('ordered_on')->default(now())->maxDate(now())->required(),
-            Textarea::make('notes')->columnSpanFull(),
-            Repeater::make('lines')->label('Lines')->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add line')
-                ->schema([
-                    Select::make('kind')->label('Sells')->options(collect(SalesLineKind::cases())->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all())->required()->live()->default(SalesLineKind::Semen->value),
-                    Select::make('semen_batch_id')->label('Semen batch')->searchable()->visible($is(SalesLineKind::Semen))->required($is(SalesLineKind::Semen))
-                        ->options(fn () => SemenBatch::with(['boar', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
-                            ->filter->isSellable()->mapWithKeys(fn (SemenBatch $b) => [$b->id => "{$b->number} ({$b->boar->animal_number}, expires {$b->expiry_date->format('d M')})"])->all()),
-                    StockForms::store()->visible(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true))->required(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true))
-                        ->label(fn ($get) => $get('kind') === SalesLineKind::Meat->value ? 'Take meat from (cold room)' : 'Take doses from')->live(),
-                    Select::make('meat_product_id')->label('Meat product')->searchable()->live()->visible($is(SalesLineKind::Meat))->required($is(SalesLineKind::Meat))
-                        ->options(fn () => MeatProduct::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
-                    Select::make('meat_production_line_id')->label('Specific batch (optional)')->searchable()->visible($is(SalesLineKind::Meat))
-                        ->helperText('Leave empty to pick the batches closest to their use-by date.')
-                        ->options(fn ($get) => static::meatLotOptions((int) $get('meat_product_id'), (int) $get('inventory_location_id'))),
-                    AnimalPicker::any()->visible($is(SalesLineKind::PigAnimal))->required($is(SalesLineKind::PigAnimal))->label('Pig'),
-                    Select::make('production_batch_id')->label('Batch')->searchable()->visible($is(SalesLineKind::PigBatch))->required($is(SalesLineKind::PigBatch))
-                        ->options(fn () => ProductionBatch::where('status', BatchStatus::Active->value)->orderBy('code')->get()->mapWithKeys(fn ($b) => [$b->id => "{$b->code} - {$b->name}"])->all()),
-                    TextInput::make('heads')->label('Pigs sold')->numeric()->integer()->minValue(1)->visible($is(SalesLineKind::PigBatch))->required($is(SalesLineKind::PigBatch)),
-                    Select::make('unit')->options(['head' => 'Per head', 'kg' => 'Per kg live weight'])->default('head')->live()->visible(fn ($get) => ! in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true)),
-                    TextInput::make('quantity')->label(fn ($get) => match ($get('kind')) {
-                        SalesLineKind::Semen->value => 'Doses', SalesLineKind::Meat->value => 'Weight (kg)', default => 'Live weight (kg)',
-                    })->numeric()->minValue(0.001)->step(0.001)
-                        ->visible(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true) || $get('unit') === 'kg')
-                        ->required(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true) || $get('unit') === 'kg'),
-                    MoneyInput::make('unit_price_minor', 'Price per dose / head / kg')->helperText('Leave empty for semen and meat to use the price list.'),
-                    TextInput::make('discount_percent')->label('Discount (%)')->numeric()->minValue(0)->maxValue(100)->step(0.01)->default(0),
-                ]),
+        return $schema->components([
+            Section::make('Order')->description('Who is buying and when.')->columns(2)->schema([
+                Select::make('customer_id')->label('Customer')->required()->searchable()
+                    ->options(fn () => Customer::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->code} - {$c->name}"])->all()),
+                DatePicker::make('ordered_on')->default(now())->maxDate(now())->required(),
+                Textarea::make('notes')->columnSpanFull(),
+            ]),
+            Section::make('Lines')->description('What is being sold. Prices come from the price list unless you enter one.')->schema([
+                Repeater::make('lines')->label('Lines')->hiddenLabel()->columnSpanFull()->minItems(1)->columns(3)->addActionLabel('Add line')
+                    ->schema([
+                        Select::make('kind')->label('Sells')->options(collect(SalesLineKind::cases())->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all())->required()->live()->default(SalesLineKind::Semen->value),
+                        Select::make('semen_batch_id')->label('Semen batch')->searchable()->visible($is(SalesLineKind::Semen))->required($is(SalesLineKind::Semen))
+                            ->options(fn () => SemenBatch::with(['boar', 'inventoryBatch'])->where('status', SemenBatchStatus::Released)->whereDate('expiry_date', '>=', now())->orderBy('expiry_date')->get()
+                                ->filter->isSellable()->mapWithKeys(fn (SemenBatch $b) => [$b->id => "{$b->number} ({$b->boar->animal_number}, expires {$b->expiry_date->format('d M')})"])->all()),
+                        StockForms::store()->visible(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true))->required(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true))
+                            ->label(fn ($get) => $get('kind') === SalesLineKind::Meat->value ? 'Take meat from (cold room)' : 'Take doses from')->live(),
+                        Select::make('meat_product_id')->label('Meat product')->searchable()->live()->visible($is(SalesLineKind::Meat))->required($is(SalesLineKind::Meat))
+                            ->options(fn () => MeatProduct::where('is_active', true)->orderBy('name')->pluck('name', 'id')),
+                        Select::make('meat_production_line_id')->label('Specific batch (optional)')->searchable()->visible($is(SalesLineKind::Meat))
+                            ->helperText('Leave empty to pick the batches closest to their use-by date.')
+                            ->options(fn ($get) => static::meatLotOptions((int) $get('meat_product_id'), (int) $get('inventory_location_id'))),
+                        AnimalPicker::any()->visible($is(SalesLineKind::PigAnimal))->required($is(SalesLineKind::PigAnimal))->label('Pig'),
+                        Select::make('production_batch_id')->label('Batch')->searchable()->visible($is(SalesLineKind::PigBatch))->required($is(SalesLineKind::PigBatch))
+                            ->options(fn () => ProductionBatch::where('status', BatchStatus::Active->value)->orderBy('code')->get()->mapWithKeys(fn ($b) => [$b->id => "{$b->code} - {$b->name}"])->all()),
+                        TextInput::make('heads')->label('Pigs sold')->numeric()->integer()->minValue(1)->visible($is(SalesLineKind::PigBatch))->required($is(SalesLineKind::PigBatch)),
+                        Select::make('unit')->options(['head' => 'Per head', 'kg' => 'Per kg live weight'])->default('head')->live()->visible(fn ($get) => ! in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true)),
+                        TextInput::make('quantity')->label(fn ($get) => match ($get('kind')) {
+                            SalesLineKind::Semen->value => 'Doses', SalesLineKind::Meat->value => 'Weight (kg)', default => 'Live weight (kg)',
+                        })->numeric()->minValue(0.001)->step(0.001)
+                            ->visible(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true) || $get('unit') === 'kg')
+                            ->required(fn ($get) => in_array($get('kind'), [SalesLineKind::Semen->value, SalesLineKind::Meat->value], true) || $get('unit') === 'kg'),
+                        MoneyInput::make('unit_price_minor', 'Price per dose / head / kg')->helperText('Leave empty for semen and meat to use the price list.'),
+                        TextInput::make('discount_percent')->label('Discount (%)')->numeric()->minValue(0)->maxValue(100)->step(0.01)->default(0),
+                    ]),
+            ]),
         ]);
     }
 
