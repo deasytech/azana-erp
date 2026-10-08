@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php($rows = $this->balances)
     @if ($rows->isEmpty())
         <p class="text-sm text-gray-500">No customer owes money or holds a deposit.</p>

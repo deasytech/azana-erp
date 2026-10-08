@@ -221,40 +221,40 @@
 }
 
 /*
- * Report pages: the hand-written tables and date filters on the report screens take the same look as Filament's own tables, so the
+ * Report pages (opt-in: the page root carries `azana-report`): the hand-written tables and date filters on the report screens take the same look as Filament's own tables, so the
  * views stay plain markup. A report table sits in a scrolling wrapper, which also keeps it usable on a tablet or phone.
  */
-.fi-page-content .overflow-x-auto {
+.azana-report .overflow-x-auto {
     @apply rounded-xl bg-white shadow-xs ring-1;
     --tw-ring-color: var(--azana-line);
     border: 0;
 }
-.dark .fi-page-content .overflow-x-auto {
+.dark .azana-report .overflow-x-auto {
     @apply bg-gray-900;
     --tw-ring-color: rgb(255 255 255 / 0.1);
 }
-.fi-page-content .overflow-x-auto thead th {
+.azana-report .overflow-x-auto thead th {
     @apply text-xs font-semibold uppercase tracking-wide;
     background-color: color-mix(in srgb, var(--azana-cream) 70%, #ffffff);
     color: var(--azana-brown-soft);
 }
-.dark .fi-page-content .overflow-x-auto thead th {
+.dark .azana-report .overflow-x-auto thead th {
     @apply bg-white/5 text-gray-300;
 }
-.fi-page-content .overflow-x-auto tbody td {
+.azana-report .overflow-x-auto tbody td {
     @apply tabular-nums;
 }
-.fi-page-content .overflow-x-auto tbody tr:hover {
+.azana-report .overflow-x-auto tbody tr:hover {
     background-color: color-mix(in srgb, var(--azana-cream) 60%, transparent);
 }
-.dark .fi-page-content .overflow-x-auto tbody tr:hover {
+.dark .azana-report .overflow-x-auto tbody tr:hover {
     @apply bg-white/5;
 }
-.fi-page-content input[type='date'],
-.fi-page-content label > select {
+.azana-report input[type='date'],
+.azana-report label > select {
     @apply rounded-lg border-gray-300 bg-white py-1.5 text-sm shadow-xs;
 }
-.fi-page-content input[type='date']:focus {
+.azana-report input[type='date']:focus {
     @apply border-primary-500 outline-none ring-2 ring-primary-500/30;
 }
 

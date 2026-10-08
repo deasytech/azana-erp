@@ -5,6 +5,7 @@ namespace App\Filament\Resources\VeterinaryVisits;
 use App\Domain\Health\Models\VeterinaryVisit;
 use App\Filament\Resources\VeterinaryVisits\Pages\CreateVeterinaryVisit;
 use App\Filament\Resources\VeterinaryVisits\Pages\ListVeterinaryVisits;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\MoneyInput;
 use App\Models\User;
 use BackedEnum;
@@ -61,9 +62,7 @@ class VeterinaryVisitResource extends Resource
                 TextColumn::make('reason')->searchable()->limit(50),
                 TextColumn::make('follow_up_on')->label('Follow-up')->date()->placeholder('-'),
             ])
-            ->filters([
-
-            ])
+            ->filters([DateRangeFilter::make('visited_on', 'Visited')])
             ->recordActions([
 
             ])

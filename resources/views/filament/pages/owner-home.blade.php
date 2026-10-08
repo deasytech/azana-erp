@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php
         $s = $this->snapshot;
         $fmt = fn (array $k) => \App\Domain\Reporting\KpiRegistry::format($k['unit'], $k['value']);

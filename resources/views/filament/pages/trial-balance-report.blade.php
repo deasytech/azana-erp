@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php($report = $this->report)
     <p class="text-sm">Debits {{ \App\Filament\Support\MoneyColumn::format($report['debit_minor']) }}, credits {{ \App\Filament\Support\MoneyColumn::format($report['credit_minor']) }}: {{ $report['balanced'] ? 'the books balance.' : 'THE BOOKS DO NOT BALANCE.' }}</p>
     @if ($report['rows'])

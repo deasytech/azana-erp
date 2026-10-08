@@ -21,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -78,6 +79,7 @@ class PriceListResource extends Resource
                 TextColumn::make('valid_to')->date(),
                 IconColumn::make('is_active')->label('Active')->boolean(),
             ])
+            ->filters([TernaryFilter::make('is_active')->label('Active')])
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->defaultSort('code');
     }

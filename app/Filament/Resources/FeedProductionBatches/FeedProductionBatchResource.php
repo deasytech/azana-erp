@@ -4,6 +4,7 @@ namespace App\Filament\Resources\FeedProductionBatches;
 
 use App\Domain\Feed\Models\FeedProductionBatch;
 use App\Filament\Resources\FeedProductionBatches\Pages\ListFeedProductionBatches;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\MoneyColumn;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -49,6 +50,7 @@ class FeedProductionBatchResource extends Resource
                 MoneyColumn::make('cost_per_kg_minor', 'Cost per kg'),
                 IconColumn::make('reversed')->label('Reversed')->boolean()->getStateUsing(fn (FeedProductionBatch $r) => $r->isReversed()),
             ])
+            ->filters([DateRangeFilter::make('produced_on', 'Produced')])
             ->defaultSort('id', 'desc');
     }
 

@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     <div class="flex flex-wrap items-end gap-4 text-sm">
         <label class="flex flex-col gap-1">From
             <input type="date" wire:model.live="from" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">

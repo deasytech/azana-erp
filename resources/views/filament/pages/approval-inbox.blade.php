@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="azana-report">
     @php($items = $this->items)
     @if ($items->isEmpty())
         <p class="text-sm text-gray-500">Nothing is waiting for your approval.</p>

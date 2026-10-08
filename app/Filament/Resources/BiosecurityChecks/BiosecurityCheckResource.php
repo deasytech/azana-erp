@@ -7,6 +7,7 @@ use App\Domain\Biosecurity\Models\BiosecurityChecklistItem;
 use App\Domain\Farm\Models\ProductionUnit;
 use App\Filament\Resources\BiosecurityChecks\Pages\CreateBiosecurityCheck;
 use App\Filament\Resources\BiosecurityChecks\Pages\ListBiosecurityChecks;
+use App\Filament\Support\DateRangeFilter;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -63,9 +64,7 @@ class BiosecurityCheckResource extends Resource
                 TextColumn::make('score')->label('Score')->state(fn (BiosecurityCheck $r) => $r->scorePercent().'% ('.$r->items_passed.'/'.$r->items_total.')'),
                 TextColumn::make('performer.name')->label('By')->placeholder('-'),
             ])
-            ->filters([
-
-            ])
+            ->filters([DateRangeFilter::make('checked_on', 'Checked')])
             ->recordActions([
 
             ])

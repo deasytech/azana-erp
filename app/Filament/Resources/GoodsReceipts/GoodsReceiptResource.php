@@ -4,6 +4,7 @@ namespace App\Filament\Resources\GoodsReceipts;
 
 use App\Domain\Procurement\Models\GoodsReceipt;
 use App\Filament\Resources\GoodsReceipts\Pages\ListGoodsReceipts;
+use App\Filament\Support\DateRangeFilter;
 use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\ProcurementActions;
 use BackedEnum;
@@ -48,6 +49,7 @@ class GoodsReceiptResource extends Resource
                 MoneyColumn::make('value_minor', 'Value'),
                 IconColumn::make('voided')->label('Voided')->boolean()->getStateUsing(fn (GoodsReceipt $r) => $r->isVoided()),
             ])
+            ->filters([DateRangeFilter::make('received_on', 'Received')])
             ->recordActions([ProcurementActions::voidReceipt()])
             ->defaultSort('id', 'desc');
     }
