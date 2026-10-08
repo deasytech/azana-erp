@@ -45,14 +45,16 @@ class ConvertEnquiryToCustomer
         });
     }
 
+    /** The customer who already has this e-mail or phone. If the two belong to different customers it is unclear who this is, so staff must decide. */
     private function existing(Enquiry $enquiry): ?Customer
     {
-        return Customer::query()
-            ->when(! $enquiry->email && ! $enquiry->phone, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where(fn ($q) => $q
-                ->when($enquiry->email, fn ($q) => $q->orWhereRaw('LOWER(email) = ?', [strtolower($enquiry->email)]))
-                ->when($enquiry->phone, fn ($q) => $q->orWhere('phone', $enquiry->phone)))
-            ->orderBy('id')
-            ->first();
+        $byEmail = $enquiry->email ? Customer::whereRaw('LOWER(email) = ?', [strtolower($enquiry->email)])->orderBy('id')->first() : null;
+        $byPhone = $enquiry->phone ? Customer::where('phone', $enquiry->phone)->orderBy('id')->first() : null;
+
+        if ($byEmail && $byPhone && $byEmail->isNot($byPhone)) {
+            throw new DomainException("The e-mail address of {$enquiry->number} belongs to {$byEmail->name} but its phone number belongs to {$byPhone->name}. Check which one this is before making a customer.", 'enquiry_customer_ambiguous');
+        }
+
+        return $byEmail ?? $byPhone;
     }
 }

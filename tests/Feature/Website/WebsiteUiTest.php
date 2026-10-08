@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Website\Actions\SubmitEnquiry;
 use App\Domain\Website\Models\Enquiry;
@@ -104,6 +105,14 @@ describe('listings', function () {
             ->call('create')->assertNotified('Not saved');
 
         expect(Listing::count())->toBe(0);
+    });
+
+    it('clears the stock item when the kind changes', function () {
+        $item = InventoryItem::firstWhere('code', 'SEMEN-DUR');
+        $this->actingAs(userWithRole(WEBSITE_MANAGER));
+
+        Livewire::test(CreateWebsiteListing::class)->fillForm(['kind' => 'semen', 'inventory_item_id' => $item->id])
+            ->fillForm(['kind' => 'meat'])->assertFormSet(['inventory_item_id' => null]);
     });
 
     it('edits and unpublishes a listing', function () {

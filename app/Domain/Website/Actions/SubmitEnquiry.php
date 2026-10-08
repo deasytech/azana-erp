@@ -71,7 +71,7 @@ class SubmitEnquiry
     {
         // The same person sending the same words twice in a few minutes (a double click, a retry) is one enquiry.
         $existing = Enquiry::where('message', $fields['message'])->where('name', $fields['name'])
-            ->when($fields['email'], fn ($q, $email) => $q->where('email', $email), fn ($q) => $q->whereNull('email'))
+            ->when($fields['email'], fn ($q, $email) => $q->where('email', $email), fn ($q) => $q->whereNull('email')->where('phone', $this->text($fields['phone'], 40)))
             ->where('created_at', '>=', now()->subMinutes(self::DUPLICATE_WINDOW_MINUTES))
             ->first();
 

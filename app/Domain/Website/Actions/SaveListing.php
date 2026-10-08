@@ -27,7 +27,7 @@ class SaveListing
         $slug !== '' || throw new DomainException('The address needs letters or numbers.', 'listing_slug');
         Listing::where('slug', $slug)->when($listing, fn ($q) => $q->whereKeyNot($listing->id))->doesntExist() || throw new DomainException("Another listing already uses the address \"{$slug}\".", 'listing_slug_taken');
 
-        $item = filled($data['inventory_item_id'] ?? null) ? InventoryItem::findOrFail($data['inventory_item_id']) : null;
+        $item = filled($data['inventory_item_id'] ?? null) ? InventoryItem::find($data['inventory_item_id']) ?? throw new DomainException('That stock item does not exist.', 'listing_item_missing') : null;
 
         if ($item) {
             $expected = match ($kind) {

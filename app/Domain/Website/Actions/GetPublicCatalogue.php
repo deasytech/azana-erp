@@ -25,11 +25,12 @@ class GetPublicCatalogue
     /**
      * @return Collection<int, array{listing: Listing, price: ?string, available: ?bool}> published listings, in display order
      */
-    public function __invoke(?ListingKind $kind = null): Collection
+    public function __invoke(?ListingKind $kind = null, ?string $slug = null): Collection
     {
         $listings = Listing::with('item')
             ->where('is_published', true)
             ->when($kind, fn ($q) => $q->where('kind', $kind->value))
+            ->when($slug, fn ($q) => $q->where('slug', $slug))
             ->orderBy('sort_order')->orderBy('title')
             ->get();
 
@@ -46,7 +47,7 @@ class GetPublicCatalogue
 
     public function find(string $slug): ?array
     {
-        return $this->__invoke()->first(fn (array $row) => $row['listing']->slug === $slug);
+        return $this->__invoke(slug: $slug)->first();
     }
 
     private function price(Listing $listing): ?string

@@ -47,7 +47,8 @@ class WebsiteListingResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Select::make('kind')->options(AnimalResource::enumOptions(ListingKind::cases()))->required()->live(),
+            Select::make('kind')->options(AnimalResource::enumOptions(ListingKind::cases()))->required()->live()
+                ->afterStateUpdated(fn ($set) => $set('inventory_item_id', null)),
             TextInput::make('title')->required()->maxLength(255),
             TextInput::make('slug')->label('Web address')->maxLength(120)->helperText('Made from the title when left empty, for example "duroc-semen".'),
             TextInput::make('summary')->required()->maxLength(300)->columnSpanFull(),

@@ -79,6 +79,7 @@ describe('listings', function () {
         expect(fn () => $save(['kind' => 'meat', 'inventory_item_id' => $semen->id]))->toThrow(DomainException::class, 'needs a Meat stock item');
         expect(fn () => $save(['kind' => 'semen', 'show_price' => true]))->toThrow(DomainException::class, 'link a stock item');
         expect(fn () => $save(['title' => '']))->toThrow(DomainException::class, 'title');
+        expect(fn () => $save(['kind' => 'semen', 'inventory_item_id' => 999999]))->toThrow(DomainException::class, 'does not exist');
 
         $first = $save([]);
         expect($first->slug)->toBe('weaners');
@@ -106,6 +107,15 @@ describe('enquiries', function () {
         app(SubmitEnquiry::class)(enquiryData(['kind' => 'semen']));
 
         expect(Customer::count())->toBe(0)->and(SalesOrder::count())->toBe(0)->and(StockReservation::count())->toBe(0);
+    });
+
+    it('tells phone-only enquiries from different numbers apart', function () {
+        Notification::fake();
+        $send = fn (string $phone) => app(SubmitEnquiry::class)(enquiryData(['email' => null, 'phone' => $phone]));
+
+        $first = $send('08030000001');
+
+        expect($send('08030000001')->id)->toBe($first->id)->and($send('08030000002')->id)->not->toBe($first->id)->and(Enquiry::count())->toBe(2);
     });
 
     it('treats the same words sent twice in a few minutes as one enquiry', function () {
@@ -165,6 +175,22 @@ describe('handling', function () {
         expect($customer->id)->toBe($existing->id)->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Converted)->and(Customer::count())->toBe(1);
         expect(fn () => app(ConvertEnquiryToCustomer::class)($enquiry, $type))->toThrow(DomainException::class, 'already belongs');
         expect(fn () => app(UpdateEnquiryStatus::class)($enquiry, EnquiryStatus::Closed))->toThrow(DomainException::class, 'cannot be changed');
+    });
+
+    it('refuses to pick a customer when the e-mail and the phone belong to different ones', function () {
+        customer(['name' => 'By Email', 'email' => 'ada@example.com']);
+        customer(['name' => 'By Phone', 'phone' => '08030000000']);
+        $enquiry = app(SubmitEnquiry::class)(enquiryData(['phone' => '08030000000']));
+
+        expect(fn () => app(ConvertEnquiryToCustomer::class)($enquiry, lookup(LookupCategory::CustomerType, 'farmer')))->toThrow(DomainException::class, 'belongs to By Email');
+        expect($enquiry->refresh()->customer_id)->toBeNull()->and(Customer::count())->toBe(2);
+    });
+
+    it('reuses the customer when only the phone matches', function () {
+        $existing = customer(['name' => 'By Phone', 'phone' => '08030000000']);
+        $enquiry = app(SubmitEnquiry::class)(enquiryData(['phone' => '08030000000']));
+
+        expect(app(ConvertEnquiryToCustomer::class)($enquiry, lookup(LookupCategory::CustomerType, 'farmer'))->id)->toBe($existing->id);
     });
 
     it('creates a new cash customer with the business as its name', function () {
