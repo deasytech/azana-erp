@@ -260,7 +260,7 @@ it('draws the orders by status, an order along the road to payment and what supp
     $this->get(PurchaseOrderResource::getUrl('view', ['record' => $order]))->assertOk()->assertSee('Progress to payment');
     $this->get(SupplierBalances::getUrl())->assertOk()->assertSee('Outstanding by supplier');
 
-    Livewire::test(PurchaseOrderStatusChartWidget::class)->assertSee('Orders by status')->assertSee('Approved');
+    Livewire::test(PurchaseOrderStatusChartWidget::class)->assertSee('Orders by status')->assertSee('Partially received');
     Livewire::test(PurchaseOrderProgressChartWidget::class, ['record' => $order])->assertSee('Progress to payment')->assertSee($order->number);
     Livewire::test(SupplierBalancesChartWidget::class)->assertSee('Outstanding by supplier')->assertSee('Supplier SUP1');
 });

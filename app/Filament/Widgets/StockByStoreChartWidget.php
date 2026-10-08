@@ -48,13 +48,16 @@ class StockByStoreChartWidget extends ChartWidget
         }
 
         $currency = Farm::defaultCurrency();
-        $values = $levels
-            ->groupBy(fn (InventoryLayer $row): string => $this->location !== null ? $row->item->name : $row->location->name)
+        $groupedLevels = $levels
+            ->groupBy(fn (InventoryLayer $row): int => $this->location !== null ? $row->item->id : $row->location->id);
+        $values = $groupedLevels
             ->map(fn ($rows): float => (float) Money::ofMinor((int) $rows->sum('value_minor'), $currency)->toDecimal());
+        $labels = $groupedLevels
+            ->map(fn ($rows): string => $this->location !== null ? $rows->first()->item->name : $rows->first()->location->name);
 
         return [
             'datasets' => [['label' => 'Value', 'data' => $values->values()->all()]],
-            'labels' => $values->keys()->values()->all(),
+            'labels' => $labels->values()->all(),
         ];
     }
 }

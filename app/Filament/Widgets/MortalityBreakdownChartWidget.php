@@ -3,20 +3,17 @@
 namespace App\Filament\Widgets;
 
 use App\Domain\Health\Actions\GetMortalityAnalysis;
-use Carbon\Carbon;
+use App\Filament\Concerns\ValidatesReportPeriod;
 use Filament\Widgets\ChartWidget;
 use Livewire\Attributes\On;
-use Throwable;
 
 /** The same grouping as the mortality screen drawn as bars: deaths in the chosen period by pen, stage, cause or whichever dimension is selected. */
 class MortalityBreakdownChartWidget extends ChartWidget
 {
+    use ValidatesReportPeriod;
+
     /** The analysis screen's filters. The page supplies them and keeps the widget in step while they change. */
     public string $dimension = 'stage';
-
-    public string $from = '';
-
-    public string $to = '';
 
     protected function getType(): string
     {
@@ -41,11 +38,11 @@ class MortalityBreakdownChartWidget extends ChartWidget
     /** @return array<string, mixed> */
     protected function getData(): array
     {
-        if (! in_array($this->dimension, GetMortalityAnalysis::DIMENSIONS, true) || ! $this->periodIsUsable()) {
+        if (! in_array($this->dimension, GetMortalityAnalysis::DIMENSIONS, true) || $this->periodErrors() !== []) {
             return [];
         }
 
-        $analysis = app(GetMortalityAnalysis::class)(Carbon::parse($this->from)->startOfDay(), Carbon::parse($this->to)->endOfDay(), $this->dimension);
+        $analysis = app(GetMortalityAnalysis::class)($this->periodStart()->startOfDay(), $this->periodEnd()->endOfDay(), $this->dimension);
 
         if ($analysis['rows']->isEmpty()) {
             return [];
@@ -55,18 +52,5 @@ class MortalityBreakdownChartWidget extends ChartWidget
             'datasets' => [['label' => 'Deaths', 'data' => $analysis['rows']->pluck('count')->all()]],
             'labels' => $analysis['rows']->pluck('label')->all(),
         ];
-    }
-
-    /** The dates arrive as client-writable strings, so they are checked before the report is run. */
-    private function periodIsUsable(): bool
-    {
-        try {
-            $from = Carbon::parse($this->from);
-            $to = Carbon::parse($this->to);
-        } catch (Throwable) {
-            return false;
-        }
-
-        return $from->lessThanOrEqualTo($to) && $from->diffInDays($to) <= 366;
     }
 }
