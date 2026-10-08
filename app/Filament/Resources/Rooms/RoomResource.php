@@ -18,6 +18,8 @@ class RoomResource extends MasterResource
 {
     protected static ?string $model = Room::class;
 
+    protected static ?string $codePrefix = 'RM';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;
 
     protected static string|UnitEnum|null $navigationGroup = 'Farm structure';

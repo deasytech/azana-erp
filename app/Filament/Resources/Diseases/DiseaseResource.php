@@ -19,6 +19,8 @@ class DiseaseResource extends MasterResource
 {
     protected static ?string $model = Disease::class;
 
+    protected static ?string $codePrefix = 'DIS';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBugAnt;
 
     protected static string|UnitEnum|null $navigationGroup = 'Health';

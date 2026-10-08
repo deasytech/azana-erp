@@ -9,6 +9,7 @@ use App\Filament\Resources\PriceLists\Pages\CreatePriceList;
 use App\Filament\Resources\PriceLists\Pages\EditPriceList;
 use App\Filament\Resources\PriceLists\Pages\ListPriceLists;
 use App\Filament\Resources\PriceLists\RelationManagers\ItemsRelationManager;
+use App\Filament\Support\CodeField;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -48,7 +49,7 @@ class PriceListResource extends Resource
     {
         return $schema->components([
             Section::make('Price list')->description('What it is and which farm and category it covers.')->columnSpanFull()->columns(2)->schema([
-                TextInput::make('code')->required()->maxLength(30)
+                CodeField::make('price_lists', 'PL')->required()->maxLength(30)
                     ->mutateStateForValidationUsing(fn (?string $state) => $state === null ? null : strtoupper(trim($state)))
                     ->unique(ignoreRecord: true),
                 TextInput::make('name')->required()->maxLength(255),

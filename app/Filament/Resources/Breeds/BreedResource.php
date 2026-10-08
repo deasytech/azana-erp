@@ -18,6 +18,8 @@ class BreedResource extends MasterResource
 {
     protected static ?string $model = Breed::class;
 
+    protected static ?string $codePrefix = 'BRD';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;
 
     protected static string|UnitEnum|null $navigationGroup = 'Master data';

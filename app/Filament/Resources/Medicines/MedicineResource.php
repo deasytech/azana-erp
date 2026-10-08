@@ -22,6 +22,8 @@ class MedicineResource extends MasterResource
 {
     protected static ?string $model = Medicine::class;
 
+    protected static ?string $codePrefix = 'MED';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBeaker;
 
     protected static string|UnitEnum|null $navigationGroup = 'Health';

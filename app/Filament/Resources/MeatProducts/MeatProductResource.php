@@ -25,6 +25,8 @@ class MeatProductResource extends MasterResource
 {
     protected static ?string $model = MeatProduct::class;
 
+    protected static ?string $codePrefix = 'MP';
+
     protected static ?string $navigationLabel = 'Product catalogue';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;

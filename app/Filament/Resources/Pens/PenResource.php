@@ -22,6 +22,8 @@ class PenResource extends MasterResource
 {
     protected static ?string $model = Pen::class;
 
+    protected static ?string $codePrefix = 'PEN';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedViewColumns;
 
     protected static string|UnitEnum|null $navigationGroup = 'Farm structure';

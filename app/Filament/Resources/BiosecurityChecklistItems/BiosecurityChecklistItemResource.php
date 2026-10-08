@@ -17,6 +17,8 @@ class BiosecurityChecklistItemResource extends MasterResource
 {
     protected static ?string $model = BiosecurityChecklistItem::class;
 
+    protected static ?string $codePrefix = 'BCI';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
     protected static string|UnitEnum|null $navigationGroup = 'Biosecurity';

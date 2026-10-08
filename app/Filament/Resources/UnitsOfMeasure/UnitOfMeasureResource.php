@@ -20,6 +20,8 @@ class UnitOfMeasureResource extends MasterResource
 {
     protected static ?string $model = UnitOfMeasure::class;
 
+    protected static ?string $codePrefix = 'UOM';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedScale;
 
     protected static string|UnitEnum|null $navigationGroup = 'Master data';
