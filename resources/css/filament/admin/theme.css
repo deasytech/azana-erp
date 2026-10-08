@@ -406,14 +406,6 @@
 .dark .azana-report .overflow-x-auto tbody tr:hover {
     @apply bg-white/5;
 }
-.azana-report input[type='date'],
-.azana-report label > select {
-    @apply rounded-lg border-gray-300 bg-white py-1.5 text-sm shadow-xs;
-}
-.azana-report input[type='date']:focus {
-    @apply border-primary-500 outline-none ring-2 ring-primary-500/30;
-}
-
 /* Small screens: tighter page gutters and the KPI value a notch smaller. */
 @media (max-width: 40rem) {
     .azana-kpi-value {

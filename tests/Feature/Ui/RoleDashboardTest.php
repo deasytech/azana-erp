@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
+const DASHBOARD_STORE_OFFICER = 'Store Officer';
+const DASHBOARD_MANAGEMENT_FOCUS = 'Management focus';
+const DASHBOARD_STORES_FOCUS = 'Stores focus';
+
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class]);
     Filament::setCurrentPanel('admin');
@@ -27,10 +31,10 @@ it('gives each job its own focus', function (string $role, string $heading) {
 
     Livewire::test(Dashboard::class)->assertOk()->assertSee($heading);
 })->with([
-    ['Owner/Director', 'Management focus'],
-    ['General Manager', 'Management focus'],
+    ['Owner/Director', DASHBOARD_MANAGEMENT_FOCUS],
+    ['General Manager', DASHBOARD_MANAGEMENT_FOCUS],
     ['Farm Manager', 'Farm supervision focus'],
-    ['Store Officer', 'Stores focus'],
+    [DASHBOARD_STORE_OFFICER, DASHBOARD_STORES_FOCUS],
     ['Accountant', 'Finance focus'],
 ]);
 
@@ -38,11 +42,11 @@ it('shows only the standard dashboard to a role without a focus', function () {
     $this->actingAs($user = userWithRole('Farm Worker'));
 
     expect(DashboardFocus::for($user))->toBeNull();
-    Livewire::test(Dashboard::class)->assertOk()->assertDontSee('Management focus')->assertDontSee('Stores focus');
+    Livewire::test(Dashboard::class)->assertOk()->assertDontSee(DASHBOARD_MANAGEMENT_FOCUS)->assertDontSee(DASHBOARD_STORES_FOCUS);
 });
 
 it('leaves out figures and shortcuts the user may not see', function () {
-    $this->actingAs(userWithRole('Store Officer'));
+    $this->actingAs(userWithRole(DASHBOARD_STORE_OFFICER));
     $focus = Livewire::test(Dashboard::class)->instance()->focus();
     $keys = collect($focus['kpis'])->pluck('key');
 
@@ -56,7 +60,7 @@ it('shows nothing to a user with no role', function () {
 });
 
 it('draws the dashboard charts only for data the user may see', function () {
-    $this->actingAs(userWithRole('Store Officer'));
+    $this->actingAs(userWithRole(DASHBOARD_STORE_OFFICER));
     expect(SalesTrendChartWidget::canView())->toBeTrue()
         ->and(BornAliveChartWidget::canView())->toBeFalse();
 
@@ -69,7 +73,7 @@ it('draws the dashboard charts only for data the user may see', function () {
 
 it('keeps the focus figures for a minute and recalculates when permissions change', function () {
     Cache::flush();
-    $this->actingAs($user = userWithRole('Store Officer'));
+    $this->actingAs($user = userWithRole(DASHBOARD_STORE_OFFICER));
 
     $queries = function () {
         DB::flushQueryLog();

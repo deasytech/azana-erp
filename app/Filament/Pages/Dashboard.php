@@ -57,7 +57,7 @@ class Dashboard extends BaseDashboard
 
         // Working out every indicator the user may view reads most modules, so keep the result for a minute per user and month. The key
         // carries a fingerprint of their permissions, so a role change takes effect at once rather than after the minute.
-        $permissions = md5($user->getAllPermissions()->pluck('name')->sort()->implode(','));
+        $permissions = hash('sha256', $user->getAllPermissions()->pluck('name')->sort()->implode(','));
         $values = Cache::remember(
             "dashboard-focus:{$user->getKey()}:{$permissions}:".now()->format('Y-m'),
             60,
