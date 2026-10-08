@@ -25,7 +25,7 @@
                                 ? 'border-danger-300 bg-danger-50 dark:border-danger-700 dark:bg-danger-950'
                                 : ($key === 'overdue_tasks' && $s['attention'][$key] > 0
                                     ? 'border-warning-300 bg-warning-50 dark:border-warning-700 dark:bg-warning-950'
-                                    : 'border-gray-200 dark:border-white/10 bg-white'
+                                    : 'border-gray-200 dark:border-white/10 bg-white dark:bg-gray-950'
                                 )
                             }}"
                         >
