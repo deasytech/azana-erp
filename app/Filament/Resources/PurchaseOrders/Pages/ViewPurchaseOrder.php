@@ -17,6 +17,7 @@ use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Filament\Resources\PurchaseRequests\PurchaseRequestResource;
 use App\Filament\Support\MoneyColumn;
 use App\Filament\Support\MoneyInput;
+use App\Filament\Widgets\PurchaseOrderProgressChartWidget;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -60,6 +61,17 @@ class ViewPurchaseOrder extends ViewRecord
     {
         $this->order()->refresh();
         $this->traceMemo = null;
+    }
+
+    /** Ordered, received, invoiced and paid drawn as bars, below the order's sections. */
+    protected function getFooterWidgets(): array
+    {
+        return [PurchaseOrderProgressChartWidget::class];
+    }
+
+    public function getFooterWidgetsColumns(): int
+    {
+        return 1;
     }
 
     protected function afterStep(): void

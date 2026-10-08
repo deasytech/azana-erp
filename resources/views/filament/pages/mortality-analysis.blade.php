@@ -1,14 +1,22 @@
 <x-filament-panels::page>
-    <div class="flex flex-wrap items-end gap-4">
-        <label class="text-sm">Group by
-            <select wire:model.live="dimension" class="fi-input block rounded-lg border-gray-300 dark:bg-gray-900">
-                @foreach ($this->dimensions() as $key => $label)
-                    <option value="{{ $key }}">{{ $label }}</option>
-                @endforeach
-            </select>
+    <div class="flex flex-wrap items-end gap-4 text-sm">
+        <label class="flex flex-col gap-1">Group by
+            <x-filament::input.wrapper>
+                <x-filament::input.select wire:model.live="dimension">
+                    @foreach ($this->dimensions() as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach
+                </x-filament::input.select>
+            </x-filament::input.wrapper>
         </label>
-        <label class="text-sm">From <input type="date" wire:model.live="from" class="fi-input block rounded-lg border-gray-300 dark:bg-gray-900"></label>
-        <label class="text-sm">To <input type="date" wire:model.live="to" class="fi-input block rounded-lg border-gray-300 dark:bg-gray-900"></label>
+        <label class="flex flex-col gap-1">From
+            <x-filament::input.wrapper>
+                <x-filament::input type="date" wire:model.live="from" />
+            </x-filament::input.wrapper>
+        </label>
+        <label class="flex flex-col gap-1">To
+            <x-filament::input.wrapper>
+                <x-filament::input type="date" wire:model.live="to" />
+            </x-filament::input.wrapper>
+        </label>
     </div>
 
     @php($errors = $this->inputErrors())

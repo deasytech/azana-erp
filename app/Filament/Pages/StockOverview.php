@@ -15,6 +15,7 @@ use App\Enums\InventoryTransactionType as T;
 use App\Filament\Concerns\NotifiesDomainErrors;
 use App\Filament\Support\MoneyInput;
 use App\Filament\Support\StockForms;
+use App\Filament\Widgets\StockByStoreChartWidget;
 use App\Support\Money;
 use BackedEnum;
 use Carbon\Carbon;
@@ -85,6 +86,31 @@ class StockOverview extends Page
     private function validId(?string $value): ?int
     {
         return $value !== null && ctype_digit($value) ? (int) $value : null;
+    }
+
+    /** The value of stock drawn by store, filtered with the screen above it. */
+    protected function getFooterWidgets(): array
+    {
+        return [StockByStoreChartWidget::class];
+    }
+
+    public function getFooterWidgetsColumns(): int
+    {
+        return 1;
+    }
+
+    /** @return array<string, mixed> */
+    public function getWidgetData(): array
+    {
+        return ['item' => $this->validId($this->itemId), 'location' => $this->validId($this->locationId)];
+    }
+
+    /** Tell the chart when the item or store filter changes while it is open. */
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['itemId', 'locationId'], true)) {
+            $this->dispatch('stock-overview-filter-changed', item: $this->validId($this->itemId), location: $this->validId($this->locationId));
+        }
     }
 
     protected function getHeaderActions(): array

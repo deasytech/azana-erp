@@ -3,3 +3,19 @@
 /* Tailwind builds only the classes it finds: our own Blade views and Filament pages live here, so it must look at them. */
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/**/*';
+
+/* Chart widgets: wrap the heading and the chart frame in a consistent card. */
+.fi-wi-chart {
+    @apply rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10;
+}
+
+/* Chart widget frame: keep the built-in aspect ratio but restyle it to match the card. */
+.fi-wi-chart-frame {
+    @apply mx-auto flex w-full items-center justify-center;
+}
+
+/* Widget rows on the reports pages: quiet, equal spacing without crowding. */
+.fi-wi {
+    @apply gap-4;
+}
+

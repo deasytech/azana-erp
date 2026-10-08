@@ -56,6 +56,7 @@ use App\Filament\Resources\VaccinationSchedules\VaccinationScheduleResource;
 use App\Filament\Resources\VeterinaryVisits\VeterinaryVisitResource;
 use App\Filament\Resources\WithdrawalPeriods\Pages\ListWithdrawalPeriods;
 use App\Filament\Resources\WithdrawalPeriods\WithdrawalPeriodResource;
+use App\Filament\Widgets\MortalityBreakdownChartWidget;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -395,4 +396,17 @@ it('applies health permission defaults per role', function () {
     $this->actingAs(userWithRole('Veterinarian'));
     expect(auth()->user()->can('approve', WithdrawalPeriod::class))->toBeTrue()
         ->and(auth()->user()->can('delete', Treatment::class))->toBeFalse();
+});
+
+it('draws the mortality analysis as bars and keeps the chart with the grouping and period', function () {
+    $this->actingAs(owner());
+    $dead = register(['category_id' => categoryId('grower')]);
+    app(RecordMortality::class)($dead, now(), cause('respiratory'));
+
+    $period = ['from' => now()->subMonths(3)->toDateString(), 'to' => now()->toDateString()];
+    Livewire::test(MortalityBreakdownChartWidget::class, ['dimension' => 'stage'] + $period)->assertSee('Deaths by stage')->assertSee('Grower');
+    Livewire::test(MortalityBreakdownChartWidget::class, ['dimension' => 'cause'] + $period)->assertSee('Deaths by cause');
+
+    Livewire::test(MortalityAnalysis::class)->set('dimension', 'cause')
+        ->assertDispatched('mortality-analysis-filter-changed', dimension: 'cause', periodFrom: $period['from'], periodTo: $period['to']);
 });

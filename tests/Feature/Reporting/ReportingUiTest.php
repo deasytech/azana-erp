@@ -146,3 +146,18 @@ it('hides the export buttons while the chosen period is not valid, without build
         ->set('from', now()->toDateString())->assertActionVisible('csv');
     Livewire::test(CashFlowReport::class)->set('to', now()->subYears(2)->toDateString())->assertActionHidden('xlsx');
 });
+
+it('draws the dashboards against target and follows the chosen dashboard and month', function () {
+    $this->actingAs(owner());
+    slaughterPig();
+    KpiTarget::create(['kpi_key' => 'slaughter.pigs', 'year' => now()->year, 'month' => null, 'target_value' => '10']);
+
+    $this->get(Dashboard::getUrl())->assertSuccessful()->assertSee('Against target')->assertSee('Share of target reached');
+    $this->get(ManagementDashboard::getUrl())->assertSuccessful()->assertSee('Share of target reached');
+
+    Livewire::test(ManagementDashboard::class)
+        ->set('area', 'slaughter')
+        ->assertDispatched('report-filter-changed', year: (int) now()->year, month: (int) now()->month, area: 'slaughter')
+        ->set('month', 99)
+        ->assertDispatched('report-filter-changed', month: 12);
+});
