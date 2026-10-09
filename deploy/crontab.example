@@ -1,0 +1,3 @@
+# The Laravel scheduler: runs the nightly backup (02:00), the weekly restore test (Sunday 04:00), the 15-minute monitor,
+# daily tasks, alerts, ledger postings and semen expiry. Install for the web user: `sudo crontab -u www-data -e`.
+* * * * * cd /var/www/azana-erp && php artisan schedule:run >> /dev/null 2>&1

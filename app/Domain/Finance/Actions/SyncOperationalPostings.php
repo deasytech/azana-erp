@@ -81,7 +81,8 @@ class SyncOperationalPostings
         $account = fn (string $key) => Account::system($key)->id;
         $centre = fn (string $code) => CostCentre::where('code', $code)->value('id');
 
-        foreach (Invoice::with('lines')->orderBy('id')->get() as $invoice) {
+        // Imported history (is_historical) stays out of the ledger: opening balances carry what was owed at go-live.
+        foreach (Invoice::with('lines')->where('is_historical', false)->orderBy('id')->get() as $invoice) {
             $credits = $invoice->lines->groupBy(fn ($l) => $l->kind->value)->map(fn ($lines, $kind) => [
                 'account_id' => $account($kind === SalesLineKind::Semen->value ? 'sales_semen' : ($kind === SalesLineKind::Meat->value ? 'sales_meat' : 'sales_pigs')),
                 'cost_centre_id' => $centre(self::SALES_CENTRE[$kind]), 'credit_minor' => (int) $lines->sum('line_total_minor'),
@@ -92,7 +93,7 @@ class SyncOperationalPostings
             }
         }
 
-        foreach (Payment::orderBy('id')->get() as $payment) {
+        foreach (Payment::where('is_historical', false)->orderBy('id')->get() as $payment) {
             $cash = $account($payment->method === ReceiptMethod::Cash ? 'cash' : 'bank');
             $lines = [['account_id' => $cash, 'debit_minor' => $payment->amount_minor], ['account_id' => $account('receivables'), 'credit_minor' => $payment->amount_minor]];
 

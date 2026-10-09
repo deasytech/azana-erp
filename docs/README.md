@@ -10,6 +10,9 @@ Recommended structure:
       DATABASE_ARCHITECTURE.md
       DOMAIN_RULES.md
       SECURITY.md
+      DEPLOYMENT.md
+      BACKUP_AND_RESTORE.md
+      DATA_IMPORT.md
       OFFLINE_SYNC.md
       IMPLEMENTATION_STATUS.md
       phases/

@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        // Database backups: private, and never served by the web server.
+        'backups' => [
+            'driver' => 'local',
+            'root' => env('BACKUP_PATH', storage_path('app/backups')),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

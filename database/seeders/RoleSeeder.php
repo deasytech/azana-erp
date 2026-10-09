@@ -52,6 +52,15 @@ class RoleSeeder extends Seeder
         'Sales Officer' => [A::View, A::Create, A::Edit],
     ];
 
+    /** Who loads historical data and who watches the backups (nobody else has the modules). */
+    private const IMPORT_GRANTS = [
+        'General Manager' => [A::View, A::Create, A::Approve, A::Export],
+    ];
+
+    private const BACKUP_GRANTS = [
+        'General Manager' => [A::View],
+    ];
+
     /** Roles that sign in to the mobile app. Roles that must use two-factor sign-in (the accountant, the owner) stay on the web app. */
     private const MOBILE_ROLES = ['General Manager', 'Farm Manager', 'Breeding Manager', 'Feed Mill Manager', 'Semen Laboratory Manager', 'Nutritionist', 'Store Officer', 'Sales Officer', 'Slaughter Manager', 'Farm Worker'];
 
@@ -172,6 +181,8 @@ class RoleSeeder extends Seeder
             ->put('tasks', self::TASK_GRANTS[$role] ?? [A::View, A::Create, A::Edit])
             ->when(in_array($role, self::MOBILE_ROLES, true), fn ($grants) => $grants->put('mobile', in_array($role, ['General Manager', 'Farm Manager'], true) ? [A::View, A::Edit] : [A::View]))
             ->when(isset(self::WEBSITE_GRANTS[$role]), fn ($grants) => $grants->put('website', self::WEBSITE_GRANTS[$role]))
+            ->when(isset(self::IMPORT_GRANTS[$role]), fn ($grants) => $grants->put('data-imports', self::IMPORT_GRANTS[$role]))
+            ->when(isset(self::BACKUP_GRANTS[$role]), fn ($grants) => $grants->put('backups', self::BACKUP_GRANTS[$role]))
             ->when(isset(self::REPORT_GRANTS[$role]), fn ($grants) => $grants->put('reports', self::REPORT_GRANTS[$role]))
             ->flatMap(fn (array $actions, string $module) => array_map(fn (A $a) => "{$module}.{$a->value}", $actions))
             ->values()

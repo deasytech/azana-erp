@@ -21,6 +21,7 @@ class SalesOrder extends Model
     protected function casts(): array
     {
         return [
+            'is_historical' => 'boolean',
             'status' => SalesOrderStatus::class,
             'ordered_on' => 'date',
             'dispatched_on' => 'date',

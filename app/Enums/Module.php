@@ -32,6 +32,8 @@ enum Module: string
     case Reports = 'reports';
     case Mobile = 'mobile';
     case Website = 'website';
+    case DataImports = 'data-imports';
+    case Backups = 'backups';
 
     public function label(): string
     {
@@ -60,6 +62,8 @@ enum Module: string
             self::Reports => 'Dashboards & reports',
             self::Mobile => 'Mobile app',
             self::Website => 'Public website',
+            self::DataImports => 'Data imports',
+            self::Backups => 'Backups & monitoring',
         };
     }
 
@@ -70,6 +74,9 @@ enum Module: string
             // Read-only trails: never editable or deletable, by anyone.
             self::AuditLogs, self::LoginActivity => [PermissionAction::View, PermissionAction::Export],
             self::Settings => [PermissionAction::View, PermissionAction::Edit],
+            // Imports: view, create (upload and check a file), approve (commit it). Backups: view, create (take one), edit (record a restore test).
+            self::DataImports => [PermissionAction::View, PermissionAction::Create, PermissionAction::Approve, PermissionAction::Export],
+            self::Backups => [PermissionAction::View, PermissionAction::Create, PermissionAction::Edit],
             // View: sign in to the mobile app (what a person may then do is decided by their other permissions). Edit: review the sync log's conflicts.
             self::Mobile => [PermissionAction::View, PermissionAction::Edit],
             default => PermissionAction::cases(),
