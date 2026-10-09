@@ -10,7 +10,6 @@ use App\Models\User;
 use Database\Seeders\FinanceSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -86,6 +85,9 @@ class ResetToLiveData
         $backup = $backupFirst ? $this->backup($by) : null;
         $rows = array_sum($this->preview());
 
+        // Done first: it can fail on a foreign key, and that must happen before anything is deleted.
+        $users = $removeDemoAccounts ? $this->removeDemoAccounts($by) : 0;
+
         $this->deleteFiles();
 
         $tables = collect(self::WIPE)->filter(fn ($t) => Schema::hasTable($t));
@@ -104,11 +106,8 @@ class ResetToLiveData
         (new MasterDataSeeder)->run();
         (new FinanceSeeder)->run();
 
-        $users = $removeDemoAccounts ? $this->removeDemoAccounts($by) : 0;
-
         $this->settings->set('system.data_mode', DataMode::Live->value);
         $this->settings->flush();
-        Cache::flush();
 
         Auth::setUser($by);
         ($this->audit)('system.data_reset', null, null, ['tables' => $tables->count(), 'rows' => $rows, 'demo_accounts_removed' => $users, 'backup' => $backup], 'Practice data cleared for go-live');
@@ -151,6 +150,7 @@ class ResetToLiveData
     {
         $ids = User::where('email', 'like', '%'.self::DEMO_EMAIL_SUFFIX)->whereKeyNot($keep->getKey())->pluck('id');
 
+        DB::table('backup_runs')->whereIn('created_by', $ids)->update(['created_by' => null]);
         DB::table('login_activities')->whereIn('user_id', $ids)->delete();
         DB::table('personal_access_tokens')->where('tokenable_type', (new User)->getMorphClass())->whereIn('tokenable_id', $ids)->delete();
         DB::table('model_has_roles')->where('model_type', (new User)->getMorphClass())->whereIn('model_id', $ids)->delete();
