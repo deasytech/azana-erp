@@ -26,7 +26,7 @@ class Payment extends Model
 
     protected function casts(): array
     {
-        return ['method' => ReceiptMethod::class, 'received_on' => 'date', 'amount_minor' => 'integer', 'voided_at' => 'datetime'];
+        return ['is_historical' => 'boolean', 'method' => ReceiptMethod::class, 'received_on' => 'date', 'amount_minor' => 'integer', 'voided_at' => 'datetime'];
     }
 
     public function customer(): BelongsTo

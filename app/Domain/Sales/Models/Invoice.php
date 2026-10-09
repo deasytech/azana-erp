@@ -18,7 +18,7 @@ class Invoice extends Model
 
     protected function casts(): array
     {
-        return ['issued_on' => 'date', 'due_on' => 'date', 'total_minor' => 'integer'];
+        return ['is_historical' => 'boolean', 'issued_on' => 'date', 'due_on' => 'date', 'total_minor' => 'integer'];
     }
 
     public function customer(): BelongsTo

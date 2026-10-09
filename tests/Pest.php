@@ -32,6 +32,9 @@ use App\Domain\Finance\Models\JournalEntry;
 use App\Domain\Health\Actions\RecordTreatment;
 use App\Domain\Health\Models\Medicine;
 use App\Domain\Health\Models\MedicineBatch;
+use App\Domain\Import\Actions\CheckImport;
+use App\Domain\Import\Actions\CommitImport;
+use App\Domain\Import\Models\DataImport;
 use App\Domain\Inventory\Actions\IssueStock;
 use App\Domain\Inventory\Actions\ReceiveStock;
 use App\Domain\Inventory\Models\InventoryItem;
@@ -668,4 +671,28 @@ function mutation(string $type, array $payload, array $over = []): array
 function push(array $mutations, array $headers, string $device = MOBILE_DEVICE)
 {
     return apiPost('/api/v1/sync/push', ['device_id' => $device, 'mutations' => $mutations], $headers);
+}
+
+/** Writes rows (the first is the headings) to a temp CSV and checks it as the given kind of import. */
+function csvImport(string $type, array $rows, ?string $name = 'data.csv'): DataImport
+{
+    $path = tempnam(sys_get_temp_dir(), 'imp');
+    $out = fopen($path, 'w');
+
+    foreach ($rows as $row) {
+        fputcsv($out, $row, escape: '');
+    }
+
+    fclose($out);
+
+    try {
+        return app(CheckImport::class)($type, $path, $name, auth()->user());
+    } finally {
+        @unlink($path);
+    }
+}
+
+function commit(DataImport $import, $by = null): DataImport
+{
+    return app(CommitImport::class)($import, $by ?? auth()->user());
 }

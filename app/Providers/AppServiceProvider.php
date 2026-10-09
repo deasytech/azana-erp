@@ -3,12 +3,18 @@
 namespace App\Providers;
 
 use App\Domain\Animal\Models as A;
+use App\Domain\Backup\BackupException;
+use App\Domain\Backup\Drivers\BackupDriver;
+use App\Domain\Backup\Drivers\MySqlBackupDriver;
+use App\Domain\Backup\Drivers\SqliteBackupDriver;
+use App\Domain\Backup\Models\BackupRun;
 use App\Domain\Biosecurity\Models as S;
 use App\Domain\Breeding\Models as B;
 use App\Domain\Farm\Models as M;
 use App\Domain\Feed\Models as FD;
 use App\Domain\Finance\Models as FI;
 use App\Domain\Health\Models as H;
+use App\Domain\Import\Models\DataImport;
 use App\Domain\Inventory\Models as I;
 use App\Domain\Litter\Models as L;
 use App\Domain\Meat\Models as MT;
@@ -29,9 +35,11 @@ use App\Enums\Module;
 use App\Models\User;
 use App\Policies\AnimalPhotoPolicy;
 use App\Policies\AnimalPolicy;
+use App\Policies\BackupRunPolicy;
 use App\Policies\BiosecurityMasterPolicy;
 use App\Policies\BiosecurityPolicy;
 use App\Policies\BreedingPolicy;
+use App\Policies\DataImportPolicy;
 use App\Policies\FarmStructurePolicy;
 use App\Policies\FeedMillMasterPolicy;
 use App\Policies\FeedMillPolicy;
@@ -72,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(BackupDriver::class, fn () => match ($driver = config('database.connections.'.config('database.default').'.driver')) {
+            'mysql', 'mariadb' => new MySqlBackupDriver(config('database.default')),
+            'sqlite' => new SqliteBackupDriver(config('database.default')),
+            default => throw new BackupException("Backups are not set up for the \"{$driver}\" database."),
+        });
+
         // SMS and WhatsApp go through this gateway; "log" only records them. Bind a provider's implementation to send for real.
         $this->app->bind(MessageGateway::class, fn () => match (config('messaging.driver')) {
             default => new LogMessageGateway,
@@ -134,6 +148,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(SyncMutation::class, SyncMutationPolicy::class);
         Gate::policy(Listing::class, WebsiteListingPolicy::class);
         Gate::policy(Enquiry::class, WebsitePolicy::class);
+        Gate::policy(DataImport::class, DataImportPolicy::class);
+        Gate::policy(BackupRun::class, BackupRunPolicy::class);
         foreach ([TK\Task::class, TK\TaskAssignment::class, TK\TaskEvidence::class] as $model) {
             Gate::policy($model, TaskPolicy::class);
         }
