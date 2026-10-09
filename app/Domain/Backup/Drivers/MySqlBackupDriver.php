@@ -2,9 +2,9 @@
 
 namespace App\Domain\Backup\Drivers;
 
+use App\Domain\Backup\BackupException;
 use Illuminate\Support\Facades\Config;
 use PDO;
-use RuntimeException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -17,7 +17,7 @@ class MySqlBackupDriver implements BackupDriver
 
     public function dump(string $gzPath): void
     {
-        $out = gzopen($gzPath, 'wb9') ?: throw new RuntimeException('Could not write the backup file.');
+        $out = gzopen($gzPath, 'wb9') ?: throw new BackupException('Could not write the backup file.');
         $tail = '';
 
         $process = new Process([
@@ -35,39 +35,52 @@ class MySqlBackupDriver implements BackupDriver
         gzclose($out);
 
         if (! $process->isSuccessful()) {
-            throw new RuntimeException('mysqldump failed: '.trim($process->getErrorOutput()));
+            throw new BackupException('mysqldump failed: '.trim($process->getErrorOutput()));
         }
 
         // mysqldump ends a complete dump with this line; a dump cut short does not have it.
-        str_contains($tail, 'Dump completed') || throw new RuntimeException('The dump looks incomplete (no end marker).');
+        str_contains($tail, 'Dump completed') || throw new BackupException('The dump looks incomplete (no end marker).');
     }
 
     public function restoreScratch(string $gzPath): array
     {
         $scratch = (string) config('backup.restore_test_database');
 
-        if ($scratch === '' || $scratch === $this->config('database') || ! preg_match('/^[A-Za-z0-9_]+$/', $scratch)) {
-            throw new RuntimeException('Set BACKUP_RESTORE_TEST_DATABASE to the name of a scratch database that is not the live one.');
+        if ($scratch === '' || $scratch === $this->config('database') || ! preg_match('/^\w+$/', $scratch)) {
+            throw new BackupException('Set BACKUP_RESTORE_TEST_DATABASE to the name of a scratch database that is not the live one.');
         }
 
         $this->sql("DROP DATABASE IF EXISTS `{$scratch}`; CREATE DATABASE `{$scratch}` CHARACTER SET utf8mb4");
 
         try {
-            $load = Process::fromShellCommandline(
-                'gzip -dc "$BACKUP_FILE" | "$BACKUP_MYSQL" --host="$BACKUP_HOST" --port="$BACKUP_PORT" --user="$BACKUP_USER" "$BACKUP_DB"',
-                env: $this->environment() + ['BACKUP_FILE' => $gzPath, 'BACKUP_MYSQL' => config('backup.mysql'), 'BACKUP_HOST' => $this->config('host'),
-                    'BACKUP_PORT' => $this->config('port') ?: 3306, 'BACKUP_USER' => $this->config('username'), 'BACKUP_DB' => $scratch],
-                timeout: 3600,
+            // The file is decompressed here and streamed into the client's standard input: no shell, no command string to inject into.
+            $load = new Process(
+                [config('backup.mysql'), ...$this->connectionArguments(), $scratch],
+                env: $this->environment(), input: $this->decompressed($gzPath), timeout: 3600,
             );
             $load->run();
 
             if (! $load->isSuccessful()) {
-                throw new RuntimeException('Loading the backup failed: '.trim($load->getErrorOutput()));
+                throw new BackupException('Loading the backup failed: '.trim($load->getErrorOutput()));
             }
 
             return $this->count($scratch);
         } finally {
             $this->sql("DROP DATABASE IF EXISTS `{$scratch}`");
+        }
+    }
+
+    /** @return \Generator<int, string> */
+    private function decompressed(string $gzPath): \Generator
+    {
+        $in = gzopen($gzPath, 'rb') ?: throw new BackupException('Could not read the backup file.');
+
+        try {
+            while (! gzeof($in)) {
+                yield (string) gzread($in, 1 << 20);
+            }
+        } finally {
+            gzclose($in);
         }
     }
 
@@ -90,7 +103,7 @@ class MySqlBackupDriver implements BackupDriver
         $process = new Process([config('backup.mysql'), ...$this->connectionArguments(), '--execute='.$statement], env: $this->environment(), timeout: 120);
         $process->run();
 
-        $process->isSuccessful() || throw new RuntimeException('Could not prepare the scratch database: '.trim($process->getErrorOutput()));
+        $process->isSuccessful() || throw new BackupException('Could not prepare the scratch database: '.trim($process->getErrorOutput()));
     }
 
     /** @return list<string> */

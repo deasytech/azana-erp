@@ -63,6 +63,22 @@ abstract class Importer
         return array_map(fn (ImportColumn $c) => $c->name, $this->columns());
     }
 
+    /**
+     * The contact columns customers and suppliers share.
+     *
+     * @return list<ImportColumn>
+     */
+    protected function contactColumns(): array
+    {
+        return [
+            new ImportColumn('contact_name', 'The person to speak to.'),
+            new ImportColumn('phone', 'Telephone number. Format the column as text so a leading 0 is kept.'),
+            new ImportColumn('email', 'E-mail address.'),
+            new ImportColumn('address', 'Postal or delivery address.'),
+            new ImportColumn('tax_number', 'Tax identification number.'),
+        ];
+    }
+
     // ---- Helpers for importers --------------------------------------------------------------------------------------
 
     /** @param array<string, ?string> $row */

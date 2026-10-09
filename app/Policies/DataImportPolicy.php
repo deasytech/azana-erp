@@ -14,19 +14,10 @@ class DataImportPolicy extends ModulePolicy
         return Module::DataImports;
     }
 
-    public function update(User $user, mixed $model = null): bool
+    /** The record is never edited or deleted, by anyone. */
+    protected function can(User $user, PermissionAction $action): bool
     {
-        return false;
-    }
-
-    public function delete(User $user, mixed $model = null): bool
-    {
-        return false;
-    }
-
-    public function deleteAny(User $user): bool
-    {
-        return false;
+        return ! in_array($action, [PermissionAction::Edit, PermissionAction::Delete], true) && parent::can($user, $action);
     }
 
     public function commit(User $user, mixed $model = null): bool

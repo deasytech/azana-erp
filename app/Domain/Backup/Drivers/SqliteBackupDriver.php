@@ -2,9 +2,9 @@
 
 namespace App\Domain\Backup\Drivers;
 
+use App\Domain\Backup\BackupException;
 use Illuminate\Support\Facades\DB;
 use PDO;
-use RuntimeException;
 
 /** SQLite: a consistent copy of the file (VACUUM INTO), compressed. A restore test opens the copy and checks its integrity. */
 class SqliteBackupDriver implements BackupDriver
@@ -33,7 +33,7 @@ class SqliteBackupDriver implements BackupDriver
 
             $pdo = new PDO('sqlite:'.$copy, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             $check = $pdo->query('PRAGMA integrity_check')->fetchColumn();
-            $check === 'ok' || throw new RuntimeException("The restored copy failed its integrity check: {$check}");
+            $check === 'ok' || throw new BackupException("The restored copy failed its integrity check: {$check}");
 
             $counts = [];
 
@@ -54,7 +54,7 @@ class SqliteBackupDriver implements BackupDriver
         $out = gzopen($to, 'wb9');
 
         if (! $in || ! $out) {
-            throw new RuntimeException('Could not write the backup file.');
+            throw new BackupException('Could not write the backup file.');
         }
 
         while (! feof($in)) {
@@ -71,7 +71,7 @@ class SqliteBackupDriver implements BackupDriver
         $out = fopen($to, 'wb');
 
         if (! $in || ! $out) {
-            throw new RuntimeException('Could not read the backup file.');
+            throw new BackupException('Could not read the backup file.');
         }
 
         while (! gzeof($in)) {

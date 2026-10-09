@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
+const IMPORT_MANAGER = 'General Manager';
 beforeEach(function () {
     $this->seed([RoleSeeder::class, MasterDataSeeder::class]);
     Filament::setCurrentPanel('admin');
@@ -31,7 +32,7 @@ function uploadCsv(string $content): UploadedFile
 
 describe('the import screens', function () {
     it('checks an uploaded file, shows the verdict and imports it on confirmation', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(IMPORT_MANAGER));
 
         $create = Livewire::test(CreateDataImport::class)
             ->fillForm(['type' => 'customers', 'file' => uploadCsv("name,customer_type\nAda Farms,farmer\nBayo Ltd,farmer\n")])
@@ -52,7 +53,7 @@ describe('the import screens', function () {
     });
 
     it('hides the import button for a file with problems and lists the failed rows', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(IMPORT_MANAGER));
         $import = csvImport('customers', [['name', 'customer_type'], ['Ada Farms', 'farmer'], ['', 'farmer']]);
 
         Livewire::test(ViewDataImport::class, ['record' => $import->id])
@@ -64,7 +65,7 @@ describe('the import screens', function () {
     });
 
     it('explains a file with the wrong headings and creates nothing', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(IMPORT_MANAGER));
 
         Livewire::test(CreateDataImport::class)
             ->fillForm(['type' => 'customers', 'file' => uploadCsv("nom,type\nAda,farmer\n")])
@@ -81,7 +82,7 @@ describe('the import screens', function () {
     });
 
     it('lists imports with their results', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(IMPORT_MANAGER));
         csvImport('customers', [['name', 'customer_type'], ['Ada Farms', 'farmer']]);
 
         Livewire::test(ListDataImports::class)->assertCanSeeTableRecords(DataImport::all())->assertSee('Customers');
@@ -90,7 +91,7 @@ describe('the import screens', function () {
 
 describe('backups and monitoring page', function () {
     it('shows the system status and history to those who may view it', function () {
-        $this->actingAs(userWithRole('General Manager'));
+        $this->actingAs(userWithRole(IMPORT_MANAGER));
 
         Livewire::test(BackupsAndMonitoring::class)
             ->assertSee('System status')->assertSee('Database backup')->assertSee('No backup has been taken yet')

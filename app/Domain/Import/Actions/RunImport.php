@@ -29,7 +29,7 @@ class RunImport
 
         try {
             foreach ($this->units($importer, $rows) as $unit) {
-                if ($problem = $this->problem($importer, $unit)) {
+                if ($problem = $this->problem($importer, $unit, $actor)) {
                     foreach (array_keys($unit) as $number) {
                         $errors[$number] = $problem;
                     }
@@ -84,7 +84,7 @@ class RunImport
     }
 
     /** @param array<int, array<string, ?string>> $unit */
-    private function problem(Importer $importer, array $unit): ?string
+    private function problem(Importer $importer, array $unit, ?User $actor): ?string
     {
         foreach ($unit as $number => $row) {
             foreach ($importer->requiredColumns() as $column) {
@@ -95,7 +95,7 @@ class RunImport
         }
 
         try {
-            DB::transaction(fn () => $importer->save(array_values($unit), auth()->user()));
+            DB::transaction(fn () => $importer->save(array_values($unit), $actor));
 
             return null;
         } catch (DomainException $e) {

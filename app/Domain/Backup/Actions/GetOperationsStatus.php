@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Schema;
  */
 class GetOperationsStatus
 {
+    private const BACKUP = 'Database backup';
+
+    private const RESTORE_TEST = 'Restore test';
+
     public const HEARTBEAT = 'monitor:scheduler-heartbeat';
 
     public function __construct(private readonly RunHealthChecks $health) {}
@@ -46,16 +50,16 @@ class GetOperationsStatus
         $failed = BackupRun::where('kind', BackupRun::BACKUP)->latest('started_at')->first();
 
         if (! $last) {
-            return new C('Database backup', C::FAILED, 'No backup has been taken yet. Run `php artisan erp:backup`.');
+            return new C(self::BACKUP, C::FAILED, 'No backup has been taken yet. Run `php artisan erp:backup`.');
         }
 
         $hours = (int) $last->started_at->diffInHours(now());
 
         if ($hours > config('backup.max_backup_age_hours')) {
-            return new C('Database backup', C::FAILED, "The last good backup is {$hours} hours old ({$last->started_at->format('d M Y H:i')}).".($failed && $failed->status === 'failed' ? " The latest attempt failed: {$failed->message}" : ''));
+            return new C(self::BACKUP, C::FAILED, "The last good backup is {$hours} hours old ({$last->started_at->format('d M Y H:i')}).".($failed && $failed->status === 'failed' ? " The latest attempt failed: {$failed->message}" : ''));
         }
 
-        return new C('Database backup', C::OK, "Last good backup {$last->started_at->diffForHumans()} ({$last->started_at->format('d M Y H:i')}).");
+        return new C(self::BACKUP, C::OK, "Last good backup {$last->started_at->diffForHumans()} ({$last->started_at->format('d M Y H:i')}).");
     }
 
     private function offsite(): C
@@ -76,18 +80,18 @@ class GetOperationsStatus
         $last = BackupRun::where('kind', BackupRun::RESTORE_TEST)->latest('started_at')->first();
 
         if (! $last) {
-            return new C('Restore test', C::WARNING, 'A backup has never been test-restored. Run `php artisan erp:backup:test-restore`.');
+            return new C(self::RESTORE_TEST, C::WARNING, 'A backup has never been test-restored. Run `php artisan erp:backup:test-restore`.');
         }
 
         if ($last->status !== 'success') {
-            return new C('Restore test', C::FAILED, "The last restore test failed: {$last->message}");
+            return new C(self::RESTORE_TEST, C::FAILED, "The last restore test failed: {$last->message}");
         }
 
         $days = (int) $last->started_at->diffInDays(now());
 
         return $days > config('backup.max_restore_test_age_days')
-            ? new C('Restore test', C::WARNING, "The last restore test passed {$days} days ago; test again.")
-            : new C('Restore test', C::OK, "Passed {$last->started_at->diffForHumans()}: {$last->message}");
+            ? new C(self::RESTORE_TEST, C::WARNING, "The last restore test passed {$days} days ago; test again.")
+            : new C(self::RESTORE_TEST, C::OK, "Passed {$last->started_at->diffForHumans()}: {$last->message}");
     }
 
     private function scheduler(): C

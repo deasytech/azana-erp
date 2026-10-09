@@ -35,11 +35,7 @@ class SupplierImporter extends Importer
         return [
             new ImportColumn('name', 'The supplier name.', true, 'AgroMix Nigeria Ltd'),
             new ImportColumn('code', 'Leave blank to be given the next SUP- code.', false, 'SUP-0001'),
-            new ImportColumn('contact_name', 'The person to speak to.'),
-            new ImportColumn('phone', 'Telephone number. Format the column as text so a leading 0 is kept.'),
-            new ImportColumn('email', 'E-mail address.'),
-            new ImportColumn('address', 'Postal address.'),
-            new ImportColumn('tax_number', 'Tax identification number.'),
+            ...$this->contactColumns(),
             new ImportColumn('payment_terms_days', 'Days allowed to pay; 0 means pay on delivery.', false, '30'),
             new ImportColumn('notes', 'Anything worth remembering.'),
         ];

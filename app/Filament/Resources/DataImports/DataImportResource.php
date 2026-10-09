@@ -55,7 +55,7 @@ class DataImportResource extends Resource
                         ->options(fn () => collect(app(ImportRegistry::class)->allowedFor(auth()->user()))->map->label()->all())
                         ->helperText(fn (?string $state) => $state ? app(ImportRegistry::class)->get($state)->description() : 'Download the template for the kind of data first, fill it in, then upload it here.'),
                     FileUpload::make('file')->label('CSV or Excel file')->required()->maxSize(10240)->storeFiles(true)
-                        ->disk('local')->directory('import-uploads')->visibility('private')
+                        ->storeFileNamesIn('file_name')->disk('local')->directory('import-uploads')->visibility('private')
                         ->helperText('.csv or .xlsx, up to '.ImportFile::MAX_ROWS.' rows. The first row holds the column headings from the template.'),
                 ]),
         ]);
@@ -122,7 +122,7 @@ class DataImportResource extends Resource
                 $headings = app(ImportRegistry::class)->get($record->type)->columnNames();
                 $csv = app(ImportFile::class)->errorReport($record->rows()->whereNotNull('error')->orderBy('row_number')->cursor(), $headings);
 
-                return response()->streamDownload(fn () => print ($csv), 'import-problems-'.$record->id.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+                return response()->streamDownload(fn () => print $csv, 'import-problems-'.$record->id.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
             });
     }
 
@@ -135,7 +135,7 @@ class DataImportResource extends Resource
             foreach (['xlsx' => 'Excel', 'csv' => 'CSV'] as $format => $name) {
                 $actions[] = Action::make("template_{$key}_{$format}")->label("{$importer->label()} ({$name})")
                     ->visible(fn () => auth()->user()->can($importer->module().'.create'))
-                    ->action(fn () => response()->streamDownload(fn () => print (app(ImportFile::class)->template($importer, $format)), "template-{$key}.{$format}"));
+                    ->action(fn () => response()->streamDownload(fn () => print app(ImportFile::class)->template($importer, $format), "template-{$key}.{$format}"));
             }
         }
 

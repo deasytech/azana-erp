@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domain\Animal\Models as A;
+use App\Domain\Backup\BackupException;
 use App\Domain\Backup\Drivers\BackupDriver;
 use App\Domain\Backup\Drivers\MySqlBackupDriver;
 use App\Domain\Backup\Drivers\SqliteBackupDriver;
@@ -82,7 +83,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BackupDriver::class, fn () => match ($driver = config('database.connections.'.config('database.default').'.driver')) {
             'mysql', 'mariadb' => new MySqlBackupDriver(config('database.default')),
             'sqlite' => new SqliteBackupDriver(config('database.default')),
-            default => throw new \RuntimeException("Backups are not set up for the \"{$driver}\" database."),
+            default => throw new BackupException("Backups are not set up for the \"{$driver}\" database."),
         });
 
         // SMS and WhatsApp go through this gateway; "log" only records them. Bind a provider's implementation to send for real.

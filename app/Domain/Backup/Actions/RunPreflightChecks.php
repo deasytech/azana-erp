@@ -60,9 +60,15 @@ class RunPreflightChecks
 
     private function queue(): C
     {
-        return config('queue.default') === 'sync'
-            ? new C('Queue', C::FAILED, 'QUEUE_CONNECTION is "sync": notifications and backups would run inside web requests.')
-            : new C('Queue', C::OK, config('queue.default').' (a worker must be running: see deploy/supervisor).');
+        if (config('queue.default') === 'sync') {
+            return new C('Queue', C::FAILED, 'QUEUE_CONNECTION is "sync": notifications and backups would run inside web requests.');
+        }
+
+        if (config('queue.default') === 'database' && config('queue.connections.database.retry_after') <= 3600) {
+            return new C('Queue', C::FAILED, 'DB_QUEUE_RETRY_AFTER must be above 3600: a backup that is still running would be handed to a second worker.');
+        }
+
+        return new C('Queue', C::OK, config('queue.default').' (a worker must be running: see deploy/supervisor).');
     }
 
     private function cache(): C

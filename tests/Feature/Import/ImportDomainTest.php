@@ -28,13 +28,16 @@ beforeEach(function () {
     $this->actingAs($this->boss);
 });
 
+const OPENING_DAY = '2026-10-01';
+const ADA_EMAIL = 'ada@example.com';
+const SALE_DAY = '2026-06-01';
 const CUSTOMER_HEAD = ['name', 'customer_type', 'phone', 'email'];
 const PIG_HEAD = ['sex', 'category', 'birth_date', 'breed', 'source', 'pen', 'ear_tag', 'sire', 'dam', 'weight_kg', 'weight_date'];
 const SALE_HEAD = ['reference', 'customer', 'sale_date', 'product', 'description', 'unit', 'quantity', 'unit_price', 'amount_paid', 'payment_method'];
 
 describe('checking a file', function () {
     it('saves nothing and consumes no numbers', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '0803', 'ada@example.com']]);
+        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '0803', ADA_EMAIL]]);
 
         expect($import->error_rows)->toBe(0)->and($import->total_rows)->toBe(1)->and($import->isReady())->toBeTrue()
             ->and(Customer::count())->toBe(0)
@@ -44,7 +47,7 @@ describe('checking a file', function () {
     it('reports each failed row with the reason and keeps the good ones passing', function () {
         $import = csvImport('customers', [
             CUSTOMER_HEAD,
-            ['Ada Farms', 'farmer', '0803', 'ada@example.com'],
+            ['Ada Farms', 'farmer', '0803', ADA_EMAIL],
             ['', 'farmer', '', ''],
             ['Bad Type Ltd', 'spaceship', '', ''],
             ['Bad Mail', 'farmer', '', 'not-an-email'],
@@ -107,7 +110,7 @@ describe('checking a file', function () {
 
 describe('committing', function () {
     it('saves every row through the real action and marks the import done', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '0803', 'ada@example.com'], ['Bayo Ltd', 'farmer', '', '']]);
+        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '0803', ADA_EMAIL], ['Bayo Ltd', 'farmer', '', '']]);
 
         commit($import);
 
@@ -221,7 +224,7 @@ describe('inventory opening balances', function () {
         store('MAIN');
         $head = ['item', 'store', 'quantity', 'unit_cost', 'as_of'];
 
-        $import = csvImport('inventory_opening', [$head, ['MAIZE', 'MAIN', '1250.5', '420.00', '2026-10-01']]);
+        $import = csvImport('inventory_opening', [$head, ['MAIZE', 'MAIN', '1250.5', '420.00', OPENING_DAY]]);
         expect($import->error_rows)->toBe(0)->and(InventoryTransaction::count())->toBe(0);
 
         commit($import);
@@ -240,11 +243,11 @@ describe('inventory opening balances', function () {
 
         $import = csvImport('inventory_opening', [
             ['item', 'store', 'quantity', 'unit_cost', 'as_of', 'batch_number', 'expiry_date'],
-            ['VAX', 'MAIN', '10', '100', '2026-10-01', '', ''],
-            ['VAX', 'MAIN', '10', '100', '2026-10-01', 'L1', ''],
-            ['VAX', 'MAIN', '10', '100', '2026-10-01', 'L2', '2027-03-01'],
+            ['VAX', 'MAIN', '10', '100', OPENING_DAY, '', ''],
+            ['VAX', 'MAIN', '10', '100', OPENING_DAY, 'L1', ''],
+            ['VAX', 'MAIN', '10', '100', OPENING_DAY, 'L2', '2027-03-01'],
             ['VAX', 'MAIN', '10', '100', '2099-01-01', 'L3', '2100-03-01'],
-            ['VAX', 'MAIN', '-5', '100', '2026-10-01', 'L4', '2027-03-01'],
+            ['VAX', 'MAIN', '-5', '100', OPENING_DAY, 'L4', '2027-03-01'],
         ]);
 
         $errors = $import->rows()->orderBy('row_number')->pluck('error')->all();
@@ -288,7 +291,7 @@ describe('historical sales', function () {
 
         $import = csvImport('historical_sales', [
             SALE_HEAD,
-            ['OLD-1', $buyer->code, '2026-06-01', 'pigs', '20 finishers', 'head', '20', '85000.00', '1000000.00', 'bank_transfer'],
+            ['OLD-1', $buyer->code, SALE_DAY, 'pigs', '20 finishers', 'head', '20', '85000.00', '1000000.00', 'bank_transfer'],
         ]);
         expect($import->error_rows)->toBe(0)->and(Invoice::count())->toBe(0);
         commit($import);
@@ -305,16 +308,16 @@ describe('historical sales', function () {
 
     it('imports the same old reference only once and checks the money', function () {
         $buyer = customer();
-        commit(csvImport('historical_sales', [SALE_HEAD, ['OLD-1', $buyer->code, '2026-06-01', 'pigs', 'x', 'head', '2', '1000', '', '']]));
+        commit(csvImport('historical_sales', [SALE_HEAD, ['OLD-1', $buyer->code, SALE_DAY, 'pigs', 'x', 'head', '2', '1000', '', '']]));
 
         $import = csvImport('historical_sales', [
             SALE_HEAD,
-            ['OLD-1', $buyer->code, '2026-06-01', 'pigs', 'x', 'head', '2', '1000', '', ''],
-            ['OLD-2', $buyer->code, '2026-06-01', 'pigs', 'x', 'head', '2.5', '1000', '', ''],
-            ['OLD-3', $buyer->code, '2026-06-01', 'pigs', 'x', 'head', '2', '1000', '5000', 'cash'],
-            ['OLD-4', $buyer->code, '2026-06-01', 'pigs', 'x', 'head', '2', '1000', '500', ''],
+            ['OLD-1', $buyer->code, SALE_DAY, 'pigs', 'x', 'head', '2', '1000', '', ''],
+            ['OLD-2', $buyer->code, SALE_DAY, 'pigs', 'x', 'head', '2.5', '1000', '', ''],
+            ['OLD-3', $buyer->code, SALE_DAY, 'pigs', 'x', 'head', '2', '1000', '5000', 'cash'],
+            ['OLD-4', $buyer->code, SALE_DAY, 'pigs', 'x', 'head', '2', '1000', '500', ''],
             ['OLD-5', $buyer->code, '2099-06-01', 'meat', 'x', 'kg', '2', '1000', '', ''],
-            ['OLD-6', 'nobody', '2026-06-01', 'meat', 'x', 'kg', '2', '1000', '', ''],
+            ['OLD-6', 'nobody', SALE_DAY, 'meat', 'x', 'kg', '2', '1000', '', ''],
         ]);
 
         $errors = $import->rows()->orderBy('row_number')->pluck('error')->all();

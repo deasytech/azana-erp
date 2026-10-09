@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\Module;
+use App\Enums\PermissionAction;
 use App\Models\User;
 
 /** The backup history is a record: viewed, and added to by taking a backup or a restore test, never edited or deleted. */
@@ -13,18 +14,9 @@ class BackupRunPolicy extends ModulePolicy
         return Module::Backups;
     }
 
-    public function update(User $user, mixed $model = null): bool
+    /** The record is never edited or deleted, by anyone. */
+    protected function can(User $user, PermissionAction $action): bool
     {
-        return false;
-    }
-
-    public function delete(User $user, mixed $model = null): bool
-    {
-        return false;
-    }
-
-    public function deleteAny(User $user): bool
-    {
-        return false;
+        return ! in_array($action, [PermissionAction::Edit, PermissionAction::Delete], true) && parent::can($user, $action);
     }
 }

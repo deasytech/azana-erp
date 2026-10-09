@@ -22,9 +22,9 @@ HEALTH_URL="${HEALTH_URL:-}"   # e.g. https://erp.azanafarms.com/health ; empty 
 
 cd "$(dirname "$0")/.."
 
-[ -f .env ] || { echo "No .env here. Copy deploy/env.production.example to .env and fill it in first." >&2; exit 1; }
+[[ -f .env ]] || { echo "No .env here. Copy deploy/env.production.example to .env and fill it in first." >&2; exit 1; }
 
-if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
     echo "The working tree has uncommitted changes. A deployment must be exactly a git ref." >&2
     exit 1
 fi
@@ -33,7 +33,10 @@ echo "==> Backing up the database"
 $PHP artisan erp:backup --no-prune || { echo "Backup failed: not deploying." >&2; exit 1; }
 
 echo "==> Maintenance mode on"
-$PHP artisan down --retry=60 --refresh=15 || true
+# An already-down site is fine; a failure to go down is not (the migration would run under live traffic).
+if ! $PHP artisan down --retry=60 --refresh=15; then
+    [[ -f storage/framework/down ]] || { echo "Could not enable maintenance mode: not deploying." >&2; exit 1; }
+fi
 trap 'echo "Deployment stopped. The site is still in maintenance mode; fix the problem and re-run, or follow the rollback steps." >&2' ERR
 
 echo "==> Fetching $REF"
@@ -44,7 +47,7 @@ echo "    $PREVIOUS -> $(git rev-parse HEAD)"
 
 echo "==> Installing dependencies"
 $COMPOSER install --no-dev --prefer-dist --optimize-autoloader --no-interaction
-npm ci --no-audit --no-fund
+npm ci --no-audit --no-fund --ignore-scripts
 npm run build
 
 echo "==> Migrating"
@@ -70,7 +73,7 @@ $PHP artisan queue:restart
 $PHP artisan up
 trap - ERR
 
-if [ -n "$HEALTH_URL" ]; then
+if [[ -n "$HEALTH_URL" ]]; then
     echo "==> Health check"
     for attempt in 1 2 3 4 5; do
         if curl -fsS --max-time 10 "$HEALTH_URL" > /dev/null; then echo "    healthy"; exit 0; fi

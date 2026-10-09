@@ -35,7 +35,7 @@ class CreateDataImport extends CreateRecord
         $disk = Storage::disk('local');
 
         try {
-            return app(CheckImport::class)($data['type'], $disk->path($stored), basename($stored), auth()->user());
+            return app(CheckImport::class)($data['type'], $disk->path($stored), $data['file_name'] ?? basename($stored), auth()->user());
         } catch (DomainException $e) {
             $this->failWith($e);
         } finally {

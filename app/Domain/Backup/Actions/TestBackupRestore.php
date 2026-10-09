@@ -2,6 +2,7 @@
 
 namespace App\Domain\Backup\Actions;
 
+use App\Domain\Backup\BackupException;
 use App\Domain\Backup\Drivers\BackupDriver;
 use App\Domain\Backup\Models\BackupRun;
 use App\Models\User;
@@ -34,10 +35,10 @@ class TestBackupRestore
         $local = tempnam(sys_get_temp_dir(), 'azana-restore');
 
         try {
-            $backup ?? throw new \RuntimeException('There is no backup to test yet.');
+            $backup ?? throw new BackupException('There is no backup to test yet.');
 
             $this->fetch($backup, $local);
-            hash_file('sha256', $local) === $backup->checksum || throw new \RuntimeException('The backup file does not match the checksum recorded when it was taken: it has been changed or damaged.');
+            hash_file('sha256', $local) === $backup->checksum || throw new BackupException('The backup file does not match the checksum recorded when it was taken: it has been changed or damaged.');
 
             $counts = $this->driver->restoreScratch($local);
             $problems = $this->problems($counts);
@@ -71,7 +72,7 @@ class TestBackupRestore
             }
         }
 
-        throw new \RuntimeException("The backup file {$backup->file} cannot be found on the backup disk or off-site.");
+        throw new BackupException("The backup file {$backup->file} cannot be found on the backup disk or off-site.");
     }
 
     /**

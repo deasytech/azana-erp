@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
+const BACKUP_CHECK = 'Database backup';
+const RESTORE_CHECK = 'Restore test';
 beforeEach(function () {
     $this->seed(RoleSeeder::class);
 
@@ -147,6 +149,24 @@ describe('proving a restore', function () {
     });
 });
 
+describe('a failed copy', function () {
+    it('removes the stored backup when the off-site copy fails', function () {
+        config(['filesystems.disks.broken' => ['driver' => 'local', 'root' => '/dev/null/nowhere', 'throw' => false], 'backup.offsite_disk' => 'broken']);
+
+        $failed = false;
+
+        try {
+            app(CreateBackup::class)();
+        } catch (Throwable) {
+            $failed = true;
+        }
+
+        expect($failed)->toBeTrue();
+
+        expect(Storage::disk('backups')->allFiles())->toBe([])->and(BackupRun::first()->status)->toBe('failed');
+    });
+});
+
 describe('retention', function () {
     it('keeps recent days, the newest of each week and month, and always the newest good backup', function () {
         $now = CarbonImmutable::parse('2026-10-15 12:00');
@@ -193,24 +213,24 @@ describe('monitoring', function () {
     }
 
     it('fails when no backup exists and passes after a fresh tested one', function () {
-        expect(checkNamed('Database backup')->state)->toBe(StatusCheck::FAILED)
-            ->and(checkNamed('Restore test')->state)->toBe(StatusCheck::WARNING);
+        expect(checkNamed(BACKUP_CHECK)->state)->toBe(StatusCheck::FAILED)
+            ->and(checkNamed(RESTORE_CHECK)->state)->toBe(StatusCheck::WARNING);
 
         app(CreateBackup::class)();
         app(TestBackupRestore::class)();
 
-        expect(checkNamed('Database backup')->state)->toBe(StatusCheck::OK)
+        expect(checkNamed(BACKUP_CHECK)->state)->toBe(StatusCheck::OK)
             ->and(checkNamed('Off-site copy')->state)->toBe(StatusCheck::OK)
-            ->and(checkNamed('Restore test')->state)->toBe(StatusCheck::OK);
+            ->and(checkNamed(RESTORE_CHECK)->state)->toBe(StatusCheck::OK);
     });
 
     it('fails on an old backup, a missing off-site copy and a failed restore test', function () {
         backupRun('-3 days', ['offsite' => false]);
         BackupRun::create(['kind' => 'restore_test', 'status' => 'failed', 'message' => 'boom', 'started_at' => now()]);
 
-        expect(checkNamed('Database backup')->state)->toBe(StatusCheck::FAILED)
+        expect(checkNamed(BACKUP_CHECK)->state)->toBe(StatusCheck::FAILED)
             ->and(checkNamed('Off-site copy')->state)->toBe(StatusCheck::FAILED)
-            ->and(checkNamed('Restore test')->detail)->toContain('boom');
+            ->and(checkNamed(RESTORE_CHECK)->detail)->toContain('boom');
     });
 
     it('sees whether the scheduler is alive', function () {
@@ -261,7 +281,7 @@ describe('preflight', function () {
 
     it('is satisfied by a production-like environment', function () {
         app()->detectEnvironment(fn () => 'production');
-        config(['app.debug' => false, 'app.url' => 'https://erp.test', 'queue.default' => 'database', 'cache.default' => 'database', 'backup.offsite_disk' => 'offsite',
+        config(['app.debug' => false, 'app.url' => 'https://erp.test', 'queue.default' => 'database', 'queue.connections.database.retry_after' => 3700, 'cache.default' => 'database', 'backup.offsite_disk' => 'offsite',
             'website.host' => 'www.test', 'website.erp_host' => 'erp.test', 'mail.default' => 'smtp']);
 
         $checks = collect(app(RunPreflightChecks::class)())->keyBy('name');
@@ -269,6 +289,14 @@ describe('preflight', function () {
         expect($checks['Environment']->state)->toBe(StatusCheck::OK)->and($checks['Debug mode']->state)->toBe(StatusCheck::OK)
             ->and($checks['HTTPS']->state)->toBe(StatusCheck::OK)->and($checks['Off-site backups']->state)->toBe(StatusCheck::OK)
             ->and($checks['Queue']->state)->toBe(StatusCheck::OK)->and($checks['Hosts']->state)->toBe(StatusCheck::OK);
+    });
+
+    it('refuses a queue that would hand a running backup to a second worker', function () {
+        config(['queue.default' => 'database', 'queue.connections.database.retry_after' => 90]);
+
+        $queue = collect(app(RunPreflightChecks::class)())->firstWhere('name', 'Queue');
+
+        expect($queue->state)->toBe(StatusCheck::FAILED)->and($queue->detail)->toContain('DB_QUEUE_RETRY_AFTER');
     });
 
     it('ships an executable, strict deployment script', function () {

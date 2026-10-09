@@ -40,11 +40,7 @@ class CustomerImporter extends Importer
         return [
             new ImportColumn('name', 'The customer or business name.', true, 'Green Valley Farms'),
             new ImportColumn('customer_type', 'A customer type from the lists (its name or code).', true, 'Farmer'),
-            new ImportColumn('contact_name', 'The person to speak to.', false, 'Ngozi Eze'),
-            new ImportColumn('phone', 'Telephone number. Format the column as text so a leading 0 is kept.', false, '08031234567'),
-            new ImportColumn('email', 'E-mail address.', false, 'ngozi@example.com'),
-            new ImportColumn('address', 'Postal or delivery address.'),
-            new ImportColumn('tax_number', 'Tax identification number.'),
+            ...$this->contactColumns(),
             new ImportColumn('notes', 'Anything worth remembering.'),
         ];
     }

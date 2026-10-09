@@ -22,7 +22,11 @@ class Preflight extends Command
         }
 
         $worst = GetOperationsStatus::worst($results);
-        $worst === StatusCheck::FAILED ? $this->error('Not ready for production.') : $this->info($worst === StatusCheck::WARNING ? 'Ready, with warnings.' : 'Ready.');
+        if ($worst === StatusCheck::FAILED) {
+            $this->error('Not ready for production.');
+        } else {
+            $this->info($worst === StatusCheck::WARNING ? 'Ready, with warnings.' : 'Ready.');
+        }
 
         return $worst === StatusCheck::FAILED ? self::FAILURE : self::SUCCESS;
     }
