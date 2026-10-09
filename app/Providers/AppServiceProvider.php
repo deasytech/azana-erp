@@ -10,6 +10,7 @@ use App\Domain\Backup\Drivers\SqliteBackupDriver;
 use App\Domain\Backup\Models\BackupRun;
 use App\Domain\Biosecurity\Models as S;
 use App\Domain\Breeding\Models as B;
+use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Farm\Models as M;
 use App\Domain\Feed\Models as FD;
 use App\Domain\Finance\Models as FI;
@@ -97,6 +98,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Settings are read dozens of times per page; one instance per request (or queue job) reads them once.
+        $this->app->scoped(ResolveSettings::class);
+
         // Every list offers the same page sizes and jumps to its first and last page.
         Table::configureUsing(fn (Table $table): Table => $table->paginationPageOptions([10, 25, 50, 100])->extremePaginationLinks());
 

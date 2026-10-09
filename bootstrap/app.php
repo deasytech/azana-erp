@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\EnsureMobileAccess;
+use App\Support\ErrorTally;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['mobile' => EnsureMobileAccess::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(fn (Throwable $e) => ErrorTally::record($e));
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

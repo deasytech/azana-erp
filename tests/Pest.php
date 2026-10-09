@@ -3,6 +3,8 @@
 use App\Domain\Animal\Actions\RecordAnimalMovement;
 use App\Domain\Animal\Actions\RegisterAnimal;
 use App\Domain\Animal\Models\Animal;
+use App\Domain\Backup\Actions\ReconcileLedgers;
+use App\Domain\Backup\Data\StatusCheck;
 use App\Domain\Breeding\Actions\RecordFarrowing;
 use App\Domain\Breeding\Actions\RecordService;
 use App\Domain\Breeding\Models\BreedingService;
@@ -695,4 +697,16 @@ function csvImport(string $type, array $rows, ?string $name = 'data.csv'): DataI
 function commit(DataImport $import, $by = null): DataImport
 {
     return app(CommitImport::class)($import, $by ?? auth()->user());
+}
+
+/** @return array<string, StatusCheck> the reconciliation checks by name */
+function reconciled(): array
+{
+    $byName = [];
+
+    foreach (app(ReconcileLedgers::class)() as $check) {
+        $byName[$check->name] = $check;
+    }
+
+    return $byName;
 }

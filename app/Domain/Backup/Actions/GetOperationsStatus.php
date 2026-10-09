@@ -2,9 +2,11 @@
 
 namespace App\Domain\Backup\Actions;
 
+use App\Console\Commands\ReconcileData;
 use App\Domain\Backup\Data\StatusCheck as C;
 use App\Domain\Backup\Models\BackupRun;
 use App\Domain\System\Actions\RunHealthChecks;
+use App\Support\ErrorTally;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +30,10 @@ class GetOperationsStatus
 
     private const RESTORE_TEST = 'Restore test';
 
+    private const ERRORS = 'Application errors';
+
+    private const RECONCILIATION = 'Reconciliation';
+
     public const HEARTBEAT = 'monitor:scheduler-heartbeat';
 
     public function __construct(private readonly RunHealthChecks $health) {}
@@ -35,7 +41,7 @@ class GetOperationsStatus
     /** @return list<C> */
     public function __invoke(): array
     {
-        return array_merge($this->services(), [$this->backup(), $this->offsite(), $this->restoreTest(), $this->scheduler(), $this->queue(), $this->disk(), $this->debug()]);
+        return array_merge($this->services(), [$this->backup(), $this->offsite(), $this->restoreTest(), $this->reconciliation(), $this->scheduler(), $this->queue(), $this->errors(), $this->disk(), $this->debug()]);
     }
 
     /** @param list<C> $checks */
@@ -106,6 +112,25 @@ class GetOperationsStatus
             : new C(self::RESTORE_TEST, C::OK, "Passed {$last->started_at->diffForHumans()}: {$last->message}");
     }
 
+    /** The nightly `erp:reconcile` verdict: failed when the ledgers disagree, a warning when it has not run lately. */
+    private function reconciliation(): C
+    {
+        $last = Cache::get(ReconcileData::LAST_RESULT);
+
+        if (! $last) {
+            return new C(self::RECONCILIATION, C::WARNING, 'The books have never been reconciled. Run `php artisan erp:reconcile`.');
+        }
+
+        $hours = (int) Carbon::parse($last['at'])->diffInHours(now());
+        $bad = array_values(array_filter($last['checks'], fn (array $c) => $c[1] === C::FAILED));
+
+        return match (true) {
+            $bad !== [] => new C(self::RECONCILIATION, C::FAILED, 'Does not reconcile: '.implode(' ', array_map(fn (array $c) => "{$c[0]}: {$c[2]}", $bad))),
+            $hours > 30 => new C(self::RECONCILIATION, C::WARNING, "The last reconciliation was {$hours} hours ago; it should run nightly."),
+            default => new C(self::RECONCILIATION, C::OK, 'Stock, journal, receivables and payables reconcile (checked '.Carbon::parse($last['at'])->diffForHumans().').'),
+        };
+    }
+
     private function scheduler(): C
     {
         $beat = Cache::get(self::HEARTBEAT);
@@ -135,6 +160,19 @@ class GetOperationsStatus
             $waiting > 10 => new C(self::QUEUE, C::FAILED, "A job has waited {$waiting} minutes. The worker is probably not running."),
             $failed > 0 => new C(self::QUEUE, C::WARNING, "{$failed} failed job(s). Look at them with `php artisan queue:failed`."),
             default => new C(self::QUEUE, C::OK, 'Jobs are being picked up and none have failed.'),
+        };
+    }
+
+    private function errors(): C
+    {
+        ['count' => $count, 'latest' => $latest] = ErrorTally::lastDay();
+        $limit = config('backup.max_errors_per_day');
+        $last = $latest ? " Latest: {$latest['where']} at ".Carbon::parse($latest['at'])->format('d M H:i').'. Details are in storage/logs.' : '';
+
+        return match (true) {
+            $count > $limit * 10 => new C(self::ERRORS, C::FAILED, "{$count} unexpected errors in the last 24 hours.{$last}"),
+            $count > $limit => new C(self::ERRORS, C::WARNING, "{$count} unexpected errors in the last 24 hours.{$last}"),
+            default => new C(self::ERRORS, C::OK, $count === 0 ? 'No unexpected errors in the last 24 hours.' : "{$count} unexpected error(s) in the last 24 hours (within the limit of {$limit}).{$last}"),
         };
     }
 
