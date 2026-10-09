@@ -8,6 +8,7 @@ use App\Domain\Farm\Settings\SettingDefinition;
 use App\Domain\Farm\Settings\SettingDefinitions;
 use App\Domain\System\Exceptions\DomainException;
 use App\Enums\CreditEnforcement;
+use App\Enums\DataMode;
 use App\Enums\ValuationMethod;
 
 /**
@@ -20,6 +21,7 @@ class ResolveSettings
     private const CHOICE_SETTINGS = [
         'inventory.valuation_method' => ValuationMethod::class,
         'sales.credit_enforcement' => CreditEnforcement::class,
+        'system.data_mode' => DataMode::class,
     ];
 
     /** @var array<int, array<string, string|null>> a farm's stored settings, read once per request (or queue job) */
