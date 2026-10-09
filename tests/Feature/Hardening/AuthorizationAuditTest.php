@@ -20,20 +20,23 @@ beforeEach(function () {
 /** Routes anyone may open: the public website, the API documentation, the load-balancer health check, the sign-in endpoints. */
 const PUBLIC_ROUTES = ['site.', 'api.docs', 'health', 'up', 'storage.', 'filament.admin.auth.login', 'filament.admin.auth.password-reset', 'filament.admin.auth.email-verification', 'login', 'livewire.', 'sanctum.', 'ignition.'];
 
+/** Only the real sign-in checks count: the `auth` alias, Laravel's Authenticate and the panel's own (not, say, AuthenticateSession). */
+const SIGN_IN_MIDDLEWARE = '/^(?:auth(?::.+)?|Illuminate\\\\Auth\\\\Middleware\\\\Authenticate(?::.+)?|Filament\\\\Http\\\\Middleware\\\\Authenticate)$/';
+
 it('puts every route except the public ones behind a sign-in', function () {
     $open = collect(Route::getRoutes()->getRoutes())->reject(function (LaravelRoute $route) {
         $name = (string) $route->getName();
         $middleware = collect($route->gatherMiddleware())->map(fn ($m) => is_string($m) ? $m : 'closure');
 
         // Filament panel routes are guarded by the panel's own authentication middleware.
-        return $middleware->contains(fn ($m) => str_contains($m, 'Authenticate') || str_contains($m, 'auth'))
+        return $middleware->contains(fn ($m) => preg_match(SIGN_IN_MIDDLEWARE, $m) === 1)
             || collect(PUBLIC_ROUTES)->contains(fn ($p) => str_starts_with($name, $p))
             || $route->uri() === 'api/v1/auth/login';
     })->map(fn (LaravelRoute $r) => implode('|', $r->methods()).' '.$r->uri())->values()->all();
 
     // Framework endpoints that check the user themselves: Livewire (every component authorizes its own actions), Filament's file
     // downloads (they abort unless the signed-in user owns the file) and Laravel's health route.
-    $open = array_values(array_filter($open, fn (string $r) => ! preg_match('#^\S+ (livewire-[0-9a-f]+/|filament/(exports|imports)/|up$)#', $r)));
+    $open = array_values(array_filter($open, fn (string $r) => ! preg_match('#^\S+ (?:(?:livewire-[0-9a-f]+/)|(?:filament/(?:exports|imports)/)|(?:up$))#', $r)));
 
     expect(collect(Route::getRoutes()->getRoutes())->filter(fn ($r) => str_starts_with($r->uri(), 'api/v1') && $r->uri() !== 'api/v1/auth/login')
         ->every(fn ($r) => in_array('auth:sanctum', $r->gatherMiddleware(), true)))->toBeTrue('every mobile API route needs a token');

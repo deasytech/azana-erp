@@ -13,6 +13,7 @@ use App\Domain\Sales\Models\Invoice;
 use App\Domain\Sales\Models\Payment;
 use App\Enums\JournalStatus;
 use App\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -89,41 +90,53 @@ class ReconcileLedgers
     /** The receivables account must equal what the posted invoices and receipts say customers owe. */
     private function receivables(): C
     {
-        $invoices = $this->posted('invoice');
-        $payments = $this->posted('payment');
-        $invoiced = (int) Invoice::where('is_historical', false)->whereIn('id', $invoices)->sum('total_minor');
-        $received = (int) Payment::where('is_historical', false)->whereNull('voided_at')->whereIn('id', $payments)->sum('amount_minor');
-        $unposted = Invoice::where('is_historical', false)->whereNotIn('id', $invoices)->count()
-            + Payment::where('is_historical', false)->whereNull('voided_at')->whereNotIn('id', $payments)->count();
+        $invoices = fn () => Invoice::where('is_historical', false);
+        $payments = fn () => Payment::where('is_historical', false)->whereNull('voided_at');
+
+        $invoiced = (int) $this->withEntry($invoices(), 'invoice', 'invoices.id')->sum('total_minor');
+        $received = (int) $this->withEntry($payments(), 'payment', 'payments.id')->sum('amount_minor');
+        $unposted = $this->withEntry($invoices(), 'invoice', 'invoices.id', false)->count() + $this->withEntry($payments(), 'payment', 'payments.id', false)->count();
 
         return $this->compare(self::RECEIVABLES, $this->accountMovement('receivables', ['invoice:%', 'payment:%']), $invoiced - $received, $unposted, 'invoices and receipts');
     }
 
     private function payables(): C
     {
-        $invoices = $this->posted('supplier-invoice');
-        $payments = $this->posted('supplier-payment');
-        $invoiced = (int) SupplierInvoice::whereNull('voided_at')->whereIn('id', $invoices)->sum('total_minor');
-        $paid = (int) SupplierPayment::where('status', PaymentStatus::Paid)->whereIn('id', $payments)->sum('amount_minor');
-        $unposted = SupplierInvoice::whereNull('voided_at')->whereNotIn('id', $invoices)->count()
-            + SupplierPayment::where('status', PaymentStatus::Paid)->whereNotIn('id', $payments)->count();
+        $invoices = fn () => SupplierInvoice::whereNull('voided_at');
+        $payments = fn () => SupplierPayment::where('status', PaymentStatus::Paid);
+
+        $invoiced = (int) $this->withEntry($invoices(), 'supplier-invoice', 'supplier_invoices.id')->sum('total_minor');
+        $paid = (int) $this->withEntry($payments(), 'supplier-payment', 'supplier_payments.id')->sum('amount_minor');
+        $unposted = $this->withEntry($invoices(), 'supplier-invoice', 'supplier_invoices.id', false)->count() + $this->withEntry($payments(), 'supplier-payment', 'supplier_payments.id', false)->count();
 
         return $this->compare(self::PAYABLES, $this->accountMovement('payables', ['supplier-invoice:%', 'supplier-payment:%'], creditNormal: true), $invoiced - $paid, $unposted, 'supplier invoices and payments');
     }
 
-    /** Ids of the documents of one kind that have a journal entry (their source key is "kind:id"). @return list<int> */
-    private function posted(string $kind): array
+    /**
+     * Keeps the documents that do (or, with $posted false, do not) have a journal entry, decided inside the database: an entry made from
+     * a document carries the source key "kind:id", so the check never loads every key into PHP.
+     *
+     * @param  Builder<*>  $documents
+     * @return Builder<*>
+     */
+    private function withEntry(Builder $documents, string $kind, string $idColumn, bool $posted = true): Builder
     {
-        return JournalEntry::where('source_key', 'like', "{$kind}:%")->pluck('source_key')->map(fn (string $k) => (int) substr($k, strlen($kind) + 1))->all();
+        $key = DB::getDriverName() === 'sqlite' ? "'{$kind}:' || {$idColumn}" : "CONCAT('{$kind}:', {$idColumn})";
+
+        return $documents->whereRaw(($posted ? '' : 'not ')."exists (select 1 from journal_entries where journal_entries.source_key = {$key})");
     }
 
     private function compare(string $name, int $ledger, int $documents, int $unposted, string $what): C
     {
         $note = $unposted > 0 ? " {$unposted} document(s) are still waiting to be posted (the hourly posting run, or Finance > Journal)." : '';
 
-        return $ledger === $documents
-            ? new C($name, $unposted > 0 ? C::WARNING : C::OK, "The ledger agrees with the posted {$what}.{$note}")
-            : new C($name, C::FAILED, 'The ledger shows '.number_format($ledger / 100, 2).' but the posted '.$what.' come to '.number_format($documents / 100, 2).'.'.$note);
+        if ($ledger !== $documents) {
+            return new C($name, C::FAILED, 'The ledger shows '.number_format($ledger / 100, 2).' but the posted '.$what.' come to '.number_format($documents / 100, 2).'.'.$note);
+        }
+
+        $state = $unposted > 0 ? C::WARNING : C::OK;
+
+        return new C($name, $state, "The ledger agrees with the posted {$what}.{$note}");
     }
 
     /** Net movement on a system account from entries made out of operational documents (a reversal nets the original off). @param list<string> $prefixes */
@@ -135,18 +148,17 @@ class ReconcileLedgers
             return 0;
         }
 
-        $net = fn ($entries) => (int) DB::table('journal_lines')->where('account_id', $account)->whereIn('journal_entry_id', $entries)
-            ->selectRaw('COALESCE(SUM(debit_minor - credit_minor), 0) as net')->value('net');
-
-        $sources = DB::table('journal_entries')->where('status', JournalStatus::Posted->value)->where(function ($q) use ($prefixes) {
+        // Entries made out of documents, and the reversals of those (a reversal has no source key of its own; it nets the entry it reverses).
+        $sources = fn () => DB::table('journal_entries')->select('id')->where('status', JournalStatus::Posted->value)->where(function ($q) use ($prefixes) {
             foreach ($prefixes as $prefix) {
                 $q->orWhere('source_key', 'like', $prefix);
             }
         });
-        // A reversal of a document entry has no source key of its own; it nets the entry it reverses.
-        $ids = (clone $sources)->pluck('id');
-        $reversals = DB::table('journal_entries')->where('status', JournalStatus::Posted->value)->whereIn('reverses_id', $ids)->pluck('id');
-        $total = $net($ids->merge($reversals));
+        $reversals = DB::table('journal_entries')->select('id')->where('status', JournalStatus::Posted->value)->whereIn('reverses_id', $sources());
+
+        $total = (int) DB::table('journal_lines')->where('account_id', $account)
+            ->where(fn ($q) => $q->whereIn('journal_entry_id', $sources())->orWhereIn('journal_entry_id', $reversals))
+            ->selectRaw('COALESCE(SUM(debit_minor - credit_minor), 0) as net')->value('net');
 
         return $creditNormal ? -$total : $total;
     }

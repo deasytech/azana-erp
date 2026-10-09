@@ -35,7 +35,7 @@ return new class extends Migration
     {
         foreach (self::INDEXES as $table => $column) {
             if (Schema::hasTable($table) && Schema::hasColumn($table, $column) && ! $this->indexed($table, $column)) {
-                Schema::table($table, fn (Blueprint $t) => $t->index($column, "{$table}_{$column}_index"));
+                Schema::table($table, fn (Blueprint $t) => $t->index($column, $this->name($table, $column)));
             }
         }
     }
@@ -43,10 +43,16 @@ return new class extends Migration
     public function down(): void
     {
         foreach (self::INDEXES as $table => $column) {
-            if (Schema::hasIndex($table, "{$table}_{$column}_index")) {
-                Schema::table($table, fn (Blueprint $t) => $t->dropIndex("{$table}_{$column}_index"));
+            if (Schema::hasIndex($table, $this->name($table, $column))) {
+                Schema::table($table, fn (Blueprint $t) => $t->dropIndex($this->name($table, $column)));
             }
         }
+    }
+
+    /** A name of its own, so rolling back can only ever drop what this migration created, never an older index that happens to match. */
+    private function name(string $table, string $column): string
+    {
+        return "{$table}_{$column}_reporting_index";
     }
 
     private function indexed(string $table, string $column): bool

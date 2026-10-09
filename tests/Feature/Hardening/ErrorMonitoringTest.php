@@ -26,15 +26,11 @@ it('counts the errors the application reports and shows where the latest one hap
 it('warns when errors pile up and fails when they flood', function () {
     config(['backup.max_errors_per_day' => 3]);
 
-    foreach (range(1, 4) as $i) {
-        report(new RuntimeException('boom'));
-    }
+    array_map(fn () => report(new RuntimeException('boom')), range(1, 4));
 
     expect(errorStatus()->state)->toBe(C::WARNING);
 
-    foreach (range(1, 27) as $i) {
-        report(new RuntimeException('boom'));
-    }
+    array_map(fn () => report(new RuntimeException('boom')), range(1, 27));
 
     expect(errorStatus()->state)->toBe(C::FAILED);
 });
