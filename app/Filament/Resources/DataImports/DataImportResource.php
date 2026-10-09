@@ -97,7 +97,9 @@ class DataImportResource extends Resource
                 TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
                     DataImport::COMMITTED => 'success', DataImport::CHECKED => 'warning', default => 'gray'
                 })
-                    ->formatStateUsing(fn (string $state) => $state === DataImport::COMMITTED ? 'Imported' : ($state === DataImport::CHECKED ? 'Not imported' : 'Importing...')),
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        DataImport::COMMITTED => 'Imported', DataImport::CHECKED => 'Not imported', default => 'Importing...'
+                    }),
                 TextColumn::make('creator.name')->label('By')->placeholder('-'),
             ])
             ->defaultSort('id', 'desc');

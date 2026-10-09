@@ -86,7 +86,26 @@ class RunImport
     /** @param array<int, array<string, ?string>> $unit */
     private function problem(Importer $importer, array $unit, ?User $actor): ?string
     {
-        foreach ($unit as $number => $row) {
+        $problem = $this->missingColumn($importer, $unit);
+
+        if ($problem === null) {
+            try {
+                DB::transaction(fn () => $importer->save(array_values($unit), $actor));
+            } catch (DomainException $e) {
+                $problem = $e->getMessage();
+            } catch (QueryException $e) {
+                report($e);
+                $problem = 'This row could not be saved (the details are in the log).';
+            }
+        }
+
+        return $problem;
+    }
+
+    /** @param array<int, array<string, ?string>> $unit */
+    private function missingColumn(Importer $importer, array $unit): ?string
+    {
+        foreach ($unit as $row) {
             foreach ($importer->requiredColumns() as $column) {
                 if (($row[$column] ?? null) === null) {
                     return "{$column} is required.";
@@ -94,16 +113,6 @@ class RunImport
             }
         }
 
-        try {
-            DB::transaction(fn () => $importer->save(array_values($unit), $actor));
-
-            return null;
-        } catch (DomainException $e) {
-            return $e->getMessage();
-        } catch (QueryException $e) {
-            report($e);
-
-            return 'This row could not be saved (the details are in the log).';
-        }
+        return null;
     }
 }

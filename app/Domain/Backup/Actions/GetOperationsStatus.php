@@ -18,6 +18,12 @@ class GetOperationsStatus
 {
     private const BACKUP = 'Database backup';
 
+    private const OFFSITE = 'Off-site copy';
+
+    private const QUEUE = 'Queue worker';
+
+    private const DISK = 'Disk space';
+
     private const RESTORE_TEST = 'Restore test';
 
     public const HEARTBEAT = 'monitor:scheduler-heartbeat';
@@ -35,7 +41,11 @@ class GetOperationsStatus
     {
         $states = array_map(fn (C $c) => $c->state, $checks);
 
-        return in_array(C::FAILED, $states, true) ? C::FAILED : (in_array(C::WARNING, $states, true) ? C::WARNING : C::OK);
+        if (in_array(C::FAILED, $states, true)) {
+            return C::FAILED;
+        }
+
+        return in_array(C::WARNING, $states, true) ? C::WARNING : C::OK;
     }
 
     /** @return list<C> */
@@ -65,14 +75,14 @@ class GetOperationsStatus
     private function offsite(): C
     {
         if (! config('backup.offsite_disk')) {
-            return new C('Off-site copy', C::WARNING, 'No off-site disk is set (BACKUP_OFFSITE_DISK). Backups exist only on this server.');
+            return new C(self::OFFSITE, C::WARNING, 'No off-site disk is set (BACKUP_OFFSITE_DISK). Backups exist only on this server.');
         }
 
         $last = BackupRun::where('kind', BackupRun::BACKUP)->where('status', 'success')->latest('started_at')->first();
 
         return $last?->offsite
-            ? new C('Off-site copy', C::OK, 'The latest backup is also on "'.config('backup.offsite_disk').'".')
-            : new C('Off-site copy', C::FAILED, 'The latest backup is not off-site.');
+            ? new C(self::OFFSITE, C::OK, 'The latest backup is also on "'.config('backup.offsite_disk').'".')
+            : new C(self::OFFSITE, C::FAILED, 'The latest backup is not off-site.');
     }
 
     private function restoreTest(): C
@@ -112,7 +122,7 @@ class GetOperationsStatus
     private function queue(): C
     {
         if (config('queue.default') !== 'database' || ! Schema::hasTable('jobs')) {
-            return new C('Queue worker', C::OK, 'Not checked for the "'.config('queue.default').'" queue.');
+            return new C(self::QUEUE, C::OK, 'Not checked for the "'.config('queue.default').'" queue.');
         }
 
         $failed = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : 0;
@@ -120,9 +130,9 @@ class GetOperationsStatus
         $waiting = $oldest ? (int) Carbon::createFromTimestamp($oldest)->diffInMinutes(now()) : 0;
 
         return match (true) {
-            $waiting > 10 => new C('Queue worker', C::FAILED, "A job has waited {$waiting} minutes. The worker is probably not running."),
-            $failed > 0 => new C('Queue worker', C::WARNING, "{$failed} failed job(s). Look at them with `php artisan queue:failed`."),
-            default => new C('Queue worker', C::OK, 'Jobs are being picked up and none have failed.'),
+            $waiting > 10 => new C(self::QUEUE, C::FAILED, "A job has waited {$waiting} minutes. The worker is probably not running."),
+            $failed > 0 => new C(self::QUEUE, C::WARNING, "{$failed} failed job(s). Look at them with `php artisan queue:failed`."),
+            default => new C(self::QUEUE, C::OK, 'Jobs are being picked up and none have failed.'),
         };
     }
 
@@ -133,21 +143,25 @@ class GetOperationsStatus
         $total = @disk_total_space($path);
 
         if (! $free || ! $total) {
-            return new C('Disk space', C::WARNING, 'Could not read the free space.');
+            return new C(self::DISK, C::WARNING, 'Could not read the free space.');
         }
 
         $percent = (int) round($free / $total * 100);
         $gb = number_format($free / 1024 ** 3, 1);
 
         return $percent < config('backup.min_free_disk_percent')
-            ? new C('Disk space', C::FAILED, "Only {$percent}% free ({$gb} GB). Backups and uploads need room.")
-            : new C('Disk space', C::OK, "{$percent}% free ({$gb} GB).");
+            ? new C(self::DISK, C::FAILED, "Only {$percent}% free ({$gb} GB). Backups and uploads need room.")
+            : new C(self::DISK, C::OK, "{$percent}% free ({$gb} GB).");
     }
 
     private function debug(): C
     {
-        return app()->isProduction() && config('app.debug')
+        if (! app()->isProduction()) {
+            return new C('Production settings', C::OK, 'Not a production environment.');
+        }
+
+        return config('app.debug')
             ? new C('Production settings', C::FAILED, 'APP_DEBUG is on in production: errors would show internals to visitors.')
-            : new C('Production settings', C::OK, app()->isProduction() ? 'Debug is off.' : 'Not a production environment.');
+            : new C('Production settings', C::OK, 'Debug is off.');
     }
 }

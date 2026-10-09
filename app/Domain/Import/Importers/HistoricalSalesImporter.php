@@ -90,7 +90,7 @@ class HistoricalSalesImporter extends Importer
         $paidOn->lt($on) && throw $this->problem('paid_on', 'cannot be before the sale date');
         $paidOn->isFuture() && throw $this->problem('paid_on', 'cannot be in the future');
 
-        $key = 'hist:'.sha1($row['reference']);
+        $key = 'hist:'.substr(hash('sha256', $row['reference']), 0, 48);
         SalesOrder::where('idempotency_key', $key)->exists() && throw $this->problem('reference', "\"{$row['reference']}\" was already imported");
 
         $kind = match ($product) {

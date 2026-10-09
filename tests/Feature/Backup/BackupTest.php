@@ -5,6 +5,7 @@ use App\Domain\Backup\Actions\GetOperationsStatus;
 use App\Domain\Backup\Actions\PruneBackups;
 use App\Domain\Backup\Actions\RunPreflightChecks;
 use App\Domain\Backup\Actions\TestBackupRestore;
+use App\Domain\Backup\BackupException;
 use App\Domain\Backup\Data\StatusCheck;
 use App\Domain\Backup\Drivers\BackupDriver;
 use App\Domain\Backup\Drivers\MySqlBackupDriver;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\Storage;
 
 const BACKUP_CHECK = 'Database backup';
 const RESTORE_CHECK = 'Restore test';
+const DISK_FULL = 'disk full';
+
 beforeEach(function () {
     $this->seed(RoleSeeder::class);
 
@@ -76,7 +79,7 @@ describe('taking a backup', function () {
         {
             public function dump(string $gzPath): void
             {
-                throw new RuntimeException('disk full');
+                throw new BackupException(DISK_FULL);
             }
 
             public function restoreScratch(string $gzPath): array
@@ -85,10 +88,10 @@ describe('taking a backup', function () {
             }
         });
 
-        expect(fn () => app(CreateBackup::class)())->toThrow(RuntimeException::class, 'disk full');
+        expect(fn () => app(CreateBackup::class)())->toThrow(BackupException::class, DISK_FULL);
 
         $run = BackupRun::first();
-        expect($run->status)->toBe('failed')->and($run->message)->toBe('disk full')->and($run->file)->toBeNull();
+        expect($run->status)->toBe('failed')->and($run->message)->toBe(DISK_FULL)->and($run->file)->toBeNull();
     });
 
     it('is available as a command', function () {
@@ -145,7 +148,7 @@ describe('proving a restore', function () {
     it('will not use the live database as the MySQL scratch database', function () {
         config(['database.connections.mysql_x' => ['driver' => 'mysql', 'database' => 'azana_erp', 'host' => 'h', 'username' => 'u', 'password' => 'p'], 'backup.restore_test_database' => 'azana_erp']);
 
-        expect(fn () => (new MySqlBackupDriver('mysql_x'))->restoreScratch('/dev/null'))->toThrow(RuntimeException::class, 'scratch database');
+        expect(fn () => (new MySqlBackupDriver('mysql_x'))->restoreScratch('/dev/null'))->toThrow(BackupException::class, 'scratch database');
     });
 });
 

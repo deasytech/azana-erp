@@ -35,7 +35,7 @@ class MonitorSystem extends Command
         Log::error('Operations check failed', ['problems' => array_map(fn (StatusCheck $c) => "{$c->name}: {$c->detail}", $problems)]);
 
         // The same set of problems is announced once a day, not every time the monitor runs.
-        $signature = sha1(implode('|', array_map(fn (StatusCheck $c) => $c->name, $problems)));
+        $signature = hash('sha256', implode('|', array_map(fn (StatusCheck $c) => $c->name, $problems)));
 
         if (Cache::get('monitor:last-alert') !== $signature) {
             Cache::put('monitor:last-alert', $signature, now()->addDay());

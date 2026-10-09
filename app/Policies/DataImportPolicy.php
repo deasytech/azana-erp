@@ -20,7 +20,7 @@ class DataImportPolicy extends ModulePolicy
         return ! in_array($action, [PermissionAction::Edit, PermissionAction::Delete], true) && parent::can($user, $action);
     }
 
-    public function commit(User $user, mixed $model = null): bool
+    public function commit(User $user): bool
     {
         return $this->can($user, PermissionAction::Approve);
     }

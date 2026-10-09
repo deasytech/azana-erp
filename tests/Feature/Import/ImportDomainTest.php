@@ -31,13 +31,15 @@ beforeEach(function () {
 const OPENING_DAY = '2026-10-01';
 const ADA_EMAIL = 'ada@example.com';
 const SALE_DAY = '2026-06-01';
+const BAYO = 'Bayo Ltd';
+const ADA_FARMS = 'Ada Farms';
 const CUSTOMER_HEAD = ['name', 'customer_type', 'phone', 'email'];
 const PIG_HEAD = ['sex', 'category', 'birth_date', 'breed', 'source', 'pen', 'ear_tag', 'sire', 'dam', 'weight_kg', 'weight_date'];
 const SALE_HEAD = ['reference', 'customer', 'sale_date', 'product', 'description', 'unit', 'quantity', 'unit_price', 'amount_paid', 'payment_method'];
 
 describe('checking a file', function () {
     it('saves nothing and consumes no numbers', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '0803', ADA_EMAIL]]);
+        $import = csvImport('customers', [CUSTOMER_HEAD, [ADA_FARMS, 'farmer', '0803', ADA_EMAIL]]);
 
         expect($import->error_rows)->toBe(0)->and($import->total_rows)->toBe(1)->and($import->isReady())->toBeTrue()
             ->and(Customer::count())->toBe(0)
@@ -47,7 +49,7 @@ describe('checking a file', function () {
     it('reports each failed row with the reason and keeps the good ones passing', function () {
         $import = csvImport('customers', [
             CUSTOMER_HEAD,
-            ['Ada Farms', 'farmer', '0803', ADA_EMAIL],
+            [ADA_FARMS, 'farmer', '0803', ADA_EMAIL],
             ['', 'farmer', '', ''],
             ['Bad Type Ltd', 'spaceship', '', ''],
             ['Bad Mail', 'farmer', '', 'not-an-email'],
@@ -73,7 +75,7 @@ describe('checking a file', function () {
     });
 
     it('accepts headings in any case and spacing, and reads Excel files', function () {
-        $csv = csvImport('customers', [['Name', 'Customer Type'], ['Ada Farms', 'farmer']]);
+        $csv = csvImport('customers', [['Name', 'Customer Type'], [ADA_FARMS, 'farmer']]);
         expect($csv->error_rows)->toBe(0);
 
         $path = tempnam(sys_get_temp_dir(), 'x').'.xlsx';
@@ -110,12 +112,12 @@ describe('checking a file', function () {
 
 describe('committing', function () {
     it('saves every row through the real action and marks the import done', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '0803', ADA_EMAIL], ['Bayo Ltd', 'farmer', '', '']]);
+        $import = csvImport('customers', [CUSTOMER_HEAD, [ADA_FARMS, 'farmer', '0803', ADA_EMAIL], [BAYO, 'farmer', '', '']]);
 
         commit($import);
 
         expect(Customer::orderBy('id')->pluck('code')->all())->toBe(['C-000001', 'C-000002'])
-            ->and(Customer::firstWhere('name', 'Ada Farms')->credit_status->value)->toBe('none')
+            ->and(Customer::firstWhere('name', ADA_FARMS)->credit_status->value)->toBe('none')
             ->and($import->fresh()->status)->toBe(DataImport::COMMITTED)->and($import->fresh()->committed_by)->toBe($this->boss->id)
             ->and(DB::table('audit_logs')->where('event', 'imported')->count())->toBe(1);
     });
@@ -124,7 +126,7 @@ describe('committing', function () {
         $bad = csvImport('customers', [CUSTOMER_HEAD, ['', 'farmer', '', '']]);
         expect(fn () => commit($bad))->toThrow(DomainException::class, 'Fix the failed rows');
 
-        $good = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '', '']]);
+        $good = csvImport('customers', [CUSTOMER_HEAD, [ADA_FARMS, 'farmer', '', '']]);
         commit($good);
 
         expect(fn () => commit($good))->toThrow(DomainException::class, 'already committed')
@@ -132,8 +134,8 @@ describe('committing', function () {
     });
 
     it('imports nothing when the data changed after the check', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '', ''], ['Bayo Ltd', 'farmer', '', '']]);
-        customer(['name' => 'Bayo Ltd']);
+        $import = csvImport('customers', [CUSTOMER_HEAD, [ADA_FARMS, 'farmer', '', ''], [BAYO, 'farmer', '', '']]);
+        customer(['name' => BAYO]);
 
         expect(fn () => commit($import))->toThrow(DomainException::class, 'no longer passes')
             ->and(Customer::count())->toBe(1)
@@ -143,7 +145,7 @@ describe('committing', function () {
     });
 
     it('needs the approve permission, not only the right to create', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '', '']]);
+        $import = csvImport('customers', [CUSTOMER_HEAD, [ADA_FARMS, 'farmer', '', '']]);
         $salesOfficer = userWithRole('Sales Officer');
 
         expect(fn () => commit($import, $salesOfficer))->toThrow(DomainException::class, 'not allowed')
@@ -151,14 +153,14 @@ describe('committing', function () {
     });
 
     it('produces a downloadable report of the failed rows for correction', function () {
-        $import = csvImport('customers', [CUSTOMER_HEAD, ['Ada Farms', 'farmer', '', ''], ['', 'farmer', '', ''], ['=HYPERLINK("x")', 'nope', '', '']]);
+        $import = csvImport('customers', [CUSTOMER_HEAD, [ADA_FARMS, 'farmer', '', ''], ['', 'farmer', '', ''], ['=HYPERLINK("x")', 'nope', '', '']]);
 
         $csv = app(ImportFile::class)->errorReport($import->rows()->whereNotNull('error')->orderBy('row_number')->get(), CUSTOMER_HEAD);
 
         expect($csv)->toContain('sheet_row,problem,name,customer_type,phone,email')
             ->and($csv)->toContain('3,"name is required."')
             ->and($csv)->toContain("'=HYPERLINK")      // a formula in the data is kept as text
-            ->and($csv)->not->toContain('Ada Farms');
+            ->and($csv)->not->toContain(ADA_FARMS);
     });
 });
 

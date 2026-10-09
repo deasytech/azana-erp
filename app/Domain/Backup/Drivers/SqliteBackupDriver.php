@@ -17,7 +17,7 @@ class SqliteBackupDriver implements BackupDriver
         @unlink($copy);   // VACUUM INTO needs a path that does not exist
 
         try {
-            DB::connection($this->connection)->getPdo()->exec('VACUUM INTO '.DB::connection($this->connection)->getPdo()->quote($copy));
+            DB::connection($this->connection)->getPdo()->prepare('VACUUM INTO ?')->execute([$copy]);
             $this->gzip($copy, $gzPath);
         } finally {
             @unlink($copy);
