@@ -40,4 +40,7 @@ return [
 
     // Warn when the disk holding the backups and uploads has less than this share free.
     'min_free_disk_percent' => (int) env('MONITOR_MIN_FREE_DISK_PERCENT', 10),
+
+    // Warn when the application reported more than this many unexpected errors in the last 24 hours; fail at ten times as many.
+    'max_errors_per_day' => (int) env('MONITOR_MAX_ERRORS_PER_DAY', 20),
 ];

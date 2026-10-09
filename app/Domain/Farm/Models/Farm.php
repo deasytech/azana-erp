@@ -2,6 +2,7 @@
 
 namespace App\Domain\Farm\Models;
 
+use App\Domain\Farm\Actions\ResolveSettings;
 use App\Domain\Farm\Concerns\HasBusinessCode;
 use App\Domain\System\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,13 @@ class Farm extends Model
     use Auditable, HasBusinessCode;
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        $flush = fn () => app(ResolveSettings::class)->flush();
+        static::saved($flush);
+        static::deleted($flush);
+    }
 
     protected function casts(): array
     {

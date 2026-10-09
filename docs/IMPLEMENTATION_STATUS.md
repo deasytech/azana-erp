@@ -1,7 +1,7 @@
 # Implementation Status
 
 ## Current Phase
-Phase 20 - Hardening and Launch (not started)
+None - Phase 20 (the last numbered phase) is built and awaiting approval; production-ready is not declared until the launch gate in `docs/LAUNCH_CHECKLIST.md` is signed off by people.
 
 ## Completed
 
@@ -427,6 +427,24 @@ Phase 20 - Hardening and Launch (not started)
   - The restore test needs the database user to create and drop `BACKUP_RESTORE_TEST_DATABASE`. On MariaDB set `BACKUP_MYSQLDUMP_ARGS=` (empty).
   - Not verified here: a real S3 off-site disk, nginx/Supervisor/cron files on a server, and `deploy.sh` end to end (the script is only checked for strictness; it needs a server with git, Composer and Node).
   - Date-dependent tests that were already failing before this phase (dashboards-against-target and the like) are unchanged.
+
+### Phase 20 - Hardening, Testing, Performance and Launch (2026-10-09)
+- Delivery: one PR, one commit (about 25 files). Branch `phase-20-hardening-launch` from `main` (Phase 19 merged). Not committed yet (waiting for approval).
+- Tests: 857 tests, 854 pass. The 3 failures are the known date-dependent chart tests (stock value by store, orders by status, dashboards against target), unchanged. A single `vendor/bin/pest` run over everything did not finish in 12 minutes on the author's machine and was stopped; every test folder, run separately, completed in under two minutes, so the cause is unconfirmed. New: `tests/Feature/Hardening` (50 tests). `vendor/bin/pint` passes.
+- What was done:
+  - **Reconciliation** (`ReconcileLedgers`, `erp:reconcile`, nightly 03:00, shown on *Backups & monitoring*): stock on hand against the stock ledger per item/store/batch (and impossible layers); every posted journal entry balances and has lines; receivables and payables in the ledger against the posted invoices, receipts, supplier invoices and payments (voids and reversals netted; documents not yet posted are a warning, a difference is a failure); mobile changes failing for over a day or conflicts awaiting review (warnings). Tests tamper with rows and prove each check fails.
+  - **Error monitoring** (`App\Support\ErrorTally`): reported exceptions are counted per hour in the cache with the kind and place of the latest, never the message; the monitor warns above `MONITOR_MAX_ERRORS_PER_DAY` (20) and fails at ten times that. No package added.
+  - **Authorization audit** as tests: every non-public route needs sign-in, every `/api/v1` route a token, every Filament resource a policy, a user with no permission opens nothing, the Owner cannot delete users or edit the audit trail, operational roles hold no finance/user/role/import/backup permission, Farm Worker has no approve/delete/export, sensitive roles require two-factor, no permission names an unknown module/action. Findings: none needed a code fix.
+  - **Performance:** farm settings were read from the database 44 times per dashboard load; `ResolveSettings` is now scoped per request and reads a farm's settings in one query (flushed when a setting or farm is saved or deleted). Dashboard 181 -> 137 queries. Migration `2026_10_16_100000_add_reporting_date_indexes` indexes 17 date columns used by reports, calendars and period filters (reversible, skips existing indexes). List pages (animals, invoices, stock ledger) are tested for no N+1.
+  - **Workflow:** `FarmToCustomerTest` runs semen -> sow -> litter -> pig -> feed -> slaughter -> meat -> invoice -> receipt, posts to the books and asserts stock reconciles, the trial balance balances and the trace reaches supplier, semen batch and customer.
+  - **Docs:** `LAUNCH_CHECKLIST.md` (launch gate with how to check each item, go-live day, first week), `UAT.md` (ten role-based scenarios with sign-off table), `HANDOVER.md` (routine, what to do for each red monitor row, commands, making changes safely); security review added to `SECURITY.md`.
+- Launch gate status: critical tests pass (3 known date-dependent failures); authorization audited by tests; inventory ledger, journal and receivables/payables reconcile in the test chain; traceability tested. **Not yet verified by a person on a real server:** backup restore drill and off-site S3, mobile sync on a real phone, monitoring alerts and uptime monitor, UAT sign-off, physical stock count. Production is therefore **not declared ready** by this phase alone.
+- Migration notes: 1 reversible migration (indexes only). `erp:reconcile` is already in the scheduler. `php artisan config:cache` picks up `max_errors_per_day`.
+- Known issues / notes:
+  - Accidental data loss during development: `migrate:fresh --env=testing` was run with no `.env.testing` and emptied the local `azana_erp` database. Tests use in-memory SQLite and were unaffected. Do not run migration commands with `--env=testing` here; run `php artisan db:seed` and `erp:create-owner` to rebuild a local database.
+  - The dashboard still runs about 137 queries because widgets compute overlapping figures independently (alerts, stock, batches); a shared per-request snapshot would cut it further but risks stale values in tests and was left.
+  - No Content-Security-Policy header (Filament/Livewire inline scripts); no external penetration test; uploaded files and backup encryption as in Phase 19.
+  - Reconciliation compares operational documents with the ledger; stock value is not posted to the general ledger by design, so there is no stock-to-GL check.
 
 ### Filament UI/UX redesign - stages 1-10 (2026-10-08)
 - Scope: presentation only (`docs/UI_UX/FILAMENT_UI_UX_REDESIGN.md`). No business logic, schema, permission or workflow changed; no new migration. This is not a numbered ERP phase and no phase is marked complete by it. Branch `phase-18-public-website`, not committed.

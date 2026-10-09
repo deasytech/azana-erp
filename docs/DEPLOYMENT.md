@@ -41,9 +41,12 @@ After the first deployment of Phase 19, nothing else is needed. After later phas
 
 ## Monitoring
 
-`erp:monitor` (every 15 minutes) and the *Backups & monitoring* page cover: backup age, off-site copy, restore test, scheduler heartbeat, queue worker and failed jobs, free disk, database/cache/queue/storage, debug mode. `GET /health` returns 200/503 for an external uptime monitor (UptimeRobot or similar; alert on anything but 200). Logs rotate daily in `storage/logs` (`LOG_CHANNEL=daily`).
+`erp:monitor` (every 15 minutes) and the *Backups & monitoring* page cover: backup age, off-site copy, restore test, the nightly `erp:reconcile` (stock, journal, receivables, payables), reported application errors, scheduler heartbeat, queue worker and failed jobs, free disk, database/cache/queue/storage, debug mode. `GET /health` returns 200/503 for an external uptime monitor (UptimeRobot or similar; alert on anything but 200). Logs rotate daily in `storage/logs` (`LOG_CHANNEL=daily`).
 
 ## Checklist for go-live day
+
+The full launch gate, the go-live day steps and the first-week routine are in `docs/LAUNCH_CHECKLIST.md`; this is the short form.
+
 
 - [ ] `erp:preflight` has no FAILED line
 - [ ] Off-site backup configured; a backup and a restore test have passed

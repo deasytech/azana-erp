@@ -22,16 +22,19 @@ class ResolveSettings
         'sales.credit_enforcement' => CreditEnforcement::class,
     ];
 
+    /** @var array<int, array<string, string|null>> a farm's stored settings, read once per request (or queue job) */
+    private array $loaded = [];
+
+    private ?Farm $farm = null;
+
+    private bool $farmLoaded = false;
+
     public function get(string $key, ?Farm $farm = null): int|string|bool
     {
         $definition = SettingDefinitions::find($key);
         $farm ??= $this->defaultFarm();
 
-        $raw = $farm
-            ? FarmSetting::where('farm_id', $farm->id)->where('key', $key)->value('value')
-            : null;
-
-        return SettingDefinitions::cast($definition, $raw);
+        return SettingDefinitions::cast($definition, $farm ? $this->values($farm)[$key] ?? null : null);
     }
 
     public function set(string $key, int|string|bool $value, ?Farm $farm = null): FarmSetting
@@ -43,7 +46,10 @@ class ResolveSettings
 
         $stored = is_bool($value) ? (string) (int) $value : (string) $value;
 
-        return FarmSetting::updateOrCreate(['farm_id' => $farm->id, 'key' => $key], ['value' => $stored]);
+        $setting = FarmSetting::updateOrCreate(['farm_id' => $farm->id, 'key' => $key], ['value' => $stored]);
+        $this->flush();
+
+        return $setting;
     }
 
     /** Creates any missing rows with default values (existing values are never touched). */
@@ -79,8 +85,27 @@ class ResolveSettings
         }
     }
 
+    /** Forgets what was read; called when a setting or farm changes (the models do it on save and delete). */
+    public function flush(): void
+    {
+        $this->loaded = [];
+        $this->farm = null;
+        $this->farmLoaded = false;
+    }
+
+    /** @return array<string, string|null> */
+    private function values(Farm $farm): array
+    {
+        return $this->loaded[$farm->id] ??= FarmSetting::where('farm_id', $farm->id)->pluck('value', 'key')->all();
+    }
+
     private function defaultFarm(): ?Farm
     {
-        return Farm::where('is_active', true)->orderBy('id')->first();
+        if (! $this->farmLoaded) {
+            $this->farm = Farm::where('is_active', true)->orderBy('id')->first();
+            $this->farmLoaded = true;
+        }
+
+        return $this->farm;
     }
 }

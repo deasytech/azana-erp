@@ -14,6 +14,9 @@ Recommended structure:
       BACKUP_AND_RESTORE.md
       DATA_IMPORT.md
       OFFLINE_SYNC.md
+      LAUNCH_CHECKLIST.md
+      UAT.md
+      HANDOVER.md
       IMPLEMENTATION_STATUS.md
       phases/
 

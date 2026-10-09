@@ -23,4 +23,5 @@ Schedule::call(fn () => app(SendAlertNotifications::class)())->hourly()->name('s
 Schedule::call(fn () => Cache::put(GetOperationsStatus::HEARTBEAT, now()->toIso8601String(), now()->addHour()))->everyMinute()->name('scheduler-heartbeat');
 Schedule::command('erp:backup')->dailyAt('02:00')->name('database-backup')->withoutOverlapping(120)->onOneServer();
 Schedule::command('erp:backup:test-restore')->weeklyOn(0, '04:00')->name('backup-restore-test')->withoutOverlapping(180)->onOneServer();
+Schedule::command('erp:reconcile')->dailyAt('03:00')->name('reconcile-ledgers')->withoutOverlapping(60)->onOneServer();
 Schedule::command('erp:monitor')->everyFifteenMinutes()->name('system-monitor')->withoutOverlapping();

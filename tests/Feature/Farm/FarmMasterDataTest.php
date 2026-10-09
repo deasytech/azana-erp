@@ -193,7 +193,7 @@ it('reads typed settings with defaults, and stores edits per farm', function () 
     expect($settings->get('breeding.gestation_days'))->toBe(115);
 
     // Missing row falls back to the registered default.
-    FarmSetting::where('key', 'breeding.gestation_days')->delete();
+    FarmSetting::where('key', 'breeding.gestation_days')->get()->each->delete();
     expect($settings->get('breeding.gestation_days'))->toBe(114);
 });
 
