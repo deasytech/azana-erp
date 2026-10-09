@@ -22,6 +22,8 @@ class GetOperationsStatus
 
     private const QUEUE = 'Queue worker';
 
+    private const PRODUCTION = 'Production settings';
+
     private const DISK = 'Disk space';
 
     private const RESTORE_TEST = 'Restore test';
@@ -157,11 +159,11 @@ class GetOperationsStatus
     private function debug(): C
     {
         if (! app()->isProduction()) {
-            return new C('Production settings', C::OK, 'Not a production environment.');
+            return new C(self::PRODUCTION, C::OK, 'Not a production environment.');
         }
 
         return config('app.debug')
-            ? new C('Production settings', C::FAILED, 'APP_DEBUG is on in production: errors would show internals to visitors.')
-            : new C('Production settings', C::OK, 'Debug is off.');
+            ? new C(self::PRODUCTION, C::FAILED, 'APP_DEBUG is on in production: errors would show internals to visitors.')
+            : new C(self::PRODUCTION, C::OK, 'Debug is off.');
     }
 }

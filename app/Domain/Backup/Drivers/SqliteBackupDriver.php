@@ -3,8 +3,9 @@
 namespace App\Domain\Backup\Drivers;
 
 use App\Domain\Backup\BackupException;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use PDO;
+use Illuminate\Support\Facades\Schema;
 
 /** SQLite: a consistent copy of the file (VACUUM INTO), compressed. A restore test opens the copy and checks its integrity. */
 class SqliteBackupDriver implements BackupDriver
@@ -31,19 +32,22 @@ class SqliteBackupDriver implements BackupDriver
         try {
             $this->gunzip($gzPath, $copy);
 
-            $pdo = new PDO('sqlite:'.$copy, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $check = $pdo->query('PRAGMA integrity_check')->fetchColumn();
+            Config::set('database.connections.backup_restore', ['driver' => 'sqlite', 'database' => $copy, 'prefix' => '', 'foreign_key_constraints' => false]);
+            DB::purge('backup_restore');
+            $restored = DB::connection('backup_restore');
+
+            $check = array_values((array) $restored->selectOne('PRAGMA integrity_check'))[0] ?? null;
             $check === 'ok' || throw new BackupException("The restored copy failed its integrity check: {$check}");
 
             $counts = [];
 
-            foreach ($pdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_COLUMN) as $table) {
-                $counts[$table] = (int) $pdo->query('SELECT COUNT(*) FROM "'.str_replace('"', '""', $table).'"')->fetchColumn();
+            foreach (Schema::connection('backup_restore')->getTableListing(schemaQualified: false) as $table) {
+                $counts[$table] = $restored->table($table)->count();
             }
 
             return $counts;
         } finally {
-            unset($pdo);
+            DB::purge('backup_restore');
             @unlink($copy);
         }
     }

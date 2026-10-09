@@ -4,7 +4,8 @@ namespace App\Domain\Backup\Drivers;
 
 use App\Domain\Backup\BackupException;
 use Illuminate\Support\Facades\Config;
-use PDO;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Process\Process;
 
 /**
@@ -87,15 +88,21 @@ class MySqlBackupDriver implements BackupDriver
     /** @return array<string, int> */
     private function count(string $database): array
     {
-        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $this->config('host'), $this->config('port') ?: 3306, $database);
-        $pdo = new PDO($dsn, $this->config('username'), $this->config('password'), [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $counts = [];
+        $live = Config::get("database.connections.{$this->connection}");
+        Config::set('database.connections.backup_restore', array_merge($live, ['database' => $database]));
+        DB::purge('backup_restore');
 
-        foreach ($pdo->query('SHOW FULL TABLES WHERE Table_type = "BASE TABLE"')->fetchAll(PDO::FETCH_COLUMN) as $table) {
-            $counts[$table] = (int) $pdo->query('SELECT COUNT(*) FROM `'.str_replace('`', '``', $table).'`')->fetchColumn();
+        try {
+            $counts = [];
+
+            foreach (Schema::connection('backup_restore')->getTableListing($database, false) as $table) {
+                $counts[$table] = DB::connection('backup_restore')->table($table)->count();
+            }
+
+            return $counts;
+        } finally {
+            DB::purge('backup_restore');
         }
-
-        return $counts;
     }
 
     private function sql(string $statement): void
