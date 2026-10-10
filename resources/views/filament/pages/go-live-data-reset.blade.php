@@ -31,6 +31,7 @@
             @else
                 <div class="azana-report max-h-96 overflow-y-auto">
                     <table class="w-full text-sm">
+                        <thead class="sr-only"><tr><th scope="col">Table</th><th scope="col">Records</th></tr></thead>
                         <tbody>
                             @foreach ($preview as $table => $count)
                                 <tr class="border-t border-gray-200 first:border-0 dark:border-white/10">

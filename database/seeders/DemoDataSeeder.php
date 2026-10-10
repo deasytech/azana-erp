@@ -53,7 +53,6 @@ use App\Domain\Health\Models\Medicine;
 use App\Domain\Health\Models\MedicineBatch;
 use App\Domain\Inventory\Actions\ApproveStockCount;
 use App\Domain\Inventory\Actions\GetExpiryAlerts;
-use App\Domain\Inventory\Actions\GetStockLevels;
 use App\Domain\Inventory\Actions\IssueStock;
 use App\Domain\Inventory\Actions\ReceiveStock;
 use App\Domain\Inventory\Actions\RecordCountLine;
@@ -487,11 +486,11 @@ class DemoDataSeeder extends Seeder
         $this->attempt('daily tasks', fn () => app(GenerateDailyTasks::class)($date->copy()));
 
         match ($dow) {
-            1 => $this->mondayWork($date, $day),
+            1 => $this->mondayWork($date),
             2 => $this->tuesdayWork($date, $day),
-            3 => $this->wednesdayWork($date, $day),
+            3 => $this->wednesdayWork($date),
             4 => $this->thursdayWork($date, $day),
-            5 => $this->fridayWork($date, $day),
+            5 => $this->fridayWork($date),
             default => null,
         };
 
@@ -764,7 +763,7 @@ class DemoDataSeeder extends Seeder
 
     // ------------------------------------------------------------- the week
 
-    private function mondayWork(CarbonInterface $date, int $day): void
+    private function mondayWork(CarbonInterface $date): void
     {
         $this->buyRawMaterials($date);
         $this->collectSemen($date, [0, 1]);
@@ -781,7 +780,7 @@ class DemoDataSeeder extends Seeder
         $this->visitors();
     }
 
-    private function wednesdayWork(CarbonInterface $date, int $day): void
+    private function wednesdayWork(CarbonInterface $date): void
     {
         $this->collectSemen($date, [2, 3]);
         $this->sellMeat($date);
@@ -797,7 +796,7 @@ class DemoDataSeeder extends Seeder
         $this->expenses($date);
     }
 
-    private function fridayWork(CarbonInterface $date, int $day): void
+    private function fridayWork(CarbonInterface $date): void
     {
         $this->makeMeat();
         $this->sellMeat($date);
@@ -833,14 +832,14 @@ class DemoDataSeeder extends Seeder
 
                     if ($invoice) {
                         $due = now()->copy()->addDays($supplier->payment_terms_days ?: 14);
-                        $this->later($due, fn () => $this->paySupplier($invoice->id, $supplier));
+                        $this->later($due, fn () => $this->paySupplier($invoice->id));
                     }
                 });
             });
         }
     }
 
-    private function paySupplier(int $invoiceId, Supplier $supplier): void
+    private function paySupplier(int $invoiceId): void
     {
         $invoice = SupplierInvoice::find($invoiceId);
         $payment = $invoice ? $this->attempt('supplier payments', fn () => app(RecordSupplierPayment::class)($invoice, (int) $invoice->total_minor, now()->startOfDay(), PaymentMethod::BankTransfer, 'TRF-'.$this->roll(100000, 999999))) : null;
@@ -1021,7 +1020,6 @@ class DemoDataSeeder extends Seeder
 
     private function sellMeat(CarbonInterface $date): void
     {
-        $stock = app(GetStockLevels::class)()->filter(fn ($r) => $r->category === InventoryCategory::Meat->value ?? false);
         $lots = DB::table('meat_production_lines')->exists();
 
         if (! $lots) {
@@ -1141,8 +1139,6 @@ class DemoDataSeeder extends Seeder
 
     private function incidentals(CarbonInterface $date, int $day): void
     {
-        $sowCategoryId = $this->lookup(L::AnimalCategory, 'sow');
-
         if ($day === 20) {
             $this->attempt('new gilts', function () use ($date) {
                 for ($i = 0; $i < 3; $i++) {
