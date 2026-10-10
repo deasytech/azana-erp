@@ -14,6 +14,7 @@ use App\Filament\Resources\KpiTargets\KpiTargetResource;
 use App\Filament\Resources\KpiTargets\Pages\CreateKpiTarget;
 use App\Filament\Resources\KpiTargets\Pages\EditKpiTarget;
 use App\Filament\Support\MoneyColumn;
+use App\Filament\Widgets\TargetAttainmentChartWidget;
 use Database\Seeders\FinanceSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RoleSeeder;
@@ -152,8 +153,10 @@ it('draws the dashboards against target and follows the chosen dashboard and mon
     slaughterPig();
     KpiTarget::create(['kpi_key' => 'slaughter.pigs', 'year' => now()->year, 'month' => null, 'target_value' => '10']);
 
-    $this->get(Dashboard::getUrl())->assertSuccessful()->assertSee('Against target')->assertSee('Share of target reached');
-    $this->get(ManagementDashboard::getUrl())->assertSuccessful()->assertSee('Share of target reached');
+    // Chart widgets load lazily: each page carries the component, and the widget itself is asserted below.
+    $this->get(Dashboard::getUrl())->assertSuccessful()->assertSeeLivewire(TargetAttainmentChartWidget::class);
+    $this->get(ManagementDashboard::getUrl())->assertSuccessful()->assertSeeLivewire(TargetAttainmentChartWidget::class);
+    Livewire::test(TargetAttainmentChartWidget::class)->assertSee('Against target');
 
     Livewire::test(ManagementDashboard::class)
         ->set('area', 'slaughter')

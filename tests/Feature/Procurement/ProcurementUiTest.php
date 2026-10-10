@@ -256,9 +256,10 @@ it('draws the orders by status, an order along the road to payment and what supp
     receiveGoods($order, ['40']);
     app(RecordSupplierInvoice::class)($order, 'INV-1', now(), 1000000);
 
-    $this->get(PurchaseOrderResource::getUrl('index'))->assertOk()->assertSee('Orders by status');
-    $this->get(PurchaseOrderResource::getUrl('view', ['record' => $order]))->assertOk()->assertSee('Progress to payment');
-    $this->get(SupplierBalances::getUrl())->assertOk()->assertSee('Outstanding by supplier');
+    // Chart widgets load lazily: the page carries the component, the heading is asserted on the widget itself below.
+    $this->get(PurchaseOrderResource::getUrl('index'))->assertOk()->assertSeeLivewire(PurchaseOrderStatusChartWidget::class);
+    $this->get(PurchaseOrderResource::getUrl('view', ['record' => $order]))->assertOk()->assertSeeLivewire(PurchaseOrderProgressChartWidget::class);
+    $this->get(SupplierBalances::getUrl())->assertOk()->assertSeeLivewire(SupplierBalancesChartWidget::class);
 
     Livewire::test(PurchaseOrderStatusChartWidget::class)->assertSee('Orders by status')->assertSee('Partially received');
     Livewire::test(PurchaseOrderProgressChartWidget::class, ['record' => $order])->assertSee('Progress to payment')->assertSee($order->number);

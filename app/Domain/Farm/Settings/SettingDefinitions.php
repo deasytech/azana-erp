@@ -37,6 +37,8 @@ final class SettingDefinitions
 
     private const WEBSITE = 'Public website';
 
+    private const SYSTEM = 'System';
+
     /** @return array<string, SettingDefinition> keyed by setting key */
     public static function all(): array
     {
@@ -99,6 +101,7 @@ final class SettingDefinitions
             new SettingDefinition('website.enquiry_notify_email', self::WEBSITE, 'Also e-mail new enquiries to', 'string', '', 'Optional extra address. People with website access are always told in the bell.'),
             new SettingDefinition('finance.books_closed_through', self::FINANCE, 'Books closed through (date)', 'string', '', 'Nothing can be posted on or before this date (YYYY-MM-DD). Leave empty to keep the books open.'),
             new SettingDefinition('biosecurity.min_pig_contact_free_hours', self::HEALTH, 'Visitor pig-free period (hours)', 'int', '48', 'Visitors with less pig-free time need approval to enter.'),
+            new SettingDefinition('system.data_mode', self::SYSTEM, 'Data mode', 'string', 'live', '"demo" while the system holds practice data (Administration > Go-live data reset can clear it); "live" once real records are being entered. The reset sets this to live.'),
         ])->keyBy->key->all();
     }
 

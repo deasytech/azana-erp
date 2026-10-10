@@ -28,7 +28,7 @@ cd /var/www/azana-erp
 HEALTH_URL=https://erp.azanafarms.com/health deploy/deploy.sh v1.4.0     # a tag, a branch or origin/main
 ```
 
-The script backs up first, goes into maintenance mode, checks out the exact ref, installs, builds, migrates, refreshes roles/permissions (new modules arrive; edits are never overwritten), caches, runs the preflight, restarts the workers, goes live, and checks `/health`. If anything fails the site **stays in maintenance mode** and the script says so; nothing half-deployed is served.
+The script checks the ref and the tree, backs up and **verifies the backup** (fresh, successful, checksummed, copied off-site), goes into maintenance mode, checks out the exact ref, installs, builds, migrates, refreshes roles/permissions (new modules arrive; edits are never overwritten), caches, runs the preflight, restarts the workers, goes live, and checks `/health`. If anything fails after maintenance mode starts, it **undoes the migrations it applied, puts the previous release back and brings the site up**, then exits with an error; nothing half-deployed is served. Only if that recovery itself fails does the site stay in maintenance mode, and the script then prints the manual steps. (Details and test evidence: `docs/deployment/BLOCKER_RESOLUTION_PLAN.md` §5.) It needs an already-migrated database, so the first installation is done by hand as above.
 
 After the first deployment of Phase 19, nothing else is needed. After later phases that add settings or modules, the script already does the needed seeding.
 

@@ -45,12 +45,12 @@ class ReconcileLedgers
         $ledger = InventoryTransaction::query()
             ->selectRaw('inventory_item_id, inventory_location_id, inventory_batch_id, SUM(quantity) as qty, SUM(value_minor) as value')
             ->groupBy('inventory_item_id', 'inventory_location_id', 'inventory_batch_id')->get()
-            ->mapWithKeys(fn ($r) => [$this->key($r) => [bcadd((string) $r->qty, '0', 3), (int) $r->value]]);
+            ->mapWithKeys(fn ($r) => [$this->key($r) => [$this->quantity($r->qty), (int) $r->value]]);
 
         $layers = InventoryLayer::query()
             ->selectRaw('inventory_item_id, inventory_location_id, inventory_batch_id, SUM(remaining_quantity) as qty, SUM(remaining_value_minor) as value')
             ->groupBy('inventory_item_id', 'inventory_location_id', 'inventory_batch_id')->get()
-            ->mapWithKeys(fn ($r) => [$this->key($r) => [bcadd((string) $r->qty, '0', 3), (int) $r->value]]);
+            ->mapWithKeys(fn ($r) => [$this->key($r) => [$this->quantity($r->qty), (int) $r->value]]);
 
         $differences = $ledger->keys()->merge($layers->keys())->unique()->filter(
             fn (string $k) => ($ledger[$k] ?? ['0.000', 0]) !== ($layers[$k] ?? ['0.000', 0])
@@ -62,6 +62,12 @@ class ReconcileLedgers
             $negative > 0 => new C(self::STOCK, C::FAILED, "{$negative} cost layer(s) hold a negative or impossible quantity."),
             default => new C(self::STOCK, C::OK, 'Stock on hand and its value agree with the ledger ('.$ledger->count().' item/store/batch rows).'),
         };
+    }
+
+    /** A summed quantity to three decimals; SQLite sums decimals as floats, which can come back as 1.0E-13 instead of 0. */
+    private function quantity(mixed $sum): string
+    {
+        return bcadd(is_float($sum) ? sprintf('%.3F', $sum) : (string) $sum, '0', 3);
     }
 
     private function key(object $row): string
@@ -156,9 +162,10 @@ class ReconcileLedgers
         });
         $reversals = DB::table('journal_entries')->select('id')->where('status', JournalStatus::Posted->value)->whereIn('reverses_id', $sources());
 
+        // Two sums, subtracted afterwards: the columns are unsigned, and subtracting them row by row overflows on MySQL. Plain SQL on every driver.
         $total = (int) DB::table('journal_lines')->where('account_id', $account)
             ->where(fn ($q) => $q->whereIn('journal_entry_id', $sources())->orWhereIn('journal_entry_id', $reversals))
-            ->selectRaw('COALESCE(SUM(debit_minor - credit_minor), 0) as net')->value('net');
+            ->selectRaw('COALESCE(SUM(debit_minor), 0) - COALESCE(SUM(credit_minor), 0) as net')->value('net');
 
         return $creditNormal ? -$total : $total;
     }
