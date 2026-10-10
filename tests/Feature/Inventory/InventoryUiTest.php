@@ -323,7 +323,8 @@ it('draws the value of stock by store and keeps the chart with the filters', fun
     receiveStock(stockItem('MAIZE'), '100', 35000);
     receiveStock(stockItem('SOYA'), '10', 90000, store('SILO'));
 
-    $this->get(StockOverview::getUrl())->assertOk()->assertSee('Stock value by store');
+    // Chart widgets load lazily, so the page carries the component and its heading arrives with the first widget request.
+    $this->get(StockOverview::getUrl())->assertOk()->assertSeeLivewire(StockByStoreChartWidget::class);
     Livewire::test(StockByStoreChartWidget::class)->assertSee('Stock value by store')->assertSee(store('SILO')->name);
     Livewire::test(StockByStoreChartWidget::class, ['location' => store('SILO')->id])->assertSee('Stock value by item in this store');
 

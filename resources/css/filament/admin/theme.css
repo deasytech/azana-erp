@@ -73,7 +73,12 @@
     background-color: color-mix(in srgb, var(--azana-cream) 85%, #e9dfc0);
     border-inline-end: 1px solid var(--azana-line);
 }
-:root:not(.dark) .fi-sidebar-header {
+.dark .fi-sidebar {
+    background-color: color-mix(in srgb, var(--azana-brown) 80%, #000000);
+    border-inline-end: 1px solid rgb(255 255 255 / 0.08);
+}
+:root:not(.dark) .fi-sidebar-header,
+.dark .fi-sidebar-header {
     background-color: transparent;
 }
 .fi-sidebar-header {
