@@ -203,7 +203,7 @@ class DemoDataSeeder extends Seeder
         }
 
         config(['queue.default' => 'sync', 'mail.default' => 'array']);
-        mt_srand(20260709);
+        mt_srand(20260709); // NOSONAR practice data only; a fixed seed makes every run identical
         $this->start = now()->subDays(self::DAYS)->setTime(8, 0);
 
         try {
@@ -234,6 +234,12 @@ class DemoDataSeeder extends Seeder
         }
 
         $this->report();
+    }
+
+    /** A random whole number for practice data. Nothing here is security-sensitive; the fixed seed in run() keeps runs repeatable. */
+    private function roll(int $min, int $max): int
+    {
+        return mt_rand($min, $max); // NOSONAR
     }
 
     // ---------------------------------------------------------------- set-up
@@ -302,7 +308,7 @@ class DemoDataSeeder extends Seeder
             ['VET', 'Savannah Veterinary Supplies', 'Dr. Tunde Adeyemi', 21], ['EQP', 'FarmTech Equipment', 'Chidi Obi', 30],
         ] as [$code, $name, $contact, $terms]) {
             $this->ref['supplier'][$code] = Supplier::firstOrCreate(['code' => $code], [
-                'name' => $name, 'contact_name' => $contact, 'phone' => '080'.mt_rand(10000000, 99999999), 'payment_terms_days' => $terms,
+                'name' => $name, 'contact_name' => $contact, 'phone' => '080'.$this->roll(10000000, 99999999), 'payment_terms_days' => $terms,
             ]);
         }
 
@@ -315,7 +321,7 @@ class DemoDataSeeder extends Seeder
             ['Mama Bisi Kitchen', 'individual', 0, 0, false], ['Abuja Hotels Group', 'institution', 50000000000, 45, true],
             ['Sunrise Farmers Union', 'farmer', 1500000000, 14, true], ['Walk-in customers', 'individual', 0, 0, false],
         ] as [$name, $type, $limit, $terms, $credit]) {
-            $customer = $save(['name' => $name, 'customer_type_id' => $this->lookup(L::CustomerType, $type), 'phone' => '081'.mt_rand(10000000, 99999999), 'address' => 'Ibadan, Oyo State']);
+            $customer = $save(['name' => $name, 'customer_type_id' => $this->lookup(L::CustomerType, $type), 'phone' => '081'.$this->roll(10000000, 99999999), 'address' => 'Ibadan, Oyo State']);
             $credit && $approve($customer, CreditStatus::Approved, $limit, $terms, $this->staff['farm']);
             $this->customers[] = $customer->refresh();
         }
@@ -403,9 +409,10 @@ class DemoDataSeeder extends Seeder
             app(SaveBudget::class)->approve($budget, $this->staff['gm']);
         });
 
-        foreach (range(max(1, now()->subDays(self::DAYS)->month), now()->month) as $month) {
+        // Every month the simulation touches, taking the year from each month so a run that crosses New Year is still right.
+        for ($month = $this->start->copy()->startOfMonth(); $month->lessThanOrEqualTo($this->start->copy()->addDays(self::DAYS)); $month->addMonth()) {
             foreach (['sales.invoiced_minor' => '6000000000', 'semen.doses' => '300', 'slaughter.pigs' => '24', 'feed.produced_kg' => '16000'] as $kpi => $target) {
-                $this->attempt('kpi targets', fn () => app(SetKpiTarget::class)($kpi, now()->year, $month, $target));
+                $this->attempt('kpi targets', fn () => app(SetKpiTarget::class)($kpi, $month->year, $month->month, $target));
             }
         }
 
@@ -528,12 +535,12 @@ class DemoDataSeeder extends Seeder
         $techName = 'Emeka (AI technician)';
         $service = null;
 
-        if ($live && $batchRow && mt_rand(1, 100) <= 70) {
+        if ($live && $batchRow && $this->roll(1, 100) <= 70) {
             $service = $this->attempt('artificial inseminations', fn () => app(RecordService::class)($sow, ServiceMethod::ArtificialInsemination, $on, technicianName: $techName, semenBatchId: $batchRow['batch']->id, semenLocationId: $this->ref['loc']['SEMEN']->id, doses: 2));
             $service && $this->useDoses($batchRow['batch']->id, 2);
         }
 
-        $service ??= $this->attempt('natural services', fn () => app(RecordService::class)($sow, ServiceMethod::Natural, $on, $this->boars[mt_rand(0, 3)]->id, technicianName: $techName));
+        $service ??= $this->attempt('natural services', fn () => app(RecordService::class)($sow, ServiceMethod::Natural, $on, $this->boars[$this->roll(0, 3)]->id, technicianName: $techName));
 
         if (! $service) {
             return;
@@ -581,7 +588,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $service = $this->sows[$i]['service'];
-        $positive = mt_rand(1, 100) <= 87;
+        $positive = $this->roll(1, 100) <= 87;
         $on = $on->copy()->startOfDay();
 
         $this->attempt('pregnancy checks', fn () => app(RecordPregnancyCheck::class)($service, $positive ? PregnancyCheckResult::Positive : PregnancyCheckResult::Negative, $on, PregnancyCheckMethod::Ultrasound));
@@ -607,16 +614,16 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        $born = mt_rand(9, 15);
-        $stillborn = mt_rand(0, 100) < 40 ? mt_rand(1, 2) : 0;
-        $mummified = mt_rand(0, 100) < 20 ? 1 : 0;
+        $born = $this->roll(9, 15);
+        $stillborn = $this->roll(0, 100) < 40 ? $this->roll(1, 2) : 0;
+        $mummified = $this->roll(0, 100) < 20 ? 1 : 0;
         $alive = max(6, $born - $stillborn - $mummified);
         $born = $alive + $stillborn + $mummified;
         $on = now()->copy()->startOfDay();
 
         $litter = $this->attempt('farrowings', fn () => app(RecordFarrowing::class)($this->sows[$i]['animal'], [
             'farrowed_on' => $on, 'total_born' => $born, 'born_alive' => $alive, 'stillborn' => $stillborn, 'mummified' => $mummified,
-            'total_birth_weight_kg' => number_format($alive * 1.45, 2, '.', ''), 'assisted' => mt_rand(0, 100) < 12,
+            'total_birth_weight_kg' => number_format($alive * 1.45, 2, '.', ''), 'assisted' => $this->roll(0, 100) < 12,
         ]));
 
         if (! $litter) {
@@ -628,20 +635,20 @@ class DemoDataSeeder extends Seeder
         $this->sows[$i]['litter'] = $litter;
 
         $this->attempt('litter piglets', fn () => app(RegisterLitterPiglets::class)($litter, collect(range(1, $alive))->map(fn ($n) => [
-            'sex' => $n % 2 ? 'male' : 'female', 'birth_weight_kg' => number_format(mt_rand(120, 180) / 100, 2, '.', ''),
+            'sex' => $n % 2 ? 'male' : 'female', 'birth_weight_kg' => number_format($this->roll(120, 180) / 100, 2, '.', ''),
         ])->all(), $this->pen('FH', $i)));
 
-        $losses = mt_rand(0, 100) < 70 ? mt_rand(1, 2) : 0;
+        $losses = $this->roll(0, 100) < 70 ? $this->roll(1, 2) : 0;
 
         if ($losses > 0 && $alive - $losses >= 5) {
-            $this->at($on->copy()->addDays(mt_rand(2, 5)), function () use ($litter, $losses) {
+            $this->at($on->copy()->addDays($this->roll(2, 5)), function () use ($litter, $losses) {
                 $this->attempt('litter losses', fn () => app(RecordLitterLoss::class)($litter->refresh(), $losses, now()->startOfDay(), causeId: $this->lookup(L::MortalityCause, 'crushed')));
             });
             $alive -= $losses;
         }
 
         $weanOn = $on->copy()->addDays(28);
-        $weaned = $alive - (mt_rand(0, 100) < 40 ? 1 : 0);
+        $weaned = $alive - ($this->roll(0, 100) < 40 ? 1 : 0);
         $this->at($weanOn, fn () => $this->wean($animalId, $litter, $weaned));
     }
 
@@ -691,28 +698,32 @@ class DemoDataSeeder extends Seeder
     private function collectSemen(CarbonInterface $date, array $boarIndexes): void
     {
         foreach (array_map(fn ($i) => $this->boars[$i], $boarIndexes) as $boar) {
-            $batch = $this->attempt('semen collections', fn () => app(RecordSemenCollection::class)($boar, now(), (string) mt_rand(180, 320), ['technician_name' => 'Lab tech', 'ph' => '7.2']));
+            $batch = $this->attempt('semen collections', fn () => app(RecordSemenCollection::class)($boar, now(), (string) $this->roll(180, 320), ['technician_name' => 'Lab tech', 'ph' => '7.2']));
 
-            if (! $batch) {
-                continue;
+            if ($batch) {
+                $this->counts['semen collections'] = ($this->counts['semen collections'] ?? 0) + 1;
+                $this->later($date->copy()->addDay(), fn () => $this->labWork($batch));
             }
-
-            $this->counts['semen collections'] = ($this->counts['semen collections'] ?? 0) + 1;
-            $this->later($date->copy()->addDay(), function () use ($batch) {
-                $pass = mt_rand(1, 100) <= 88;
-                $this->attempt('semen qc', fn () => app(RecordSemenQc::class)($batch, $pass ? (string) mt_rand(78, 90) : '45', $pass ? (string) mt_rand(260, 340) : '120', $pass ? (string) mt_rand(5, 14) : '35', null, $this->staff['lab']));
-                $batch->refresh();
-
-                if (! $pass) {
-                    return;
-                }
-
-                $this->attempt('semen processing', fn () => app(ProcessSemenBatch::class)($batch, min(app(ProcessSemenBatch::class)->maxDoses($batch), 22), '80', 'BTS'));
-                $released = $this->attempt('semen release', fn () => app(ReleaseSemenBatch::class)($batch->refresh(), $this->staff['farm'], $this->ref['loc']['SEMEN']));
-
-                $released && $this->semenStock[] = ['batch' => $released->refresh(), 'left' => (int) $released->doses_produced ?: 20];
-            });
         }
+    }
+
+    /** The day after collection: quality control, then (if it passed) dilution into doses and release to the semen store. */
+    private function labWork(SemenBatch $batch): void
+    {
+        $pass = $this->roll(1, 100) <= 88;
+        [$motility, $concentration, $abnormal] = $pass ? [$this->roll(78, 90), $this->roll(260, 340), $this->roll(5, 14)] : [45, 120, 35];
+
+        $this->attempt('semen qc', fn () => app(RecordSemenQc::class)($batch, (string) $motility, (string) $concentration, (string) $abnormal, null, $this->staff['lab']));
+
+        if (! $pass) {
+            return;
+        }
+
+        $batch->refresh();
+        $this->attempt('semen processing', fn () => app(ProcessSemenBatch::class)($batch, min(app(ProcessSemenBatch::class)->maxDoses($batch), 22), '80', 'BTS'));
+        $released = $this->attempt('semen release', fn () => app(ReleaseSemenBatch::class)($batch->refresh(), $this->staff['farm'], $this->ref['loc']['SEMEN']));
+
+        $released && $this->semenStock[] = ['batch' => $released->refresh(), 'left' => (int) $released->doses_produced ?: 20];
     }
 
     // ------------------------------------------------------------------ feed
@@ -760,14 +771,14 @@ class DemoDataSeeder extends Seeder
         $this->vaccinate($date);
         $this->weighBatches($date);
         $this->biosecurityCheck($date);
-        $this->visitors($date);
+        $this->visitors();
     }
 
     private function tuesdayWork(CarbonInterface $date, int $day): void
     {
         $this->runMill('grower', '3200');
         $this->vetVisit($date, $day);
-        $this->visitors($date);
+        $this->visitors();
     }
 
     private function wednesdayWork(CarbonInterface $date, int $day): void
@@ -776,13 +787,12 @@ class DemoDataSeeder extends Seeder
         $this->sellMeat($date);
         $this->payInvoices($date);
         $this->sellSemen($date);
-        $this->payBills($date);
     }
 
     private function thursdayWork(CarbonInterface $date, int $day): void
     {
         $this->runMill('finisher', '3400');
-        $this->slaughter($date, $day);
+        $this->slaughter($date);
         $this->sellPigs($date, $day);
         $this->expenses($date);
     }
@@ -803,9 +813,9 @@ class DemoDataSeeder extends Seeder
     {
         $factor = $this->start->diffInDays($date) < 1 ? 2.0 : 1.0;
         $lines = [
-            [$this->ref['supplier']['GRN'], 'maize', 5400 * $factor, 33500 + mt_rand(-1500, 2500)],
-            [$this->ref['supplier']['GRN'], 'soya', 2300 * $factor, 88000 + mt_rand(-3000, 5000)],
-            [$this->ref['supplier']['PRX'], 'premix', 680 * $factor, 190000 + mt_rand(-5000, 9000)],
+            [$this->ref['supplier']['GRN'], 'maize', 5400 * $factor, 33500 + $this->roll(-1500, 2500)],
+            [$this->ref['supplier']['GRN'], 'soya', 2300 * $factor, 88000 + $this->roll(-3000, 5000)],
+            [$this->ref['supplier']['PRX'], 'premix', 680 * $factor, 190000 + $this->roll(-5000, 9000)],
         ];
 
         foreach ($lines as [$supplier, $key, $qty, $cost]) {
@@ -817,9 +827,9 @@ class DemoDataSeeder extends Seeder
                 $line = $order->refresh()->lines->first();
                 $extra = $key === 'premix' ? ['batch_number' => 'PX-'.$date->format('md'), 'expiry_date' => $date->copy()->addMonths(6)->toDateString(), 'supplier_id' => $supplier->id] : [];
                 $this->later($date->copy()->addDay(), function () use ($order, $line, $qty, $extra, $supplier) {
-                    $this->attempt('goods receipts', fn () => app(ReceiveGoods::class)($order->refresh(), $this->ref['loc']['RAW'], now()->startOfDay(), [['purchase_order_line_id' => $line->id, 'quantity' => (string) (int) $qty] + $extra], 'DN-'.mt_rand(1000, 9999)));
+                    $this->attempt('goods receipts', fn () => app(ReceiveGoods::class)($order->refresh(), $this->ref['loc']['RAW'], now()->startOfDay(), [['purchase_order_line_id' => $line->id, 'quantity' => (string) (int) $qty] + $extra], 'DN-'.$this->roll(1000, 9999)));
                     $order->refresh();
-                    $invoice = $this->attempt('supplier invoices', fn () => app(RecordSupplierInvoice::class)($order, 'SINV-'.mt_rand(10000, 99999), now()->startOfDay(), (int) $order->total_minor));
+                    $invoice = $this->attempt('supplier invoices', fn () => app(RecordSupplierInvoice::class)($order, 'SINV-'.$this->roll(10000, 99999), now()->startOfDay(), (int) $order->total_minor));
 
                     if ($invoice) {
                         $due = now()->copy()->addDays($supplier->payment_terms_days ?: 14);
@@ -833,20 +843,18 @@ class DemoDataSeeder extends Seeder
     private function paySupplier(int $invoiceId, Supplier $supplier): void
     {
         $invoice = SupplierInvoice::find($invoiceId);
-        $payment = $invoice ? $this->attempt('supplier payments', fn () => app(RecordSupplierPayment::class)($invoice, (int) $invoice->total_minor, now()->startOfDay(), PaymentMethod::BankTransfer, 'TRF-'.mt_rand(100000, 999999))) : null;
+        $payment = $invoice ? $this->attempt('supplier payments', fn () => app(RecordSupplierPayment::class)($invoice, (int) $invoice->total_minor, now()->startOfDay(), PaymentMethod::BankTransfer, 'TRF-'.$this->roll(100000, 999999))) : null;
 
         if ($payment && $payment->status?->value === 'pending') {
             $this->attempt('supplier payment approvals', fn () => app(DecideSupplierPayment::class)->approve($payment, $this->staff['gm']));
         }
     }
 
-    private function payBills(CarbonInterface $date): void {}
-
     // ---------------------------------------------------------------- health
 
     private function vaccinate(CarbonInterface $date): void
     {
-        $med = $this->ref['medicine'][mt_rand(0, 1) ? 'VAC-PARVO' : 'VAC-PRRS'];
+        $med = $this->ref['medicine'][$this->roll(0, 1) ? 'VAC-PARVO' : 'VAC-PRRS'];
         $batch = $this->ref['medicineBatch'][$med->code];
 
         foreach (collect($this->sows)->shuffle()->take(4) as $row) {
@@ -872,7 +880,7 @@ class DemoDataSeeder extends Seeder
         }
 
         // A sow falls ill, is seen by the vet, treated (the antibiotic starts a withdrawal period) and recovers.
-        $sow = $this->sows[mt_rand(0, count($this->sows) - 1)]['animal'];
+        $sow = $this->sows[$this->roll(0, count($this->sows) - 1)]['animal'];
         $event = $this->attempt('health events', fn () => app(ReportHealthEvent::class)($sow, HealthEventKind::Illness, HealthSeverity::Moderate, $date->copy()->startOfDay(), 'Off feed, raised temperature', Disease::firstWhere('code', 'MMA')->id, $visit?->id));
 
         if ($event) {
@@ -885,17 +893,17 @@ class DemoDataSeeder extends Seeder
 
     private function biosecurityCheck(CarbonInterface $date): void
     {
-        $answers = BiosecurityChecklistItem::where('is_active', true)->get()->map(fn ($item) => ['item_id' => $item->id, 'passed' => mt_rand(1, 100) > 12, 'notes' => null])->all();
+        $answers = BiosecurityChecklistItem::where('is_active', true)->get()->map(fn ($item) => ['item_id' => $item->id, 'passed' => $this->roll(1, 100) > 12, 'notes' => null])->all();
         $this->attempt('biosecurity checks', fn () => app(RecordBiosecurityCheck::class)($date->copy()->startOfDay(), $answers, ProductionUnit::firstWhere('code', 'PIG')->id));
     }
 
-    private function visitors(CarbonInterface $date): void
+    private function visitors(): void
     {
         $names = [['Dr. Ade Johnson', 'State Veterinary Services', 'Inspection'], ['Kunle Feeds driver', 'Greenfield Grains', 'Delivery'], ['Ibrahim Sule', 'Hilltop Farms', 'Buying pigs'], ['Mrs Okoro', 'City Meats', 'Meat collection']];
-        [$name, $org, $purpose] = $names[mt_rand(0, 3)];
+        [$name, $org, $purpose] = $names[$this->roll(0, 3)];
         $visit = $this->attempt('visitors', fn () => app(RecordVisitorArrival::class)([
             'visitor_name' => $name, 'organisation' => $org, 'purpose' => $purpose, 'health_declaration' => true, 'last_pig_contact_hours' => 72,
-            'vehicle_registration' => 'LND-'.mt_rand(100, 999).'AB', 'arrived_at' => now()->subHour(),
+            'vehicle_registration' => 'LND-'.$this->roll(100, 999).'AB', 'arrived_at' => now()->subHour(),
         ], $this->staff['farm']));
 
         $visit && $this->attempt('visitor departures', fn () => app(RecordVisitorDeparture::class)($visit, now()));
@@ -943,15 +951,15 @@ class DemoDataSeeder extends Seeder
 
         $batches = collect($this->pigBatches)->filter(fn ($b) => $this->heads($b) > 25);
 
-        if ($batches->isNotEmpty() && mt_rand(1, 100) <= 55) {
+        if ($batches->isNotEmpty() && $this->roll(1, 100) <= 55) {
             $batch = $batches->random();
-            $this->attempt('batch mortality', fn () => app(RecordBatchMortality::class)($batch, mt_rand(1, 2), $date->copy()->startOfDay(), $this->lookup(L::MortalityCause, ['scours', 'respiratory', 'injury', 'unknown'][mt_rand(0, 3)])));
+            $this->attempt('batch mortality', fn () => app(RecordBatchMortality::class)($batch, $this->roll(1, 2), $date->copy()->startOfDay(), $this->lookup(L::MortalityCause, ['scours', 'respiratory', 'injury', 'unknown'][$this->roll(0, 3)])));
         }
     }
 
     // --------------------------------------------------------------- slaughter
 
-    private function slaughter(CarbonInterface $date, int $day): void
+    private function slaughter(CarbonInterface $date): void
     {
         $batch = collect($this->pigBatches)->first(fn ($b) => $b->stage?->code === 'finisher' && $this->heads($b) > 6 && $this->growthOf($b) >= 85);
 
@@ -960,8 +968,8 @@ class DemoDataSeeder extends Seeder
         }
 
         $heads = min(8, $this->heads($batch));
-        $live = number_format($heads * mt_rand(9600, 10400) / 100, 2, '.', '');
-        $hot = number_format((float) $live * mt_rand(7400, 7800) / 10000, 2, '.', '');
+        $live = number_format($heads * $this->roll(9600, 10400) / 100, 2, '.', '');
+        $hot = number_format((float) $live * $this->roll(7400, 7800) / 10000, 2, '.', '');
 
         $this->attempt('slaughter', function () use ($date, $batch, $heads, $live, $hot) {
             $day = app(ManageSlaughterBatch::class)->schedule($date->copy()->startOfDay());
@@ -997,15 +1005,15 @@ class DemoDataSeeder extends Seeder
             // Customers without approved credit pay in advance (a deposit), as the credit rule requires.
             if ($customer->credit_status !== CreditStatus::Approved) {
                 $expected = (int) round(collect($lines)->sum(fn ($l) => (float) ($l['quantity'] ?? 0) * (int) ($l['unit_price_minor'] ?? 0)));
-                app(RecordCustomerPayment::class)($customer, $expected, ReceiptMethod::Cash, $date->copy()->startOfDay(), 'DEP-'.mt_rand(1000, 9999));
+                app(RecordCustomerPayment::class)($customer, $expected, ReceiptMethod::Cash, $date->copy()->startOfDay(), 'DEP-'.$this->roll(1000, 9999));
             }
 
             $order = app(CreateSalesOrder::class)($customer, $lines, $date->copy()->startOfDay());
             app(ConfirmSalesOrder::class)($order, $this->staff['farm']);
-            $invoice = app(DispatchSalesOrder::class)($order->refresh(), $date->copy()->startOfDay(), 'DN-'.mt_rand(1000, 9999));
+            $invoice = app(DispatchSalesOrder::class)($order->refresh(), $date->copy()->startOfDay(), 'DN-'.$this->roll(1000, 9999));
             $this->counts['sales orders'] = ($this->counts['sales orders'] ?? 0) + 1;
 
-            $this->ref['open'][] = ['invoice' => $invoice, 'customer' => $customer, 'pay_on' => $date->copy()->addDays(mt_rand(3, max(4, $customer->payment_terms_days)) + mt_rand(0, 12))];
+            $this->ref['open'][] = ['invoice' => $invoice, 'customer' => $customer, 'pay_on' => $date->copy()->addDays($this->roll(3, max(4, $customer->payment_terms_days)) + $this->roll(0, 12))];
 
             return $invoice;
         });
@@ -1024,7 +1032,7 @@ class DemoDataSeeder extends Seeder
 
         foreach ($buyers as $customer) {
             $product = MeatProduct::whereIn('code', ['LEG', 'LOIN', 'SHOULDER', 'BELLY', 'RIBS'])->inRandomOrder()->first();
-            $kg = (string) mt_rand(15, 45);
+            $kg = (string) $this->roll(15, 45);
             $price = ['LEG' => 260000, 'LOIN' => 320000, 'SHOULDER' => 240000, 'BELLY' => 300000, 'RIBS' => 280000][$product->code];
             $this->sell($customer, [['kind' => 'meat', 'meat_product_id' => $product->id, 'inventory_location_id' => $this->ref['loc']['COLD1']->id, 'quantity' => $kg, 'unit_price_minor' => $price]], $date, 'meat sales');
         }
@@ -1038,8 +1046,8 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        $buyer = $this->customers[mt_rand(2, 3)];
-        $doses = mt_rand(4, min(10, $batch['left']));
+        $buyer = $this->customers[$this->roll(2, 3)];
+        $doses = $this->roll(4, min(10, $batch['left']));
 
         if ($this->sell($buyer, [['kind' => 'semen', 'semen_batch_id' => $batch['batch']->id, 'inventory_location_id' => $this->ref['loc']['SEMEN']->id, 'quantity' => $doses, 'unit_price_minor' => 1500000]], $date, 'semen sales')) {
             $this->useDoses($batch['batch']->id, $doses);
@@ -1058,8 +1066,8 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        $heads = mt_rand(8, 14);
-        $this->sell($this->customers[mt_rand(3, 6)], [['kind' => 'pig_batch', 'production_batch_id' => $batch->id, 'heads' => $heads, 'unit' => 'head', 'unit_price_minor' => 4500000]], $date, 'pig sales');
+        $heads = $this->roll(8, 14);
+        $this->sell($this->customers[$this->roll(3, 6)], [['kind' => 'pig_batch', 'production_batch_id' => $batch->id, 'heads' => $heads, 'unit' => 'head', 'unit_price_minor' => 4500000]], $date, 'pig sales');
     }
 
     private function payInvoices(CarbonInterface $date): void
@@ -1077,8 +1085,8 @@ class DemoDataSeeder extends Seeder
                 continue;   // this customer pays slowly: their invoices go overdue on purpose
             }
 
-            $amount = mt_rand(1, 100) <= 25 ? (int) round($balance * 0.6, -2) : $balance;
-            $this->attempt('customer receipts', fn () => app(RecordCustomerPayment::class)($row['customer'], $amount, [ReceiptMethod::BankTransfer, ReceiptMethod::Cash, ReceiptMethod::Pos][mt_rand(0, 2)], $date->copy()->startOfDay(), 'RCPT-'.mt_rand(10000, 99999)));
+            $amount = $this->roll(1, 100) <= 25 ? (int) round($balance * 0.6, -2) : $balance;
+            $this->attempt('customer receipts', fn () => app(RecordCustomerPayment::class)($row['customer'], $amount, [ReceiptMethod::BankTransfer, ReceiptMethod::Cash, ReceiptMethod::Pos][$this->roll(0, 2)], $date->copy()->startOfDay(), 'RCPT-'.$this->roll(10000, 99999)));
         }
     }
 
@@ -1091,8 +1099,8 @@ class DemoDataSeeder extends Seeder
             ['5200', 'BRD', 'Veterinary consumables', 12500000, 'Savannah Veterinary Supplies'], ['5900', 'ADM', 'Stationery and airtime', 1850000, 'Office supplies'],
             ['5400', 'FDM', 'Electricity — feed mill', 22000000, 'Ibadan DisCo'],
         ];
-        [$acc, $cc, $what, $amount, $payee] = $pick[mt_rand(0, count($pick) - 1)];
-        $this->attempt('expenses', fn () => app(RecordExpense::class)($date->copy()->startOfDay(), $this->ref['acc'][$acc], $this->ref['cc'][$cc], $amount + mt_rand(-500000, 1500000), $this->ref['acc']['1010'], $payee, 'EXP-'.mt_rand(1000, 9999), $what));
+        [$acc, $cc, $what, $amount, $payee] = $pick[$this->roll(0, count($pick) - 1)];
+        $this->attempt('expenses', fn () => app(RecordExpense::class)($date->copy()->startOfDay(), $this->ref['acc'][$acc], $this->ref['cc'][$cc], $amount + $this->roll(-500000, 1500000), $this->ref['acc']['1010'], $payee, 'EXP-'.$this->roll(1000, 9999), $what));
     }
 
     private function payroll(CarbonInterface $date): void
@@ -1120,7 +1128,7 @@ class DemoDataSeeder extends Seeder
             $count = app(StartStockCount::class)($this->ref['loc']['RAW'], $date->copy()->startOfDay(), 'Monthly raw material count');
 
             foreach ($count->lines as $line) {
-                $short = bccomp((string) $line->system_quantity, '60', 3) > 0 && mt_rand(1, 100) <= 60 ? (string) mt_rand(5, 40) : '0';
+                $short = bccomp((string) $line->system_quantity, '60', 3) > 0 && $this->roll(1, 100) <= 60 ? (string) $this->roll(5, 40) : '0';
                 app(RecordCountLine::class)($count, $line->inventory_item_id, $line->inventory_batch_id, bcsub((string) $line->system_quantity, $short, 3), $short === '0' ? null : 'Spillage and moisture loss');
             }
 
@@ -1168,7 +1176,7 @@ class DemoDataSeeder extends Seeder
 
         if ($day % 30 === 5) {
             foreach (collect($this->sows)->take(6) as $row) {
-                $this->attempt('animal weights', fn () => app(RecordWeight::class)($row['animal'], (string) mt_rand(18000, 24500) / 100, $date->copy(), 'scale'));
+                $this->attempt('animal weights', fn () => app(RecordWeight::class)($row['animal'], (string) $this->roll(18000, 24500) / 100, $date->copy(), 'scale'));
             }
         }
 
@@ -1184,11 +1192,11 @@ class DemoDataSeeder extends Seeder
     private function enquiry(CarbonInterface $date): void
     {
         $samples = [
-            ['pigs', 'Femi Adeyemi', 'Please quote for 20 weaner pigs for delivery to Abeokuta next week.', '0803'.mt_rand(1000000, 9999999)],
-            ['semen', 'Okon Breeders', 'We want Duroc semen, 30 doses a month. What are your terms?', '0805'.mt_rand(1000000, 9999999)],
-            ['meat', 'Grace Kitchen', 'Do you supply pork belly to restaurants and what is the minimum order?', '0809'.mt_rand(1000000, 9999999)],
+            ['pigs', 'Femi Adeyemi', 'Please quote for 20 weaner pigs for delivery to Abeokuta next week.', '0803'.$this->roll(1000000, 9999999)],
+            ['semen', 'Okon Breeders', 'We want Duroc semen, 30 doses a month. What are your terms?', '0805'.$this->roll(1000000, 9999999)],
+            ['meat', 'Grace Kitchen', 'Do you supply pork belly to restaurants and what is the minimum order?', '0809'.$this->roll(1000000, 9999999)],
         ];
-        [$kind, $name, $message, $phone] = $samples[mt_rand(0, 2)];
+        [$kind, $name, $message, $phone] = $samples[$this->roll(0, 2)];
         $this->attempt('website enquiries', fn () => app(SubmitEnquiry::class)(['kind' => $kind, 'name' => $name, 'message' => $message.' ('.$date->format('d M').')', 'phone' => $phone]));
     }
 
@@ -1203,7 +1211,7 @@ class DemoDataSeeder extends Seeder
 
         // Staff work through what is due: most things done on time, a few left to show up as overdue.
         Task::query()->whereIn('status', ['open', 'in_progress'])->whereDate('due_on', '<=', $date->toDateString())->orderBy('id')->limit(40)->get()->each(function (Task $task) {
-            if (mt_rand(1, 100) <= 82) {
+            if ($this->roll(1, 100) <= 82) {
                 $worker = collect($this->staff)->first(fn ($u) => app(AdvanceTask::class)->mayWork($task, $u));
 
                 if (! $worker) {

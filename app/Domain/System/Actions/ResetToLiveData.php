@@ -85,10 +85,8 @@ class ResetToLiveData
         $backup = $backupFirst ? $this->backup($by) : null;
         $rows = array_sum($this->preview());
 
-        // Done first: it can fail on a foreign key, and that must happen before anything is deleted.
-        $users = $removeDemoAccounts ? $this->removeDemoAccounts($by) : 0;
-
-        $this->deleteFiles();
+        // Remembered now, deleted only once the rows that point at them are gone, so a failed reset never leaves rows pointing at missing files.
+        $files = $this->uploadedFiles();
 
         $tables = collect(self::WIPE)->filter(fn ($t) => Schema::hasTable($t));
 
@@ -96,11 +94,18 @@ class ResetToLiveData
         // SQLite ignores the switch above inside a transaction (as in the tests); this defers the checks to the end instead.
         DB::connection()->getDriverName() === 'sqlite' && DB::statement('PRAGMA defer_foreign_keys = ON');
 
+        $users = 0;
+
         try {
             $tables->each(fn ($t) => DB::table($t)->truncate());
+
+            // After the wipe: the records that point at these users (audit trail, documents they created) are already gone.
+            $users = $removeDemoAccounts ? $this->removeDemoAccounts($by) : 0;
         } finally {
             Schema::enableForeignKeyConstraints();
         }
+
+        $this->deleteFiles($files);
 
         // The standard stores, stock items for semen and meat, and meat products come back; nothing else is invented.
         (new MasterDataSeeder)->run();
@@ -126,36 +131,54 @@ class ResetToLiveData
         return (string) $run->file;
     }
 
-    /** Uploaded photos and import files belong to records that are about to disappear. */
-    private function deleteFiles(): void
+    /** @return list<array{disk: string, path: string}> the uploaded photos, task evidence and import files that belong to records about to disappear */
+    private function uploadedFiles(): array
     {
-        foreach ([['animal_photos', 'path', 'disk'], ['task_evidence', 'path', null], ['data_imports', 'path', null]] as [$table, $column, $diskColumn]) {
+        $files = [];
+
+        foreach ([['animal_photos', 'disk'], ['task_evidence', null], ['data_imports', null]] as [$table, $diskColumn]) {
             if (! Schema::hasTable($table)) {
                 continue;
             }
 
-            DB::table($table)->select(array_filter([$column, $diskColumn]))->orderBy($column)->each(function ($row) use ($table, $column, $diskColumn) {
-                $disk = $diskColumn ? $row->{$diskColumn} : ($table === 'task_evidence' ? 'public' : 'local');
-
-                try {
-                    Storage::disk($disk)->delete($row->{$column});
-                } catch (\Throwable) {
-                    // A file that is already gone or on an unreachable disk must not stop the reset.
-                }
+            DB::table($table)->select(array_filter(['path', $diskColumn]))->orderBy('path')->each(function ($row) use (&$files, $table, $diskColumn) {
+                $files[] = ['disk' => $diskColumn ? $row->{$diskColumn} : $this->defaultDisk($table), 'path' => $row->path];
             });
+        }
+
+        return $files;
+    }
+
+    private function defaultDisk(string $table): string
+    {
+        return $table === 'task_evidence' ? 'public' : 'local';
+    }
+
+    /** @param list<array{disk: string, path: string}> $files */
+    private function deleteFiles(array $files): void
+    {
+        foreach ($files as $file) {
+            try {
+                Storage::disk($file['disk'])->delete($file['path']);
+            } catch (\Throwable) {
+                // A file that is already gone or on an unreachable disk must not stop the reset.
+            }
         }
     }
 
     private function removeDemoAccounts(User $keep): int
     {
         $ids = User::where('email', 'like', '%'.self::DEMO_EMAIL_SUFFIX)->whereKeyNot($keep->getKey())->pluck('id');
+        $type = (new User)->getMorphClass();
 
-        DB::table('backup_runs')->whereIn('created_by', $ids)->update(['created_by' => null]);
-        DB::table('login_activities')->whereIn('user_id', $ids)->delete();
-        DB::table('personal_access_tokens')->where('tokenable_type', (new User)->getMorphClass())->whereIn('tokenable_id', $ids)->delete();
-        DB::table('model_has_roles')->where('model_type', (new User)->getMorphClass())->whereIn('model_id', $ids)->delete();
-        DB::table('model_has_permissions')->where('model_type', (new User)->getMorphClass())->whereIn('model_id', $ids)->delete();
-        DB::table('users')->whereIn('id', $ids)->delete();
+        DB::transaction(function () use ($ids, $type) {
+            DB::table('backup_runs')->whereIn('created_by', $ids)->update(['created_by' => null]);
+            DB::table('login_activities')->whereIn('user_id', $ids)->delete();
+            DB::table('personal_access_tokens')->where('tokenable_type', $type)->whereIn('tokenable_id', $ids)->delete();
+            DB::table('model_has_roles')->where('model_type', $type)->whereIn('model_id', $ids)->delete();
+            DB::table('model_has_permissions')->where('model_type', $type)->whereIn('model_id', $ids)->delete();
+            DB::table('users')->whereIn('id', $ids)->delete();
+        });
 
         return $ids->count();
     }

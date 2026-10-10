@@ -57,12 +57,12 @@ class GetProfitability
         ]];
     }
 
-    /** @return array<int, int> amount by cost centre id (0 = no cost centre) */
+    /** @return array<int, int> amount by cost centre id (0 = no cost centre). Two sums subtracted, not a per-row difference: the columns are unsigned, which MySQL will not subtract below zero. */
     private function byCentre($query, bool $creditNormal): array
     {
-        $amount = $creditNormal ? 'CAST(journal_lines.credit_minor AS SIGNED) - CAST(journal_lines.debit_minor AS SIGNED)' : 'CAST(journal_lines.debit_minor AS SIGNED) - CAST(journal_lines.credit_minor AS SIGNED)';
+        $amount = $creditNormal ? 'sum(journal_lines.credit_minor) - sum(journal_lines.debit_minor)' : 'sum(journal_lines.debit_minor) - sum(journal_lines.credit_minor)';
 
-        return $query->reorder()->select([])->selectRaw("coalesce(journal_lines.cost_centre_id, 0) as centre, sum({$amount}) as amount")
+        return $query->reorder()->select([])->selectRaw("coalesce(journal_lines.cost_centre_id, 0) as centre, {$amount} as amount")
             ->groupBy('centre')->pluck('amount', 'centre')->map(fn ($v) => (int) $v)->all();
     }
 

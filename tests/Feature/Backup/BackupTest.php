@@ -306,6 +306,8 @@ describe('preflight', function () {
         $script = base_path('deploy/deploy.sh');
 
         expect(is_executable($script))->toBeTrue()
-            ->and(file_get_contents($script))->toContain('set -euo pipefail')->toContain('erp:backup')->toContain('migrate --force')->toContain('erp:preflight')->toContain('queue:restart');
+            ->and(file_get_contents($script))->toContain('set -Eeuo pipefail')->toContain('erp:backup')->toContain('BACKUP_VERIFIED')->toContain('migrate --force')->toContain('erp:preflight')->toContain('queue:restart')
+            // A failed deployment puts the previous release back instead of leaving the site in maintenance mode.
+            ->toContain('migrate:rollback')->toContain('trap recover EXIT');
     });
 });

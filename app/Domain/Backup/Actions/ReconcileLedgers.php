@@ -162,9 +162,10 @@ class ReconcileLedgers
         });
         $reversals = DB::table('journal_entries')->select('id')->where('status', JournalStatus::Posted->value)->whereIn('reverses_id', $sources());
 
+        // Two sums, subtracted afterwards: the columns are unsigned, and subtracting them row by row overflows on MySQL. Plain SQL on every driver.
         $total = (int) DB::table('journal_lines')->where('account_id', $account)
             ->where(fn ($q) => $q->whereIn('journal_entry_id', $sources())->orWhereIn('journal_entry_id', $reversals))
-            ->selectRaw('COALESCE(SUM(CAST(debit_minor AS SIGNED) - CAST(credit_minor AS SIGNED)), 0) as net')->value('net');
+            ->selectRaw('COALESCE(SUM(debit_minor), 0) - COALESCE(SUM(credit_minor), 0) as net')->value('net');
 
         return $creditNormal ? -$total : $total;
     }

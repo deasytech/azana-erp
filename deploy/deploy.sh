@@ -34,7 +34,14 @@ DONE=0          # 1 once the site is live again on the new release
 RAN_BEFORE=""   # migrations applied before this run
 PREVIOUS=""
 
-ran_count() { $PHP artisan migrate:status --no-ansi 2>/dev/null | grep -c -E '\] Ran[[:space:]]*$' || true; }
+# Prints how many migrations have run. Returns non-zero (and prints nothing) when the status cannot be read, so a failure is never mistaken for "0".
+ran_count() {
+    local status count
+    status="$($PHP artisan migrate:status --no-ansi 2>/dev/null)" || return 1
+    count="$(grep -c -E '\] Ran[[:space:]]*$' <<<"$status" || true)"
+    [[ "$count" =~ ^[0-9]+$ ]] || return 1
+    echo "$count"
+}
 
 # --------------------------------------------------------------------------------------------------------------------------- recovery
 install_release() {
@@ -60,7 +67,9 @@ recover() {
     echo "!! The deployment failed (exit $code). Putting the previous release back so the site is not left in maintenance mode." >&2
 
     if [[ -n "$RAN_BEFORE" ]]; then
-        local steps=$(( $(ran_count) - RAN_BEFORE ))
+        local now_ran steps
+        now_ran="$(ran_count)" || stuck "The migration status cannot be read, so it is not known which migrations this run applied."
+        steps=$(( now_ran - RAN_BEFORE ))
         if (( steps > 0 )); then
             echo "!! Undoing $steps migration(s) applied by this run" >&2
             $PHP artisan migrate:rollback --step="$steps" --force || stuck "The migrations could not be undone."
@@ -132,7 +141,7 @@ echo ($r && $r->status === "success" && $r->size_bytes > 0 && filled($r->checksu
 echo "    verified"
 
 # --------------------------------------------------------------------------------------------------------------------------- 3. deploy
-RAN_BEFORE="$(ran_count)"
+RAN_BEFORE="$(ran_count)" || fail "Cannot read the migration status (is the database reachable?): not deploying."
 
 say "Maintenance mode on"
 # An already-down site is fine; a failure to go down is not (the migration would run under live traffic).
