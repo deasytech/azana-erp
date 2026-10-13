@@ -62,7 +62,7 @@ class RoleSeeder extends Seeder
     ];
 
     /** Roles that sign in to the mobile app. Roles that must use two-factor sign-in (the accountant, the owner) stay on the web app. */
-    private const MOBILE_ROLES = ['General Manager', 'Farm Manager', 'Breeding Manager', 'Feed Mill Manager', 'Semen Laboratory Manager', 'Nutritionist', 'Store Officer', 'Sales Officer', 'Slaughter Manager', 'Farm Worker'];
+    public const MOBILE_ROLES = ['General Manager', 'Farm Manager', 'Breeding Manager', 'Feed Mill Manager', 'Semen Laboratory Manager', 'Nutritionist', 'Store Officer', 'Sales Officer', 'Slaughter Manager', 'Farm Worker'];
 
     private const FARM = 'farm-structure';
 

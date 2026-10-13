@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnimalLookupController;
 use App\Http\Controllers\ApiDocsController;
 use App\Http\Controllers\Site\SiteController;
+use App\Http\Controllers\UserGuideController;
 use Illuminate\Support\Facades\Route;
 
 // The public website. With WEBSITE_HOST set it answers only on that host (the ERP lives on ERP_HOST); unset, on any host.
@@ -25,3 +26,6 @@ Route::get('/animals/lookup/{code}', AnimalLookupController::class)
     ->name('animals.lookup');
 
 Route::get('/docs', ApiDocsController::class)->name('api.docs');
+
+// The user guide for staff, opened from the last item of the ERP sidebar.
+Route::domain(config('website.erp_host'))->middleware('auth')->get('/user/documents', UserGuideController::class)->name('user.documents');

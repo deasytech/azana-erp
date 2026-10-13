@@ -9,10 +9,12 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -38,7 +40,7 @@ class AdminPanelProvider extends PanelProvider
      */
     private function navigationGroups(): array
     {
-        $groups = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Biosecurity', 'Production', 'Feed mill', 'Inventory', 'Purchasing', 'Semen', 'Sales', 'Slaughter & meat', 'Finance', 'Tasks & alerts', 'Management', 'Website', 'Master data', 'Configuration', 'Administration'];
+        $groups = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Biosecurity', 'Production', 'Feed mill', 'Inventory', 'Purchasing', 'Semen', 'Sales', 'Slaughter & meat', 'Finance', 'Tasks & alerts', 'Management', 'Website', 'Master data', 'Configuration', 'Administration', 'Help'];
 
         // Filament does not open a folded group on its own page, so only the groups used least are folded; the rest stay open.
         $folded = ['Farm structure', 'Biosecurity', 'Feed mill', 'Semen', 'Slaughter & meat', 'Website', 'Master data', 'Configuration', 'Administration'];
@@ -74,6 +76,14 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarWidth('17rem')
             ->maxContentWidth(Width::Full)
             ->navigationGroups($this->navigationGroups())
+            // The user guide is the last item of the sidebar: its group is the last group.
+            ->navigationItems([
+                NavigationItem::make('User guide')
+                    ->url(fn (): string => route('user.documents'), shouldOpenInNewTab: true)
+                    ->icon(Heroicon::OutlinedBookOpen)
+                    ->group('Help')
+                    ->sort(1),
+            ])
             // Orange is the brand accent (actions, active states); the neutrals are warm stone, and status colours keep their own meaning.
             ->colors([
                 'primary' => self::PRIMARY,
