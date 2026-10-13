@@ -18,8 +18,8 @@ class MovementsRelationManager extends RelationManager
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['fromPen', 'fromLocation', 'toPen', 'toLocation', 'reason', 'user']))
             ->columns([
                 TextColumn::make('moved_at')->dateTime()->label('When'),
-                TextColumn::make('from')->state(fn ($r) => $r->fromLabel()),
-                TextColumn::make('to')->state(fn ($r) => $r->toLabel()),
+                TextColumn::make('from')->state(fn ($record) => $record->fromLabel()),
+                TextColumn::make('to')->state(fn ($record) => $record->toLabel()),
                 TextColumn::make('reason.name')->placeholder('-'),
                 TextColumn::make('notes')->limit(40)->placeholder('-'),
                 TextColumn::make('user.name')->label('By')->placeholder('-'),

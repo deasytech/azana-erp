@@ -688,7 +688,8 @@
   </main>
 </div>
 <button class="back-top" id="backTop" aria-label="Back to top"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<div class="lightbox" id="lightbox" role="dialog" aria-label="Screenshot"><img alt=""></div>
+<dialog class="lightbox" id="lightbox" aria-label="Screenshot"><img alt=""></dialog>
+<script src="{{ asset('js/api-docs.js') }}?v={{ @filemtime(public_path('js/api-docs.js')) }}"></script>
 <script src="{{ asset('js/user-guide.js') }}?v={{ @filemtime(public_path('js/user-guide.js')) }}"></script>
 </body>
 </html>

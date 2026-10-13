@@ -62,8 +62,8 @@ figure.shot{ margin:1.2rem 0 1.6rem; max-width:920px; border:1px solid var(--bor
 .shot img{ display:block; width:100%; height:auto; }
 .shot-zoom{ display:block; cursor:zoom-in; }
 figure.shot figcaption{ padding:.6rem .9rem; font-size:.82rem; color:var(--text-muted); border-top:1px solid var(--border); }
-.lightbox{ position:fixed; inset:0; z-index:90; background:rgba(10,8,18,.82); display:none; align-items:center; justify-content:center; padding:2rem; cursor:zoom-out; }
-.lightbox.open{ display:flex; }
+.lightbox{ border:0; padding:0; background:transparent; max-width:96vw; max-height:96vh; cursor:zoom-out; }
+.lightbox::backdrop{ background:rgba(10,8,18,.82); }
 .lightbox img{ max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
 
 /* Tables */
