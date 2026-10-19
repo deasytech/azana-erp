@@ -507,6 +507,19 @@
         </ul>
       </section>
 
+      <section class="chapter" id="m-reports">
+        <div class="eyebrow">Module</div>
+        <h2>Reports</h2>
+        <p class="lead">One place to run a report and download it, for example how much semen or feed was produced this week, this month and this year.</p>
+        <div class="where"><span class="k">Where</span><x-guide.path :items="['Reports', 'Report centre']" /></div>
+        <ul>
+          <li><b>Choose the period</b>: "This week, this month and this year" shows the three side by side; "Dates I choose" runs the report for your own start and end dates.</li>
+          <li><b>Click a report</b>: <i>View</i> shows it on screen. <i>PDF</i> and <i>Excel</i> download it (these need the export right).</li>
+          <li>Reports cover business summary, semen, feed, herd and breeding, grower and finisher production, slaughter and meat, sales, and money. You only see the reports for modules you may view.</li>
+          <li>Totals such as doses or feed produced are for the period; amounts owed are as at the end date. Stock (finished feed, semen doses, meat) is always what is in store now; when your end date is in the past it is listed separately as "Current stock".</li>
+        </ul>
+      </section>
+
       <section class="chapter" id="m-website">
         <div class="eyebrow">Module</div>
         <h2>Website</h2>

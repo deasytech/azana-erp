@@ -39,10 +39,15 @@ class GetKpis
         private readonly GetCashFlow $cashFlow, private readonly GetReceivablesPayables $ageing, private readonly GetStockLevels $stock, private readonly GetLitterKpis $litterKpis,
     ) {}
 
-    /** @return array<string, array<string, mixed>> the registry's entries, each with a 'value' */
-    public function __invoke(CarbonInterface $from, CarbonInterface $to, ?User $for = null): array
+    /**
+     * @param  list<string>|null  $areas  only these dashboards' indicators (null: all), so a report on one area does not work out the rest
+     * @return array<string, array<string, mixed>> the registry's entries, each with a 'value'
+     */
+    public function __invoke(CarbonInterface $from, CarbonInterface $to, ?User $for = null, ?array $areas = null): array
     {
-        $wanted = collect(KpiRegistry::all())->filter(fn ($k) => ! $for || ($for->is_active && $for->can("{$k['module']}.view")));
+        $wanted = collect(KpiRegistry::all())
+            ->filter(fn ($k) => $areas === null || in_array($k['area'], $areas, true))
+            ->filter(fn ($k) => ! $for || ($for->is_active && $for->can("{$k['module']}.view")));
         $values = [];
 
         foreach ($wanted->pluck('area')->unique() as $area) {

@@ -40,7 +40,7 @@ class AdminPanelProvider extends PanelProvider
      */
     private function navigationGroups(): array
     {
-        $groups = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Biosecurity', 'Production', 'Feed mill', 'Inventory', 'Purchasing', 'Semen', 'Sales', 'Slaughter & meat', 'Finance', 'Tasks & alerts', 'Management', 'Website', 'Master data', 'Configuration', 'Administration', 'Help'];
+        $groups = ['Animals', 'Farm structure', 'Breeding', 'Health', 'Biosecurity', 'Production', 'Feed mill', 'Inventory', 'Purchasing', 'Semen', 'Sales', 'Slaughter & meat', 'Finance', 'Tasks & alerts', 'Management', 'Reports', 'Website', 'Master data', 'Configuration', 'Administration', 'Help'];
 
         // Filament does not open a folded group on its own page, so only the groups used least are folded; the rest stay open.
         $folded = ['Farm structure', 'Biosecurity', 'Feed mill', 'Semen', 'Slaughter & meat', 'Website', 'Master data', 'Configuration', 'Administration'];

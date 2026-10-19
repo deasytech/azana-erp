@@ -433,3 +433,14 @@
 .fi-sidebar-nav-groups {
     @apply gap-y-4;
 }
+
+/* Report centre cards: room between the content and the card's border. */
+.azana-report-card {
+    @apply flex flex-col gap-4 rounded-xl bg-white p-6 shadow-xs ring-1 ring-gray-950/10;
+}
+.dark .azana-report-card {
+    @apply bg-gray-900 ring-white/10;
+}
+.azana-report-card-active {
+    @apply ring-2 ring-primary-500;
+}
