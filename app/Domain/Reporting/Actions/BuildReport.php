@@ -14,8 +14,9 @@ use InvalidArgumentException;
 /**
  * Builds one report of the Reports group as a ReportDocument, so the screen preview and the PDF / Excel / CSV downloads are the same
  * tables. Either "at a glance" (this week, this month and this year so far, side by side) or over one chosen period. Only indicators the
- * user may view are included (as everywhere, via GetKpis). Flows such as doses and feed produced are totals for the period; levels such
- * as stock and what is owed are as at its end.
+ * user may view are included (as everywhere, via GetKpis). Flows such as doses and feed produced are totals for the period; what is owed
+ * is as at its end. Stock on hand is always as at now (it cannot be worked out for a past date), so for a period ending before today it is
+ * shown apart, in its own section, rather than as if it were the end-date figure.
  */
 class BuildReport
 {
@@ -24,6 +25,9 @@ class BuildReport
     public const CUSTOM = 'custom';
 
     private const DATE = 'd M Y';
+
+    /** Indicators that are only ever the stock now, whatever period is asked for. */
+    private const CURRENT_STOCK = ['feed.stock_kg', 'semen.doses_in_stock', 'slaughter.meat_stock_kg'];
 
     public function __construct(private readonly GetKpis $kpis, private readonly GetSemenProduction $semen) {}
 
@@ -72,9 +76,17 @@ class BuildReport
         $values = ($this->kpis)($from, $to, $for, $areas);
         $doc = new ReportDocument($title, $from->format(self::DATE).' to '.$to->format(self::DATE));
 
+        $past = $to->copy()->startOfDay()->lt(CarbonImmutable::today());
+        $stock = $past ? collect($values)->only(self::CURRENT_STOCK) : collect();
+        $values = collect($values)->except($stock->keys()->all());
+        $row = fn (array $kpi) => [$kpi['label'], KpiRegistry::format($kpi['unit'], $kpi['value'])];
+
         foreach ($areas as $area) {
-            $rows = collect($values)->where('area', $area)->map(fn (array $kpi) => [$kpi['label'], KpiRegistry::format($kpi['unit'], $kpi['value'])])->values()->all();
-            $doc = $doc->with(KpiRegistry::AREAS[$area][0], ['Indicator', 'Value'], $rows);
+            $doc = $doc->with(KpiRegistry::AREAS[$area][0], ['Indicator', 'Value'], $values->where('area', $area)->map($row)->values()->all());
+        }
+
+        if ($stock->isNotEmpty()) {
+            $doc = $doc->with('Current stock (at report time; not the selected end date)', ['Indicator', 'Value'], $stock->map($row)->values()->all());
         }
 
         return $key === 'semen' ? $this->boarSection($doc, $from, $to, 'Doses per boar') : $doc;

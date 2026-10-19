@@ -177,6 +177,8 @@ it('runs reports from the report centre as PDF or Excel, week month and year sid
         ->call('download', 'semen', 'pdf')->assertFileDownloaded();
 
     $glance->set('mode', 'custom')->set('from', now()->subDays(10)->toDateString())->set('to', now()->toDateString())->assertSee('Doses per boar');
+    $glance->set('to', now()->subDays(2)->toDateString())->assertSee('Current stock (at report time')->assertSee('Sellable doses in stock');
+    $glance->set('to', now()->toDateString())->assertDontSee('Current stock (at report time');
     $glance->set('to', now()->subDays(20)->toDateString())->assertSee('The end date must be on or after the start date.')->call('download', 'semen', 'pdf')->assertNoFileDownloaded();
     $glance->set('mode', 'nonsense')->assertSee('Choose how to run the report.');
 });

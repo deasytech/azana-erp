@@ -516,7 +516,7 @@
           <li><b>Choose the period</b>: "This week, this month and this year" shows the three side by side; "Dates I choose" runs the report for your own start and end dates.</li>
           <li><b>Click a report</b>: <i>View</i> shows it on screen. <i>PDF</i> and <i>Excel</i> download it (these need the export right).</li>
           <li>Reports cover business summary, semen, feed, herd and breeding, grower and finisher production, slaughter and meat, sales, and money. You only see the reports for modules you may view.</li>
-          <li>Totals such as doses or feed produced are for the period; stock and amounts owed are as at the end date.</li>
+          <li>Totals such as doses or feed produced are for the period; amounts owed are as at the end date. Stock (finished feed, semen doses, meat) is always what is in store now; when your end date is in the past it is listed separately as "Current stock".</li>
         </ul>
       </section>
 
