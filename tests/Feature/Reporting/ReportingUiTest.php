@@ -8,6 +8,7 @@ use App\Filament\Pages\ManagementDashboard;
 use App\Filament\Pages\MonthlyManagementReport;
 use App\Filament\Pages\ProfitabilityReport;
 use App\Filament\Pages\ReceivablesPayables;
+use App\Filament\Pages\ReportCentre;
 use App\Filament\Pages\TargetVsActual;
 use App\Filament\Pages\TrialBalanceReport;
 use App\Filament\Resources\KpiTargets\KpiTargetResource;
@@ -163,4 +164,29 @@ it('draws the dashboards against target and follows the chosen dashboard and mon
         ->assertDispatched('report-filter-changed', year: (int) now()->year, month: (int) now()->month, area: 'slaughter')
         ->set('month', 99)
         ->assertDispatched('report-filter-changed', month: 12);
+});
+
+it('runs reports from the report centre as PDF or Excel, week month and year side by side or over chosen dates', function () {
+    $this->actingAs(owner());
+    dispatched(semenOrder(creditCustomer(), releasedSemen(), 10));
+    $this->get(ReportCentre::getUrl())->assertSuccessful()->assertSee('Semen produced')->assertSee('Feed produced');
+
+    $glance = Livewire::test(ReportCentre::class)->call('show', 'semen')
+        ->assertSee('Doses produced')->assertSee('This week')->assertSee('This month')->assertSee('This year')
+        ->call('download', 'feed', 'xlsx')->assertFileDownloaded()
+        ->call('download', 'semen', 'pdf')->assertFileDownloaded();
+
+    $glance->set('mode', 'custom')->set('from', now()->subDays(10)->toDateString())->set('to', now()->toDateString())->assertSee('Doses per boar');
+    $glance->set('to', now()->subDays(20)->toDateString())->assertSee('The end date must be on or after the start date.')->call('download', 'semen', 'pdf')->assertNoFileDownloaded();
+    $glance->set('mode', 'nonsense')->assertSee('Choose how to run the report.');
+});
+
+it('limits the report centre to the reports and exports a person is allowed', function () {
+    $this->actingAs(farmWorker());
+    $this->get(ReportCentre::getUrl())->assertForbidden();
+
+    // A store officer given the right to read reports sees the reports of the modules they already view, not the money report, and cannot export.
+    $this->actingAs(userWithRole('Store Officer')->givePermissionTo('reports.view'));
+    Livewire::test(ReportCentre::class)->assertSee('Semen produced')->assertDontSee('Money: revenue, costs and cash')->assertDontSee('>PDF<', false)
+        ->call('show', 'finance')->assertSet('selected', null)->call('download', 'semen', 'pdf')->assertForbidden();
 });

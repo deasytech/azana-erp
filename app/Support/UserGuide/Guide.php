@@ -33,6 +33,7 @@ m-slaughter | Slaughter and meat | carcass dressing meat products trace yield cu
 m-finance | Finance | journal chart of accounts trial balance cash expenses budget profitability cost
 m-tasks | Tasks and alerts | approvals alerts tasks mobile sync log
 m-management | Management | dashboards kpi targets monthly report
+m-reports | Reports | report centre download pdf excel semen feed week month year owner
 m-website | Website | listings enquiries public site
 m-admin | Set-up and administration | users roles audit log imports backups settings master data price lists
 w-feed | Buy raw materials and make feed | maize purchase order receipt formula production
